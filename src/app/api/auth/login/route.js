@@ -13,8 +13,10 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Email and password required!' }, { status: 400 });
     }
 
-    // 2. Find user in MySQL
-    const [rows] = await getDbConnection().query('SELECT * FROM users WHERE email = ?', [email]);
+    // 2. Find user in MySQL 
+    // ME FIX: Added 'await' before getDbConnection() so we get the actual tool
+    const db = await getDbConnection();
+    const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
     const user = rows[0];
 
     if (!user) {
