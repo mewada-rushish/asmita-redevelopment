@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
-import pool from '@/lib/db';
+import { getDbConnection } from '@/lib/db';
 
 export async function POST(req) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req) {
     }
 
     // 2. Find user in MySQL
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [rows] = await getDbConnection().query('SELECT * FROM users WHERE email = ?', [email]);
     const user = rows[0];
 
     if (!user) {
