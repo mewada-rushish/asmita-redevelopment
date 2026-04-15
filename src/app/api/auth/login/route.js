@@ -29,12 +29,11 @@ export async function POST(req) {
 
     // Generate fresh hash for console debugging if needed
     const freshHash = await bcrypt.hash(password, 10);
-    console.log("PRO-TIP: If login fails, run this SQL to fix your DB:");
-    console.log(`UPDATE users SET password_hash = '${freshHash}' WHERE email = '${email}';`);
-    // ----------------------------
+    // console.log("PRO-TIP: If login fails, run this SQL to fix your DB:");
+    // console.log(`UPDATE users SET password_hash = '${freshHash}' WHERE email = '${email}';`);
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
-    console.log("Password Match Result:", isMatch);
+    // console.log("Password Match Result:", isMatch);
 
     if (!isMatch) {
       return NextResponse.json({ error: 'Wrong email or password' }, { status: 401 });
@@ -47,8 +46,6 @@ export async function POST(req) {
       { expiresIn: '1d' }
     );
 
-    // 5. Set Cookie (NEXT.JS 15 FIX)
-    // We MUST await cookies() now.
     const cookieStore = await cookies(); 
     
     cookieStore.set('asmita_auth', token, {
@@ -68,7 +65,7 @@ export async function POST(req) {
     console.error('CRITICAL Login error:', error);
     return NextResponse.json({ 
       error: 'Internal Server Error',
-      details: error.message // Sending details helps us debug the next crash!
+      details: error.message
     }, { status: 500 });
   }
 }
