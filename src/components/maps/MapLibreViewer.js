@@ -4,6 +4,8 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { logoPath } from '@/assets/images';
 
+const MIRA_ROAD_CENTER = { lat: 19.2813, lng: 72.8693 };
+
 const getStatusColor = (s) => {
   const colors = { 
     'Not Approached': '#ef4444', 
@@ -104,22 +106,63 @@ export default function MapLibreViewer({
     }
   }, [properties, initialLat, initialLng, isMapReady, createMarkerElement]);
 
-  // ME NEW TRICK: Fly map to new address when lat/lng change
+  // ME TRICK 1: Center/Fly logic when coordinates change (Address search or Manual Type)
   useEffect(() => {
-    if (map.current && isMapReady && Number.isFinite(initialLat) && Number.isFinite(initialLng)) {
-      map.current.flyTo({
-        center: [initialLng, initialLat],
-        essential: true,
-        zoom: 17
-      });
+    if (!map.current || !isMapReady) return;
+
+    if (Number.isFinite(initialLat) && Number.isFinite(initialLng)) {
+      // Check if map already looking there. If not, FLY!
+      const center = map.current.getCenter();
+      const diffLat = Math.abs(center.lat - initialLat);
+      const diffLng = Math.abs(center.lng - initialLng);
+
+      if (diffLat > 0.0001 || diffLng > 0.0001) {
+        map.current.flyTo({
+          center: [initialLng, initialLat],
+          essential: true,
+          zoom: 17
+        });
+      }
     }
   }, [initialLat, initialLng, isMapReady]);
+
+  // ME TRICK 2: Dashboard auto-center on nearest property
+  useEffect(() => {
+    if (!map.current || !isMapReady || properties.length === 0) return;
+    
+    // Only do "nearest Mira Road" if NO specific initialLat is given (Dashboard mode)
+    if (!initialLat || !initialLng) {
+        let nearest = properties[0];
+        let minDiff = Math.sqrt(
+          Math.pow(parseFloat(properties[0].lat) - MIRA_ROAD_CENTER.lat, 2) +
+          Math.pow(parseFloat(properties[0].lng) - MIRA_ROAD_CENTER.lng, 2)
+        );
+
+        properties.forEach(p => {
+          const diff = Math.sqrt(
+            Math.pow(parseFloat(p.lat) - MIRA_ROAD_CENTER.lat, 2) +
+            Math.pow(parseFloat(p.lng) - MIRA_ROAD_CENTER.lng, 2)
+          );
+          if (diff < minDiff) {
+            minDiff = diff;
+            nearest = p;
+          }
+        });
+
+        map.current.flyTo({
+          center: [parseFloat(nearest.lng), parseFloat(nearest.lat)],
+          essential: true,
+          zoom: 16
+        });
+    }
+  }, [properties, isMapReady, initialLat, initialLng]);
 
   useEffect(() => {
     if (map.current) return;
 
-    const startLat = Number.isFinite(initialLat) ? initialLat : 19.2813;
-    const startLng = Number.isFinite(initialLng) ? initialLng : 72.8693;
+    // Use property coords if exist, else use Mira Road
+    const startLat = Number.isFinite(initialLat) ? initialLat : MIRA_ROAD_CENTER.lat;
+    const startLng = Number.isFinite(initialLng) ? initialLng : MIRA_ROAD_CENTER.lng;
 
     map.current = new maplibregl.Map({
       container: mapContainer.current,
@@ -139,12 +182,6 @@ export default function MapLibreViewer({
       if (onLocationSelect) {
         const { lng, lat } = e.lngLat;
         onLocationSelect({ lat, lng });
-        markers.current.forEach(m => m.remove());
-        const el = createMarkerElement("New Location", "Approved");
-        const m = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-          .setLngLat([lng, lat])
-          .addTo(map.current);
-        markers.current.push(m);
       }
     });
 
@@ -154,7 +191,6 @@ export default function MapLibreViewer({
         map.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
   useEffect(() => {

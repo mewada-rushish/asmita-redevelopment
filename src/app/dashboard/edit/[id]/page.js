@@ -81,7 +81,6 @@ export default function EditPropertyPage() {
     if (id) loadData();
   }, [id]);
 
-  // ME NEW TRICK: Address Search logic
   const handleAddressSearch = async (query) => {
     setFormData(prev => ({ ...prev, address: query }));
     if (query.length < 3) {
@@ -93,7 +92,8 @@ export default function EditPropertyPage() {
     setSearching(true);
     setShowSuggestions(true);
     try {
-      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
+      // ME FIX: Added lat/lon biasing so it searches near Mira Road!
+      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=19.2813&lon=72.8693`);
       const data = await res.json();
       setSuggestions(data.features || []);
     } catch (e) { console.error(e); }
@@ -106,20 +106,19 @@ export default function EditPropertyPage() {
     const city = f.properties.city || f.properties.district || '';
     const fullAddr = city ? `${name}, ${city}` : name;
 
+    // ME FIX: This updates boxes AND tells map to move!
     setFormData(prev => ({ 
       ...prev, 
       address: fullAddr, 
       lat: lat, 
       lng: lon,
-      locality: city || prev.locality
+      locality: city || prev.locality 
     }));
     
     setShowSuggestions(false);
   };
 
-  const handleBlur = () => {
-    setTimeout(() => setShowSuggestions(false), 200);
-  };
+  const handleBlur = () => setTimeout(() => setShowSuggestions(false), 300);
 
   const updateDetail = (key, val) => setFormData(p => ({...p, details: {...p.details, [key]: val}}));
   
@@ -168,7 +167,26 @@ export default function EditPropertyPage() {
           <div className={styles.card}>
              <label className={styles.label}>📍 Map Positioning</label>
              <MapLibreViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={handleLocationSelect} />
-             <div className={styles.coords}>Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
+             
+             {/* MANUAL COORDINATE INPUTS - UPDATES MAP TOO */}
+             <div className={styles.coordInputs}>
+               <div className={styles.inputSubGroup}>
+                 <label>LATITUDE</label>
+                 <input 
+                   type="number" step="any" className={styles.input} 
+                   value={formData.lat} 
+                   onChange={e => setFormData({...formData, lat: parseFloat(e.target.value) || 0})} 
+                 />
+               </div>
+               <div className={styles.inputSubGroup}>
+                 <label>LONGITUDE</label>
+                 <input 
+                   type="number" step="any" className={styles.input} 
+                   value={formData.lng} 
+                   onChange={e => setFormData({...formData, lng: parseFloat(e.target.value) || 0})} 
+                 />
+               </div>
+             </div>
           </div>
           <div className={styles.card}>
             <label className={styles.label}>🏠 Status</label>
@@ -185,19 +203,20 @@ export default function EditPropertyPage() {
           <Accordion title="1. Building Details" icon="fa-building" defaultOpen={true}>
             <div className={styles.inputGroup}><label>Building Name</label><input className={styles.input} value={formData.propertyName} onChange={e => setFormData({...formData, propertyName: e.target.value})} /></div>
             
-            <div className={styles.inputGroup} style={{position: 'relative'}}>
+            <div className={styles.inputGroup} style={{position: 'relative', zIndex: 1000}}>
               <label>Address {searching && <i className="fa fa-spinner fa-spin" style={{marginLeft: '10px', color: '#1e4ec4'}}></i>}</label>
               <textarea 
                 className={styles.input} 
                 value={formData.address} 
                 onChange={e => handleAddressSearch(e.target.value)} 
                 onBlur={handleBlur}
+                onFocus={() => formData.address.length >= 3 && setShowSuggestions(true)}
                 placeholder="Start typing address..." 
               />
               {showSuggestions && suggestions.length > 0 && (
                 <ul className={styles.suggestions}>
                   {suggestions.map((s, i) => (
-                    <li key={i} onClick={() => selectSuggestion(s)} style={{ cursor: 'pointer' }}>
+                    <li key={i} onMouseDown={() => selectSuggestion(s)} style={{ cursor: 'pointer' }}>
                       <i className="fa fa-map-marker"></i> {s.properties.name}{s.properties.city ? `, ${s.properties.city}` : ''}
                     </li>
                   ))}

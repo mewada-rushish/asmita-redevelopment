@@ -88,7 +88,7 @@
 =============================== */
 .inputGroup { 
   margin-bottom: 20px; 
-  position: relative; /* CRITICAL for suggestions */
+  position: relative; 
 }
 
 .input { 
@@ -101,12 +101,18 @@
   color: #334155;
   box-sizing: border-box; 
   transition: all 0.2s;
+  background: white;
 }
 
 .input:focus { 
   outline: none; 
   border-color: #1e4ec4; 
   box-shadow: 0 0 0 3px rgba(30, 78, 196, 0.1); 
+}
+
+textarea.input {
+  min-height: 80px;
+  resize: vertical;
 }
 
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -146,7 +152,7 @@
 }
 
 /* ===============================
-   ADDRESS AUTOCOMPLETE (FIXED)
+   ADDRESS AUTOCOMPLETE (FIXED VISIBILITY)
 =============================== */
 .suggestions {
   position: absolute;
@@ -156,12 +162,12 @@
   background: white;
   border: 1px solid #d1d5db;
   border-radius: 8px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-  z-index: 9999 !important; /* FLOAT ON TOP OF EVERYTHING */
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+  z-index: 99999 !important; /* FLOAT ABOVE EVERYTHING */
   list-style: none;
   padding: 0;
   margin-top: 5px;
-  max-height: 250px;
+  max-height: 220px;
   overflow-y: auto;
 }
 
@@ -175,11 +181,45 @@
   align-items: center;
   gap: 10px;
   transition: background 0.2s;
+  color: #1f2937;
 }
 
 .suggestions li:hover {
-  background: #f8fafc;
+  background: #f1f5f9;
   color: #1e4ec4;
+}
+
+.suggestions li i {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* ===============================
+   COORDINATE INPUTS
+=============================== */
+.coordInputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.inputSubGroup label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  display: block;
+  letter-spacing: 0.05em;
+}
+
+.inputSubGroup .input {
+  padding: 8px 10px;
+  font-size: 11px;
+  font-family: monospace;
+  background: #f8fafc;
 }
 
 /* ===============================
@@ -214,7 +254,7 @@
   transition: 0.2s;
 }
 
-.activeYes { background: #1e4ec4 !important; color: white !important; }
+.activeYes { background: #10b981 !important; color: white !important; }
 .activeNo { background: #ef4444 !important; color: white !important; }
 
 /* ===============================
@@ -269,6 +309,7 @@
   margin-top: 12px; 
   text-align: center; 
   background: #f1f5f9;
-  padding: 4px;
+  padding: 6px;
   border-radius: 4px;
+  border: 1px solid #e2e8f0;
 }
