@@ -29,8 +29,8 @@ export async function POST(req) {
 
     // Generate fresh hash for console debugging if needed
     const freshHash = await bcrypt.hash(password, 10);
-    // console.log("PRO-TIP: If login fails, run this SQL to fix your DB:");
-    // console.log(`UPDATE users SET password_hash = '${freshHash}' WHERE email = '${email}';`);
+    console.log("PRO-TIP: If login fails, run this SQL to fix your DB:");
+    console.log(`UPDATE users SET password_hash = '${freshHash}' WHERE email = '${email}';`);
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     // console.log("Password Match Result:", isMatch);
