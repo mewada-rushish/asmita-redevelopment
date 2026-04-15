@@ -4,7 +4,7 @@
 .wrapper {
   position: relative;
   width: 100%;
-  height: calc(100vh - 64px); 
+  height: calc(100vh - 64px);
   overflow: hidden;
   background-color: #f3f4f6;
 }
@@ -20,18 +20,18 @@
 =============================== */
 .legend {
   position: absolute;
-  bottom: 20px; 
-  left: 20px; 
-  width: 280px; 
+  bottom: 20px;
+  left: 20px;
+  width: 280px;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-  z-index: 10;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  z-index: 999;
   display: flex;
   flex-direction: column;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid #e5e7eb;
-  overflow: hidden; 
+  overflow: hidden;
 }
 
 .legend.collapsed {
@@ -78,21 +78,37 @@
   flex-direction: column;
 }
 
-.searchBox { padding: 10px; position: relative; }
-.searchBox i { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px; }
-.searchBox input { 
-  width: 100%; 
-  padding: 8px 10px 8px 30px; 
-  border: 1px solid #e2e8f0; 
-  border-radius: 6px; 
-  font-size: 12px; 
-  outline: none; 
+.searchBox {
+  padding: 10px;
+  position: relative;
+}
+.searchBox i {
+  position: absolute;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 12px;
+}
+.searchBox input {
+  width: 100%;
+  padding: 8px 10px 8px 30px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
   transition: border-color 0.2s;
 }
 
-.searchBox input:focus { border-color: #3b82f6; }
+.searchBox input:focus {
+  border-color: #3b82f6;
+}
 
-.statusSections { overflow-y: auto; overflow-x: hidden; padding-bottom: 5px; }
+.statusSections {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 5px;
+}
 
 .sectionToggle {
   width: 100%;
@@ -107,14 +123,41 @@
   transition: background 0.2s;
 }
 
-.sectionToggle:hover { background: #f8fafc; }
+.sectionToggle:hover {
+  background: #f8fafc;
+}
 
-.statusLabel { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 11px; color: #334155; }
-.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.statusLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 11px;
+  color: #334155;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 
-.countBadge { font-weight: 800; font-size: 10px; background: #f8fafc; padding: 2px 6px; border-radius: 4px; color: #0f172a; border: 1px solid #e2e8f0; }
+.countBadge {
+  font-weight: 800;
+  font-size: 10px;
+  background: #f8fafc;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+}
 
-.propertyList { list-style: none; padding: 0; margin: 0; background: #f8fafc; }
+.propertyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: #f8fafc;
+}
 
 .propertyItem {
   padding: 8px 15px 8px 35px;
@@ -127,8 +170,16 @@
   text-overflow: ellipsis;
 }
 
-.propertyItem:hover { background: #f1f5f9; color: #0f172a; }
-.empty { padding: 8px 35px; font-size: 10px; color: #94a3b8; font-style: italic; }
+.propertyItem:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.empty {
+  padding: 8px 35px;
+  font-size: 10px;
+  color: #94a3b8;
+  font-style: italic;
+}
 
 /* ===============================
    MAP STYLE SWITCHER
@@ -136,14 +187,14 @@
 .styleSwitcher {
   position: absolute;
   bottom: 20px;
-  left: 315px; 
+  left: 315px;
   display: flex;
   gap: 6px;
   background: white;
   padding: 6px;
   border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-  z-index: 10;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  z-index: 999;
   border: 1px solid #e5e7eb;
 }
 
@@ -161,8 +212,15 @@
   letter-spacing: 0.05em;
 }
 
-.styleBtn:hover { background: #f1f5f9; color: #1e293b; }
-.activeStyle { background: #0f172a !important; color: #ffffff !important; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2); }
+.styleBtn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+.activeStyle {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
 
 /* ===============================
    RIGHT SIDEBAR (PROPERTY DETAIL)
@@ -170,11 +228,11 @@
 .detailSidebar {
   position: absolute;
   top: 0;
-  right: -400px; 
+  right: -400px;
   width: 400px;
   height: 100%;
   background: white;
-  box-shadow: -5px 0 25px rgba(0,0,0,0.1);
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
   z-index: 20;
   transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -182,7 +240,7 @@
 }
 
 .showSidebar {
-  right: 0 !important; 
+  right: 0 !important;
   z-index: 99999 !important;
 }
 
@@ -210,9 +268,14 @@
   flex-shrink: 0;
 }
 
-.closeBtn:hover { background: #e2e8f0; color: #0f172a; }
+.closeBtn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
 
-.headerInfo { flex: 1; }
+.headerInfo {
+  flex: 1;
+}
 
 .subLabel {
   font-size: 10px;
@@ -288,8 +351,12 @@
   letter-spacing: 0.05em;
 }
 
-.field { margin-bottom: 18px; }
-.field:last-child { margin-bottom: 0; }
+.field {
+  margin-bottom: 18px;
+}
+.field:last-child {
+  margin-bottom: 0;
+}
 
 .field label {
   display: block;
@@ -320,11 +387,18 @@
 
 /* Custom Scrollbars */
 .statusSections::-webkit-scrollbar,
-.sidebarBody::-webkit-scrollbar { width: 5px; }
+.sidebarBody::-webkit-scrollbar {
+  width: 5px;
+}
 .statusSections::-webkit-scrollbar-track,
-.sidebarBody::-webkit-scrollbar-track { background: transparent; }
+.sidebarBody::-webkit-scrollbar-track {
+  background: transparent;
+}
 .statusSections::-webkit-scrollbar-thumb,
-.sidebarBody::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.sidebarBody::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
 
 /* ===============================
    DYNAMIC NESTED UI STYLES
@@ -367,7 +441,7 @@
   color: #0f172a;
   font-weight: 700;
   text-align: right;
-  max-width: 60%; 
+  max-width: 60%;
   word-wrap: break-word;
 }
 

@@ -1,0 +1,164 @@
+.container {
+  padding: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 25px;
+}
+
+.header h1 {
+  font-size: 24px;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.header p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 25px;
+  align-items: start;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+}
+
+.card h2 {
+  font-size: 18px;
+  color: #374151;
+  margin: 0;
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background: #f3f4f6;
+  margin: 15px 0 20px 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.inputRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.inputGroup label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.locked {
+  color: #ef4444;
+  font-weight: normal;
+  font-size: 11px;
+}
+
+.inputGroup input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.inputGroup input:focus {
+  border-color: #1e4ec4;
+}
+
+.disabledInput {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.saveBtn,
+.dangerBtn {
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: opacity 0.2s;
+}
+
+.saveBtn {
+  background-color: #1e4ec4;
+  color: white;
+}
+
+.dangerBtn {
+  background-color: #111827;
+  color: white;
+}
+
+.saveBtn:hover,
+.dangerBtn:hover {
+  opacity: 0.9;
+}
+
+.saveBtn:disabled,
+.dangerBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.alert {
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.alertSuccess {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.alertError {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.loader {
+  display: flex;
+  justify-content: center;
+  padding: 50px;
+  color: #1e4ec4;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
