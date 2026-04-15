@@ -373,7 +373,7 @@ export default function DashboardMapPage() {
       </div>
 
       <div className={styles.styleSwitcher}>
-        {['streets', 'satellite', 'dark'].map(style => (
+        {['streets', 'satellite'].map(style => (
           <button 
             key={style}
             className={`${styles.styleBtn} ${currentStyle === style ? styles.activeStyle : ''}`}
