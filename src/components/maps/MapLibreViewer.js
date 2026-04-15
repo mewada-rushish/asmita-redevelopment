@@ -104,6 +104,17 @@ export default function MapLibreViewer({
     }
   }, [properties, initialLat, initialLng, isMapReady, createMarkerElement]);
 
+  // ME NEW TRICK: Fly map to new address when lat/lng change
+  useEffect(() => {
+    if (map.current && isMapReady && Number.isFinite(initialLat) && Number.isFinite(initialLng)) {
+      map.current.flyTo({
+        center: [initialLng, initialLat],
+        essential: true,
+        zoom: 17
+      });
+    }
+  }, [initialLat, initialLng, isMapReady]);
+
   useEffect(() => {
     if (map.current) return;
 

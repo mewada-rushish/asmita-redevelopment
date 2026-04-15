@@ -10,13 +10,23 @@ export default function EditPropertyPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [category, setCategory] = useState('Redevelopment');
   const [committeeMembers, setCommitteeMembers] = useState([]);
   
   const [formData, setFormData] = useState({
     propertyName: '', locality: '', address: '',
     lat: 19.2813, lng: 72.8693, status: 'Not Approached',
-    details: {},
+    details: {
+      landOwner: '', landType: 'Freehold', cts: '', regStatus: 'NO', regNo: '',
+      chairmanName: '', chairmanContact: '', secretaryName: '', secretaryContact: '', treasurerName: '', treasurerContact: '',
+      responsibleName: '', responsibleContact: '', plotArea: '', totalFlats: '', totalShops: '', wings: '', floors: '',
+      flatArea: '', shopArea: '', approvedPlan: 'NO', oc: 'NO', cc: 'NO', legalDispute: 'NO', mortgaged: 'NO',
+      membersInterested: 'NO', agreeCount: '', priorDiscussion: 'NO', physicalSurvey: 'NO', flatMeasure: 'NO', bannerPerm: 'NO',
+      checklistRemarks: ''
+    },
     checklist: Array(19).fill('NO')
   });
 
@@ -39,8 +49,18 @@ export default function EditPropertyPage() {
         const data = await res.json();
         
         if (data) {
-          setCategory(data.category);
-          setCommitteeMembers(JSON.parse(data.committee || '[]'));
+          setCategory(data.category || 'Redevelopment');
+          
+          let parsedCommittee = [];
+          try { parsedCommittee = typeof data.committee === 'string' ? JSON.parse(data.committee) : data.committee || []; } catch(e) {}
+          setCommitteeMembers(parsedCommittee);
+
+          let parsedDetails = {};
+          try { parsedDetails = typeof data.details === 'string' ? JSON.parse(data.details) : data.details || {}; } catch(e) {}
+
+          let parsedCheck = Array(19).fill('NO');
+          try { parsedCheck = typeof data.checklist === 'string' ? JSON.parse(data.checklist) : data.checklist || Array(19).fill('NO'); } catch(e) {}
+
           setFormData({
             propertyName: data.property_name || '',
             locality: data.locality || '',
@@ -48,8 +68,8 @@ export default function EditPropertyPage() {
             lat: parseFloat(data.lat) || 19.2813,
             lng: parseFloat(data.lng) || 72.8693,
             status: data.status || 'Not Approached',
-            details: JSON.parse(data.details || '{}'),
-            checklist: JSON.parse(data.checklist || '[]')
+            details: { ...formData.details, ...parsedDetails },
+            checklist: parsedCheck
           });
         }
       } catch (err) {
@@ -61,7 +81,46 @@ export default function EditPropertyPage() {
     if (id) loadData();
   }, [id]);
 
-  // --- State Handlers ---
+  // ME NEW TRICK: Address Search logic
+  const handleAddressSearch = async (query) => {
+    setFormData(prev => ({ ...prev, address: query }));
+    if (query.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    
+    setSearching(true);
+    setShowSuggestions(true);
+    try {
+      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`);
+      const data = await res.json();
+      setSuggestions(data.features || []);
+    } catch (e) { console.error(e); }
+    setSearching(false);
+  };
+
+  const selectSuggestion = (f) => {
+    const [lon, lat] = f.geometry.coordinates;
+    const name = f.properties.name || '';
+    const city = f.properties.city || f.properties.district || '';
+    const fullAddr = city ? `${name}, ${city}` : name;
+
+    setFormData(prev => ({ 
+      ...prev, 
+      address: fullAddr, 
+      lat: lat, 
+      lng: lon,
+      locality: city || prev.locality
+    }));
+    
+    setShowSuggestions(false);
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => setShowSuggestions(false), 200);
+  };
+
   const updateDetail = (key, val) => setFormData(p => ({...p, details: {...p.details, [key]: val}}));
   
   const updateCheck = (i, val) => {
@@ -123,14 +182,31 @@ export default function EditPropertyPage() {
         </aside>
 
         <main className={styles.content}>
-          {/* SECTION 1 */}
           <Accordion title="1. Building Details" icon="fa-building" defaultOpen={true}>
             <div className={styles.inputGroup}><label>Building Name</label><input className={styles.input} value={formData.propertyName} onChange={e => setFormData({...formData, propertyName: e.target.value})} /></div>
-            <div className={styles.inputGroup}><label>Address</label><textarea className={styles.input} value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></div>
+            
+            <div className={styles.inputGroup} style={{position: 'relative'}}>
+              <label>Address {searching && <i className="fa fa-spinner fa-spin" style={{marginLeft: '10px', color: '#1e4ec4'}}></i>}</label>
+              <textarea 
+                className={styles.input} 
+                value={formData.address} 
+                onChange={e => handleAddressSearch(e.target.value)} 
+                onBlur={handleBlur}
+                placeholder="Start typing address..." 
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className={styles.suggestions}>
+                  {suggestions.map((s, i) => (
+                    <li key={i} onClick={() => selectSuggestion(s)} style={{ cursor: 'pointer' }}>
+                      <i className="fa fa-map-marker"></i> {s.properties.name}{s.properties.city ? `, ${s.properties.city}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div className={styles.inputGroup}><label>Location / Area</label><input className={styles.input} value={formData.locality} onChange={e => setFormData({...formData, locality: e.target.value})} /></div>
           </Accordion>
 
-          {/* SECTION 2 */}
           <Accordion title="2. Land & Legal Details" icon="fa-balance-scale">
             <div className={styles.inputGroup}><label>Land Owner / Society Name</label><input className={styles.input} value={formData.details.landOwner || ''} onChange={e => updateDetail('landOwner', e.target.value)} /></div>
             <div className={styles.grid2}>
@@ -139,7 +215,6 @@ export default function EditPropertyPage() {
             </div>
           </Accordion>
 
-          {/* SECTION 3 */}
           <Accordion title="3. Society Registration" icon="fa-university">
             <div className={styles.grid2}>
               <div className={styles.inputGroup}><label>Society Registered?</label>
@@ -152,7 +227,6 @@ export default function EditPropertyPage() {
             </div>
           </Accordion>
 
-          {/* SECTION 4 */}
           <Accordion title="4. Committee Details" icon="fa-users">
             {['Chairman', 'Secretary', 'Treasurer'].map(role => (
               <div key={role} className={styles.grid3}>
@@ -163,7 +237,6 @@ export default function EditPropertyPage() {
             ))}
           </Accordion>
 
-          {/* SECTION 5 & 6 */}
           <Accordion title="5 & 6. Members & Responsible Person" icon="fa-user-circle">
             {committeeMembers.map((m, i) => (
               <div key={i} className={styles.grid3} style={{marginBottom: '10px'}}>
@@ -184,7 +257,6 @@ export default function EditPropertyPage() {
             </div>
           </Accordion>
 
-          {/* SECTION 7 & 8 */}
           <Accordion title="7 & 8. Building & Area Info" icon="fa-info-circle">
             <div className={styles.grid2}>
               <div className={styles.inputGroup}><label>Total Plot Area</label><input className={styles.input} value={formData.details.plotArea || ''} onChange={e => updateDetail('plotArea', e.target.value)} /></div>
@@ -194,22 +266,20 @@ export default function EditPropertyPage() {
             </div>
           </Accordion>
 
-          {/* SECTION 9, 10 & 11 */}
           <Accordion title="9, 10 & 11. Approvals & Status" icon="fa-gavel">
              <div className={styles.radioGrid}>
                {['approvedPlan', 'oc', 'cc', 'legalDispute', 'mortgaged', 'membersInterested'].map(f => (
                  <div key={f} className={styles.checkRow}>
-                    <span>{f.replace(/([A-Z])/g, ' $1').toUpperCase()}?</span>
-                    <div className={styles.radioGroup}>
-                      <label><input type="radio" checked={formData.details[f] === 'YES'} onChange={() => updateDetail(f, 'YES')} /> YES</label>
-                      <label><input type="radio" checked={formData.details[f] === 'NO'} onChange={() => updateDetail(f, 'NO')} /> NO</label>
-                    </div>
+                   <span>{f.replace(/([A-Z])/g, ' $1').toUpperCase()}?</span>
+                   <div className={styles.radioGroup}>
+                     <label><input type="radio" checked={formData.details[f] === 'YES'} onChange={() => updateDetail(f, 'YES')} /> YES</label>
+                     <label><input type="radio" checked={formData.details[f] === 'NO'} onChange={() => updateDetail(f, 'NO')} /> NO</label>
+                   </div>
                  </div>
                ))}
              </div>
           </Accordion>
 
-          {/* SECTION 12 */}
           <Accordion title="12. Survey & Permission" icon="fa-search">
             <div className={styles.checkGrid}>
                {['physicalSurvey', 'flatMeasure', 'bannerPerm'].map(p => (
@@ -221,7 +291,6 @@ export default function EditPropertyPage() {
             </div>
           </Accordion>
 
-          {/* SECTION 13 */}
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
             <div className={styles.checklist}>
               {checklistNames.map((name, i) => (

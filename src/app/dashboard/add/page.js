@@ -34,8 +34,12 @@ export default function AddPropertyPage() {
   ];
 
   const handleAddressSearch = async (query) => {
-    setFormData({ ...formData, address: query });
-    if (query.length < 3) return setSuggestions([]);
+    setFormData(prev => ({ ...prev, address: query }));
+    if (query.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
     
     setSearching(true);
     setShowSuggestions(true);
@@ -49,7 +53,18 @@ export default function AddPropertyPage() {
 
   const selectSuggestion = (f) => {
     const [lon, lat] = f.geometry.coordinates;
-    setFormData({ ...formData, address: f.properties.name + ", " + (f.properties.city || ""), lat, lng: lon });
+    const name = f.properties.name || '';
+    const city = f.properties.city || '';
+    const fullAddr = city ? `${name}, ${city}` : name;
+
+    // ME FIX: Update all 3 so map move and address stay
+    setFormData(prev => ({ 
+      ...prev, 
+      address: fullAddr, 
+      lat: lat, 
+      lng: lon 
+    }));
+    
     setShowSuggestions(false);
   };
 
@@ -85,7 +100,12 @@ export default function AddPropertyPage() {
         <aside className={styles.sidebar}>
           <div className={styles.card}>
              <label className={styles.label}>📍 Map Location</label>
-             <MapLibreViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={c => setFormData({...formData, lat: c.lat, lng: c.lng})} />
+             {/* ME PASS NEW LAT/LNG: Map now move when these change */}
+             <MapLibreViewer 
+                initialLat={formData.lat} 
+                initialLng={formData.lng} 
+                onLocationSelect={c => setFormData({...formData, lat: c.lat, lng: c.lng})} 
+             />
              <div className={styles.coords}>Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
           </div>
           <div className={styles.card}>
@@ -106,32 +126,43 @@ export default function AddPropertyPage() {
               {showSuggestions && suggestions.length > 0 && (
                 <ul className={styles.suggestions}>
                   {suggestions.map((s, i) => (
-                    <li key={i} onClick={() => selectSuggestion(s)}><i className="fa fa-map-marker"></i> {s.properties.name}, {s.properties.city}</li>
+                    <li key={i} onClick={() => selectSuggestion(s)} style={{ cursor: 'pointer' }}>
+                      <i className="fa fa-map-marker"></i> {s.properties.name}{s.properties.city ? `, ${s.properties.city}` : ''}
+                    </li>
                   ))}
                 </ul>
               )}
             </div>
           </Accordion>
 
-          {/* REMAINDER OF YOUR ACCORDIONS (2 to 13) STAY HERE - DO NOT DELETE */}
           <Accordion title="2. Land & Legal Details" icon="fa-balance-scale">
-            <div className={styles.inputGroup}><label>Land Owner / Society Name</label><input className={styles.input} onChange={e => updateDetail('landOwner', e.target.value)} /></div>
+            <div className={styles.inputGroup}><label>Land Owner / Society Name</label><input className={styles.input} value={formData.details.landOwner} onChange={e => updateDetail('landOwner', e.target.value)} /></div>
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label>Land Type</label><select className={styles.input} onChange={e => updateDetail('landType', e.target.value)}><option>Freehold</option><option>Leasehold</option></select></div>
-              <div className={styles.inputGroup}><label>CTS / Survey No.</label><input className={styles.input} onChange={e => updateDetail('cts', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label>Land Type</label><select className={styles.input} value={formData.details.landType} onChange={e => updateDetail('landType', e.target.value)}><option>Freehold</option><option>Leasehold</option></select></div>
+              <div className={styles.inputGroup}><label>CTS / Survey No.</label><input className={styles.input} value={formData.details.cts} onChange={e => updateDetail('cts', e.target.value)} /></div>
             </div>
           </Accordion>
 
           <Accordion title="3. Society Registration" icon="fa-university">
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label>Society Registered?</label><div className={styles.radioGroup}><label><input type="radio" name="reg" onClick={() => updateDetail('regStatus', 'YES')} /> YES</label><label><input type="radio" name="reg" onClick={() => updateDetail('regStatus', 'NO')} /> NO</label></div></div>
-              <div className={styles.inputGroup}><label>Reg No.</label><input className={styles.input} onChange={e => updateDetail('regNo', e.target.value)} /></div>
+              <div className={styles.inputGroup}>
+                <label>Society Registered?</label>
+                <div className={styles.radioGroup}>
+                  <label><input type="radio" name="reg" checked={formData.details.regStatus === 'YES'} onChange={() => updateDetail('regStatus', 'YES')} /> YES</label>
+                  <label><input type="radio" name="reg" checked={formData.details.regStatus === 'NO'} onChange={() => updateDetail('regStatus', 'NO')} /> NO</label>
+                </div>
+              </div>
+              <div className={styles.inputGroup}><label>Reg No.</label><input className={styles.input} value={formData.details.regNo} onChange={e => updateDetail('regNo', e.target.value)} /></div>
             </div>
           </Accordion>
 
           <Accordion title="4. Committee Details" icon="fa-users">
             {['Chairman', 'Secretary', 'Treasurer'].map(role => (
-              <div key={role} className={styles.grid3}><label>{role}</label><input placeholder="Name" className={styles.input} onChange={e => updateDetail(`${role.toLowerCase()}Name`, e.target.value)} /><input placeholder="Contact" className={styles.input} onChange={e => updateDetail(`${role.toLowerCase()}Contact`, e.target.value)} /></div>
+              <div key={role} className={styles.grid3}>
+                <label>{role}</label>
+                <input placeholder="Name" className={styles.input} value={formData.details[`${role.toLowerCase()}Name`]} onChange={e => updateDetail(`${role.toLowerCase()}Name`, e.target.value)} />
+                <input placeholder="Contact" className={styles.input} value={formData.details[`${role.toLowerCase()}Contact`]} onChange={e => updateDetail(`${role.toLowerCase()}Contact`, e.target.value)} />
+              </div>
             ))}
           </Accordion>
 
@@ -152,29 +183,49 @@ export default function AddPropertyPage() {
 
           <Accordion title="6. Responsible Person" icon="fa-user">
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label>Name</label><input className={styles.input} onChange={e => updateDetail('responsibleName', e.target.value)} /></div>
-              <div className={styles.inputGroup}><label>Contact</label><input className={styles.input} onChange={e => updateDetail('responsibleContact', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label>Name</label><input className={styles.input} value={formData.details.responsibleName} onChange={e => updateDetail('responsibleName', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label>Contact</label><input className={styles.input} value={formData.details.responsibleContact} onChange={e => updateDetail('responsibleContact', e.target.value)} /></div>
             </div>
           </Accordion>
 
           <Accordion title="7 & 8. Building & Area Info" icon="fa-info-circle">
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label>Total Plot Area</label><input className={styles.input} /></div>
-              <div className={styles.inputGroup}><label>Total Flats</label><input className={styles.input} /></div>
-              <div className={styles.inputGroup}><label>Total Shops</label><input className={styles.input} /></div>
-              <div className={styles.inputGroup}><label>Total Flat Area Combined</label><input className={styles.input} /></div>
+              <div className={styles.inputGroup}><label>Total Plot Area</label><input className={styles.input} value={formData.details.plotArea} onChange={e => updateDetail('plotArea', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label>Total Flats</label><input className={styles.input} value={formData.details.totalFlats} onChange={e => updateDetail('totalFlats', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label>Total Shops</label><input className={styles.input} value={formData.details.totalShops} onChange={e => updateDetail('totalShops', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label>Total Flat Area Combined</label><input className={styles.input} value={formData.details.flatArea} onChange={e => updateDetail('flatArea', e.target.value)} /></div>
             </div>
           </Accordion>
 
           <Accordion title="9, 10 & 11. Status & Legal" icon="fa-gavel">
-             {['Approved Plan', 'OC', 'CC', 'Legal Dispute', 'Mortgaged', 'Redevelopment Interest'].map(f => (
-               <div key={f} className={styles.checkRow}><span>{f}?</span><div className={styles.radioGroup}><label><input type="radio" name={f} /> YES</label><label><input type="radio" name={f} /> NO</label></div></div>
+             {[
+               {l: 'Approved Plan', k: 'approvedPlan'}, 
+               {l: 'OC', k: 'oc'}, 
+               {l: 'CC', k: 'cc'}, 
+               {l: 'Legal Dispute', k: 'legalDispute'}, 
+               {l: 'Mortgaged', k: 'mortgaged'}, 
+               {l: 'Redevelopment Interest', k: 'membersInterested'}
+             ].map(f => (
+               <div key={f.k} className={styles.checkRow}>
+                 <span>{f.l}?</span>
+                 <div className={styles.radioGroup}>
+                   <label><input type="radio" name={f.k} checked={formData.details[f.k] === 'YES'} onChange={() => updateDetail(f.k, 'YES')} /> YES</label>
+                   <label><input type="radio" name={f.k} checked={formData.details[f.k] === 'NO'} onChange={() => updateDetail(f.k, 'NO')} /> NO</label>
+                 </div>
+               </div>
              ))}
           </Accordion>
 
           <Accordion title="12. Survey & Permissions" icon="fa-search">
-            {['Physical Survey Allowed', 'Flat Measurement Allowed', 'Banner Permission'].map(p => (
-              <div key={p} className={styles.checkRow}><input type="checkbox" /> <span>{p}</span></div>
+            {[
+              {l: 'Physical Survey Allowed', k: 'physicalSurvey'}, 
+              {l: 'Flat Measurement Allowed', k: 'flatMeasure'}, 
+              {l: 'Banner Permission', k: 'bannerPerm'}
+            ].map(p => (
+              <div key={p.k} className={styles.checkRow}>
+                <input type="checkbox" checked={formData.details[p.k] === 'YES'} onChange={e => updateDetail(p.k, e.target.checked ? 'YES' : 'NO')} /> 
+                <span>{p.l}</span>
+              </div>
             ))}
           </Accordion>
 
@@ -183,7 +234,10 @@ export default function AddPropertyPage() {
               {checklistNames.map((name, i) => (
                 <div key={i} className={styles.checkItem}>
                   <span>{i+1}. {name}</span>
-                  <div className={styles.toggle}><button type="button" onClick={() => updateCheck(i, 'YES')} className={formData.checklist[i] === 'YES' ? styles.activeYes : ''}>YES</button><button type="button" onClick={() => updateCheck(i, 'NO')} className={formData.checklist[i] === 'NO' ? styles.activeNo : ''}>NO</button></div>
+                  <div className={styles.toggle}>
+                    <button type="button" onClick={() => updateCheck(i, 'YES')} className={formData.checklist[i] === 'YES' ? styles.activeYes : ''}>YES</button>
+                    <button type="button" onClick={() => updateCheck(i, 'NO')} className={formData.checklist[i] === 'NO' ? styles.activeNo : ''}>NO</button>
+                  </div>
                 </div>
               ))}
             </div>
