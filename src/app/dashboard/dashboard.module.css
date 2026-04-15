@@ -1,0 +1,19 @@
+.layoutContainer { display: flex; height: 100vh; overflow: hidden; font-family: sans-serif; background-color: #f9fafb; }
+.sidebar { width: 260px; background-color: #1f2937; color: white; display: flex; flex-direction: column; box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 10; }
+.sidebarHeader { padding: 24px 20px; border-bottom: 1px solid #374151; }
+.sidebarHeader h2 { margin: 0; color: white; font-size: 22px; }
+.badge { display: inline-block; background-color: #1e4ec4; color: white; font-size: 10px; padding: 3px 6px; border-radius: 4px; margin-top: 5px; font-weight: bold; text-transform: uppercase; }
+.navMenu { padding: 20px 10px; flex-grow: 1; display: flex; flex-direction: column; gap: 5px; }
+.navLink { display: flex; align-items: center; padding: 12px 15px; color: #d1d5db; text-decoration: none; border-radius: 6px; font-size: 15px; transition: all 0.2s; }
+.navLink:hover { background-color: #374151; color: white; }
+.activeLink { background-color: #1e4ec4; color: white; }
+.activeLink:hover { background-color: #163a94; }
+.icon { width: 24px; font-size: 18px; }
+.sidebarFooter { padding: 20px; border-top: 1px solid #374151; }
+.userProfile { display: flex; align-items: center; gap: 12px; }
+.avatar { width: 36px; height: 36px; background-color: #1e4ec4; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+.userInfo { display: flex; flex-direction: column; }
+.userName { font-size: 14px; font-weight: bold; }
+.logoutBtn { font-size: 12px; color: #9ca3af; text-decoration: none; margin-top: 2px; background: transparent; border: none; cursor: pointer; text-align: left; padding: 0; }
+.logoutBtn:hover { color: white; }
+.mainContent { flex-grow: 1; overflow-y: auto; padding: 30px; }

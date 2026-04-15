@@ -1,0 +1,44 @@
+.container { font-family: var(--font-poppins); padding: 20px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+.header h1 { font-family: var(--font-montserrat); font-size: 26px; margin: 0; }
+.header p { color: #6b7280; font-size: 13px; margin-top: 4px; }
+
+.actionBtns { display: flex; gap: 10px; }
+.exportBtn { background: #10b981; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.addBtn { background: #ef4444; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; text-decoration: none; display: flex; align-items: center; font-size: 13px; }
+
+.filterBar { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { background: white; border: 1px solid #e5e7eb; padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #4b5563; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.activePill { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+.dot { width: 7px; height: 7px; border-radius: 50%; }
+
+.searchWrapper { position: relative; width: 350px; }
+.searchWrapper i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 13px; }
+.searchWrapper input { width: 100%; padding: 10px 15px 10px 40px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; outline: none; }
+
+.tableCard { background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+.table { width: 100%; border-collapse: collapse; }
+.table th { background: #f9fafb; padding: 14px 20px; font-size: 11px; font-weight: 700; color: #6b7280; text-align: left; border-bottom: 1px solid #e5e7eb; letter-spacing: 0.03em; }
+.table td { padding: 12px 20px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.table tr:hover td { background: #fafafa; }
+
+.buildingCell { display: flex; align-items: center; gap: 10px; }
+.logoPlaceholder { width: 30px; height: 30px; background: #f3f4f6; color: #1e4ec4; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; }
+.areaText { color: #6b7280; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; display: block; }
+
+.statusWrapper { display: flex; align-items: center; gap: 8px; }
+.statusDropdown { padding: 6px 12px; border: 1px solid; border-radius: 6px; font-size: 12px; font-weight: 800; cursor: pointer; color: #000; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; outline: none; }
+
+.emailBadge { background: #f3e8ff; color: #6b21a8; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+.editBtn { border: 1px solid #e5e7eb; color: #4b5563; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: 700; background: #fff; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+.editBtn:hover { border-color: #fcd34d; background: #fffbeb; color: #b45309; }
+
+/* Pagination Styling */
+.paginationFooter { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #fff; border-top: 1px solid #f3f4f6; }
+.perPage { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b7280; }
+.perPage select { padding: 4px 8px; border-radius: 6px; border: 1px solid #d1d5db; outline: none; }
+.pages { display: flex; align-items: center; gap: 15px; font-size: 12px; color: #4b5563; }
+.pages button { background: white; border: 1px solid #d1d5db; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #4b5563; display: flex; align-items: center; justify-content: center; }
+.pages button:disabled { opacity: 0.4; cursor: not-allowed; }
+.loadingCell { text-align: center; padding: 50px; color: #9ca3af; font-size: 14px; }

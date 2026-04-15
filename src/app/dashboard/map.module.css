@@ -1,0 +1,399 @@
+/* ===============================
+   BASE MAP WRAPPER
+=============================== */
+.wrapper {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 64px); 
+  overflow: hidden;
+  background-color: #f3f4f6;
+}
+
+.mapContainer {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* ===============================
+   LEFT LEGEND WIDGET
+=============================== */
+.legend {
+  position: absolute;
+  bottom: 20px; 
+  left: 20px; 
+  width: 280px; 
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #e5e7eb;
+  overflow: hidden; 
+}
+
+.legend.collapsed {
+  width: 220px;
+}
+
+.legendHeader {
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: #f9fafb;
+  transition: background 0.2s;
+}
+
+.legendHeader:hover {
+  background: #f1f5f9;
+}
+
+.headerTitle h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.05em;
+  font-family: var(--font-montserrat), sans-serif;
+}
+
+.totalBadge {
+  background: #0f172a;
+  color: white;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: 700;
+}
+
+.legendBody {
+  border-top: 1px solid #f1f5f9;
+  max-height: 350px;
+  display: flex;
+  flex-direction: column;
+}
+
+.searchBox { padding: 10px; position: relative; }
+.searchBox i { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px; }
+.searchBox input { 
+  width: 100%; 
+  padding: 8px 10px 8px 30px; 
+  border: 1px solid #e2e8f0; 
+  border-radius: 6px; 
+  font-size: 12px; 
+  outline: none; 
+  transition: border-color 0.2s;
+}
+
+.searchBox input:focus { border-color: #3b82f6; }
+
+.statusSections { overflow-y: auto; overflow-x: hidden; padding-bottom: 5px; }
+
+.sectionToggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: white;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.sectionToggle:hover { background: #f8fafc; }
+
+.statusLabel { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 11px; color: #334155; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.countBadge { font-weight: 800; font-size: 10px; background: #f8fafc; padding: 2px 6px; border-radius: 4px; color: #0f172a; border: 1px solid #e2e8f0; }
+
+.propertyList { list-style: none; padding: 0; margin: 0; background: #f8fafc; }
+
+.propertyItem {
+  padding: 8px 15px 8px 35px;
+  font-size: 11px;
+  color: #475569;
+  border-bottom: 1px solid #f1f5f9;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.propertyItem:hover { background: #f1f5f9; color: #0f172a; }
+.empty { padding: 8px 35px; font-size: 10px; color: #94a3b8; font-style: italic; }
+
+/* ===============================
+   MAP STYLE SWITCHER
+=============================== */
+.styleSwitcher {
+  position: absolute;
+  bottom: 20px;
+  left: 315px; 
+  display: flex;
+  gap: 6px;
+  background: white;
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+  z-index: 10;
+  border: 1px solid #e5e7eb;
+}
+
+.styleBtn {
+  padding: 8px 14px;
+  border: none;
+  background: #f8fafc;
+  font-size: 10px;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.styleBtn:hover { background: #f1f5f9; color: #1e293b; }
+.activeStyle { background: #0f172a !important; color: #ffffff !important; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2); }
+
+/* ===============================
+   RIGHT SIDEBAR (PROPERTY DETAIL)
+=============================== */
+.detailSidebar {
+  position: absolute;
+  top: 0;
+  right: -400px; 
+  width: 400px;
+  height: 100%;
+  background: white;
+  box-shadow: -5px 0 25px rgba(0,0,0,0.1);
+  z-index: 20;
+  transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.showSidebar {
+  right: 0 !important; 
+}
+
+.sidebarHeader {
+  padding: 25px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  background: #ffffff;
+}
+
+.closeBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #f1f5f9;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover { background: #e2e8f0; color: #0f172a; }
+
+.headerInfo { flex: 1; }
+
+.subLabel {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.sidebarLogo {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e2e8f0;
+  padding: 4px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.titleRow h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+  font-family: var(--font-montserrat), sans-serif;
+  font-weight: 800;
+}
+
+.sidebarBody {
+  padding: 25px;
+  flex: 1;
+  overflow-y: auto;
+  background: #fafafa;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1.5px solid;
+  border-radius: 20px;
+  font-weight: 800;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  margin-bottom: 30px;
+}
+
+.sideSection {
+  margin-top: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #f1f5f9;
+}
+
+.sectionHeading {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field { margin-bottom: 18px; }
+.field:last-child { margin-bottom: 0; }
+
+.field label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.field p {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.yesBadge {
+  display: inline-block;
+  background: #dcfce7;
+  color: #166534;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Custom Scrollbars */
+.statusSections::-webkit-scrollbar,
+.sidebarBody::-webkit-scrollbar { width: 5px; }
+.statusSections::-webkit-scrollbar-track,
+.sidebarBody::-webkit-scrollbar-track { background: transparent; }
+.statusSections::-webkit-scrollbar-thumb,
+.sidebarBody::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* ===============================
+   DYNAMIC NESTED UI STYLES
+=============================== */
+.nestedCardList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.nestedCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.nestedRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.nestedRow:last-child {
+  margin-bottom: 0;
+}
+
+.nestedKey {
+  color: #64748b;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.nestedVal {
+  color: #0f172a;
+  font-weight: 700;
+  text-align: right;
+  max-width: 60%; 
+  word-wrap: break-word;
+}
+
+/* Badge Group for Checklist and Lists */
+.badgeGroup {
+  display: flex;
+  flex-wrap: wrap; /* Make pills drop to next line if screen small */
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.neutralBadge {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid #e2e8f0;
+  white-space: nowrap; /* Keep pill text tight */
+}
+
+.emptyVal {
+  color: #94a3b8;
+  font-size: 12px;
+  font-style: italic;
+  margin: 0;
+}

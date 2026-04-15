@@ -1,0 +1,11 @@
+.container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f3f4f6; font-family: sans-serif; }
+.loginCard { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); width: 100%; max-width: 400px; }
+.logoArea { text-align: center; margin-bottom: 30px; }
+.logoArea h2 { margin: 0; color: #1e4ec4; font-size: 28px; }
+.logoArea p { margin: 5px 0 0; color: #6b7280; font-size: 14px; }
+.form { display: flex; flex-direction: column; gap: 20px; }
+.inputGroup { display: flex; flex-direction: column; gap: 8px; }
+.inputGroup label { font-size: 13px; font-weight: 600; color: #374151; }
+.inputGroup input { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
+.loginBtn { background-color: #1e4ec4; color: white; border: none; padding: 12px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+.loginBtn:hover { background-color: #163a94; }
