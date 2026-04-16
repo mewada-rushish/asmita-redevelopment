@@ -1,34 +1,34 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { logoPath } from '@/assets/images';
 import styles from './page.module.css';
 
 export default function LoginPage() {
-  // SECURED: Removed hardcoded credentials
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [otp, setOtp] = useState('');
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isResetMode, setIsResetMode] = useState(false);
+  const [mode, setMode] = useState('login'); // login, forceChange, forgot-email, forgot-otp
   const router = useRouter();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // SECURED: Trim email to prevent accidental spacebar errors
         body: JSON.stringify({ email: email.trim(), password })
       });
-
       const data = await res.json();
 
       if (!res.ok) {
@@ -37,158 +37,146 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+      if (data.requiresPasswordChange) {
+        setMode('forceChange');
+        setError('Security Notice: Update temporary password.');
+        setIsLoading(false);
+        return;
+      }
 
+      router.push('/dashboard');
     } catch (err) {
-      setError('Connection error. Please try again later.');
+      setError('Connection error.');
       setIsLoading(false);
     }
   };
 
-  const handleChangePassword = async (e) => {
+  const handleResetRequest = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
     setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() })
+      });
+      if (res.ok) {
+        setSuccess('OTP sent to your email!');
+        setMode('forgot-otp');
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Email not found.');
+      }
+    } catch (err) { setError('Failed to send OTP.'); }
+    setIsLoading(false);
+  };
 
+  const handleFinalReset = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) return setError('Passwords do not match');
+    
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), otp, newPassword })
+      });
+      if (res.ok) {
+        setSuccess('Password reset successful! Logging in...');
+        setMode('login');
+        setPassword(newPassword);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Invalid OTP.');
+      }
+    } catch (err) { setError('Reset failed.'); }
+    setIsLoading(false);
+  };
+
+  const handleForceChange = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) return setError('Passwords do not match');
+    setIsLoading(true);
     try {
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), currentPassword: password, newPassword })
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to change password');
-        setIsLoading(false);
-        return;
+      if (res.ok) {
+        setSuccess('Password updated!');
+        router.push('/dashboard');
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to update.');
       }
-
-      setSuccess('Password updated successfully! Please log in with your new password.');
-      setIsResetMode(false);
-      setPassword('');
-      setNewPassword('');
-      setIsLoading(false);
-
-    } catch (err) {
-      setError('Connection error. Please try again later.');
-      setIsLoading(false);
-    }
+    } catch (err) { setError('Connection error.'); }
+    setIsLoading(false);
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.loginCard}>
         <div className={styles.logoArea}>
-          <h2>AsmitA</h2>
-          <p>Property Tracker ERP</p>
+          <Image src={logoPath} alt="AsmitA Logo" width={120} height={120} priority />
+          <p style={{ marginTop: -5 }}>Property Tracker System</p>
         </div>
 
-        {error && (
-          <div style={{ color: '#ef4444', backgroundColor: '#fee2e2', padding: '10px', borderRadius: '6px', marginBottom: '15px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>
-            {error}
-          </div>
-        )}
+        {error && <div className={styles.errorAlert}>{error}</div>}
+        {success && <div className={styles.successAlert}>{success}</div>}
 
-        {success && (
-          <div style={{ color: '#166534', backgroundColor: '#dcfce3', padding: '10px', borderRadius: '6px', marginBottom: '15px', fontSize: '14px', textAlign: 'center', fontWeight: 'bold' }}>
-            {success}
-          </div>
-        )}
-
-        {!isResetMode ? (
+        {mode === 'login' && (
           <form onSubmit={handleLogin} className={styles.form}>
             <div className={styles.inputGroup}>
               <label>Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="username"
-              />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className={styles.inputGroup}>
               <label>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <button type="submit" className={styles.loginBtn} disabled={isLoading}>
-              {isLoading ? 'Checking...' : 'Sign In'}
+              {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Sign In'}
             </button>
-            <div style={{ textAlign: 'center', marginTop: '15px' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsResetMode(true);
-                  setError('');
-                  setSuccess('');
-                  setPassword(''); // Clear password when switching modes
-                }}
-                style={{ background: 'none', border: 'none', color: '#1e4ec4', cursor: 'pointer', fontSize: '13px', fontWeight: '600', textDecoration: 'underline' }}
-              >
-                Change Temporary Password
-              </button>
+            <div className={styles.formFooter}>
+              <button type="button" onClick={() => setMode('forgot-email')} className={styles.linkBtn}>Forgot Password?</button>
             </div>
           </form>
-        ) : (
-          <form onSubmit={handleChangePassword} className={styles.form}>
+        )}
+
+        {mode === 'forgot-email' && (
+          <form onSubmit={handleResetRequest} className={styles.form}>
             <div className={styles.inputGroup}>
-              <label>Email Address</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="username"
-              />
-            </div>
-            <div className={styles.inputGroup}>
-              <label>Current / Temporary Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-            <div className={styles.inputGroup}>
-              <label>New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-                minLength="6"
-                autoComplete="new-password"
-              />
+              <label>Enter Registered Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <button type="submit" className={styles.loginBtn} disabled={isLoading}>
-              {isLoading ? 'Updating...' : 'Update Password'}
+              {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Send Reset OTP'}
             </button>
-            <div style={{ textAlign: 'center', marginTop: '15px' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsResetMode(false);
-                  setError('');
-                  setSuccess('');
-                  setPassword('');
-                  setNewPassword('');
-                }}
-                style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-              >
-                <i className="fa fa-arrow-left"></i> Back to Login
-              </button>
-            </div>
+            <button type="button" onClick={() => setMode('login')} className={styles.linkBtn}>Back to Login</button>
+          </form>
+        )}
+
+        {mode === 'forgot-otp' && (
+          <form onSubmit={handleFinalReset} className={styles.form}>
+            <div className={styles.inputGroup}><label>Enter 6-Digit OTP</label><input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength="6" /></div>
+            <div className={styles.inputGroup}><label>New Password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required /></div>
+            <div className={styles.inputGroup}><label>Confirm Password</label><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required /></div>
+            <button type="submit" className={styles.loginBtn} disabled={isLoading}>
+              {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Reset Password'}
+            </button>
+          </form>
+        )}
+
+        {mode === 'forceChange' && (
+          <form onSubmit={handleForceChange} className={styles.form}>
+            <div className={styles.inputGroup}><label>New Password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required /></div>
+            <div className={styles.inputGroup}><label>Confirm Password</label><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required /></div>
+            <button type="submit" className={styles.loginBtn} disabled={isLoading}>
+              {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Update & Continue'}
+            </button>
           </form>
         )}
       </div>
