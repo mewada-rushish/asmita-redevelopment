@@ -2,10 +2,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
-import MapLibreViewer from '@/components/maps/MapLibreViewer';
+import MapViewer from '@/components/maps/MapViewer'; 
 import styles from './edit.module.css';
 
-// Bulletproof parser to handle MySQL string escapes
 const safeJSONParse = (data) => {
   if (!data) return {};
   if (typeof data === 'object') return data;
@@ -20,17 +19,6 @@ const safeJSONParse = (data) => {
   }
 };
 
-export default function EditPropertyPage() {
-  const { id } = useParams();
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [searching, setSearching] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [category, setCategory] = useState('Redevelopment');
-  const [committeeMembers, setCommitteeMembers] = useState([]);
-
   const checklistNames = [
     "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract / Property Card & Mutation Entries",
     "Latest Approved Survey Plan with DP Remarks", "Physical Plot Survey Showing Plot Area",
@@ -41,6 +29,17 @@ export default function EditPropertyPage() {
     "Encumbrance Certificate (if available)", "Any NOC (if applicable)",
     "C-1 Notice (Delapidated building) from MBMC", "Latest Assessment amount paid receipt"
   ];
+
+export default function EditPropertyPage() {
+  const { id } = useParams();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [category, setCategory] = useState('Redevelopment');
+  const [committeeMembers, setCommitteeMembers] = useState([]);
 
   const [formData, setFormData] = useState({
     propertyName: '', locality: '', address: '',
@@ -102,6 +101,7 @@ export default function EditPropertyPage() {
     if (id) loadData();
   }, [id]);
 
+  // ME FIX: Upgraded Search to include Google Geocoding logic
   const handleAddressSearch = async (query) => {
     setFormData(prev => ({ ...prev, address: query }));
     if (query.length < 3) {
@@ -113,9 +113,28 @@ export default function EditPropertyPage() {
     setSearching(true);
     setShowSuggestions(true);
     try {
-      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=19.2813&lon=72.8693`);
-      const data = await res.json();
-      setSuggestions(data.features || []);
+      const apiKey = process.env.NEXT_PUBLIC_GMAP_KEY;
+
+      if (apiKey && process.env.NEXT_PUBLIC_MAP_ENGINE !== 'maplibre') {
+        // GOOGLE GEOCODING API
+        const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&components=locality:Mira+Bhayandar&key=${apiKey}`);
+        const data = await res.json();
+
+        if (data.status === 'OK') {
+          const formattedSuggestions = data.results.slice(0, 5).map(r => ({
+            properties: { name: r.formatted_address.replace(', Maharashtra, India', ''), city: '' },
+            geometry: { coordinates: [r.geometry.location.lng, r.geometry.location.lat] }
+          }));
+          setSuggestions(formattedSuggestions);
+        } else {
+          setSuggestions([]);
+        }
+      } else {
+        // FALLBACK: Photon API
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=19.2813&lon=72.8693`);
+        const data = await res.json();
+        setSuggestions(data.features || []);
+      }
     } catch (e) { console.error(e); }
     setSearching(false);
   };
@@ -201,7 +220,12 @@ export default function EditPropertyPage() {
         <aside className={styles.sidebar}>
           <div className={styles.card}>
             <label className={styles.label}>📍 Map Positioning</label>
-            <MapLibreViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={handleLocationSelect} />
+            {/* ME FIX: Used universal MapViewer */}
+            <MapViewer 
+              initialLat={formData.lat} 
+              initialLng={formData.lng} 
+              onLocationSelect={handleLocationSelect} 
+            />
             <div className={styles.coordInputs}>
               <div className={styles.inputSubGroup}>
                 <label>LATITUDE</label>

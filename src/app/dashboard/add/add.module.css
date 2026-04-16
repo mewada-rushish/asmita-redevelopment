@@ -195,3 +195,87 @@
 .addBtn:hover { background: #e5e7eb; border-color: #1e4ec4; }
 
 .uploadArea { border: 2px dashed #d1d5db; border-radius: 12px; padding: 40px; text-align: center; color: #9ca3af; background: #f9fafb; }
+
+/* ===============================
+   MOBILE OPTIMIZATIONS
+=============================== */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  /* Stack header elements vertically */
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  /* Make save button full width for easy tapping */
+  .saveBtn {
+    width: 100%;
+    padding: 14px 20px;
+  }
+
+  /* Stack sidebar (map) and main form vertically */
+  .mainGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  /* Disable sticky behavior on mobile since it's stacked */
+  .sidebar {
+    position: static;
+  }
+
+  /* Stack 2-column grids (like Land Type / CTS) */
+  .grid2 {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  /* Stack 3-column grids (like Committee Members) */
+  .grid3 {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: flex-start;
+    background: #f8fafc;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #f1f5f9;
+  }
+
+  /* Adjust labels for stacked inputs */
+  .grid3 label, .grid3 span {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+
+  /* Allow checkboxes/radios to wrap nicely */
+  .checkRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .radioGroup {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 0;
+  }
+
+  .checkItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Make toggle buttons slightly larger for touch */
+  .toggle {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}

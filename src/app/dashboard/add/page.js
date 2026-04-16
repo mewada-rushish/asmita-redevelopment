@@ -1,7 +1,7 @@
 'use client';
 import { useState, useCallback } from 'react';
 import Accordion from '@/components/accordion/Accordion';
-import MapLibreViewer from '@/components/maps/MapLibreViewer';
+import MapViewer from '@/components/maps/MapViewer'; 
 import styles from './add.module.css';
 
 export default function AddPropertyPage() {
@@ -30,7 +30,6 @@ export default function AddPropertyPage() {
       membersInterested: 'NO', agreeCount: '', priorDiscussion: 'NO', physicalSurvey: 'NO', flatMeasure: 'NO', bannerPerm: 'NO',
       checklistRemarks: ''
     },
-    // ME FIX: Store objects with labels for the main checklist
     checklist: checklistNames.map(name => ({ label: name, value: 'NO' }))
   });
 
@@ -44,19 +43,53 @@ export default function AddPropertyPage() {
 
     setSearching(true);
     setShowSuggestions(true);
+
     try {
-      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=19.2813&lon=72.8693`);
-      const data = await res.json();
-      setSuggestions(data.features || []);
-    } catch (e) { console.error(e); }
-    setSearching(false);
+      const apiKey = process.env.NEXT_PUBLIC_GMAP_KEY;
+
+      if (apiKey && process.env.NEXT_PUBLIC_MAP_ENGINE !== 'maplibre') {
+        // GOOGLE GEOCODING API: Hyper-accurate for local addresses
+        // components=locality:Mira+Bhayandar keeps the search focused on your territory
+        const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&components=locality:Mira+Bhayandar&key=${apiKey}`);
+        const data = await res.json();
+
+        if (data.status === 'OK') {
+          // We format Google's response to match your existing dropdown UI structure
+          const formattedSuggestions = data.results.slice(0, 5).map(r => ({
+            properties: { name: r.formatted_address.replace(', Maharashtra, India', ''), city: '' },
+            geometry: { coordinates: [r.geometry.location.lng, r.geometry.location.lat] }
+          }));
+          setSuggestions(formattedSuggestions);
+        } else {
+          setSuggestions([]);
+        }
+      } else {
+        // FALLBACK: Photon API (Free, open-source)
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=19.2813&lon=72.8693`);
+        const data = await res.json();
+        setSuggestions(data.features || []);
+      }
+    } catch (e) { 
+      console.error("Geocoding Error:", e); 
+    } finally {
+      setSearching(false);
+    }
   };
 
   const selectSuggestion = (f) => {
     const [lon, lat] = f.geometry.coordinates;
     const name = f.properties.name || '';
     const city = f.properties.city || '';
-    setFormData(prev => ({ ...prev, address: city ? `${name}, ${city}` : name, lat, lng: lon }));
+    
+    // Clean up the address string for the input field
+    const finalAddress = city ? `${name}, ${city}` : name;
+    
+    setFormData(prev => ({ 
+      ...prev, 
+      address: finalAddress, 
+      lat, 
+      lng: lon 
+    }));
     setShowSuggestions(false);
   };
 
@@ -64,7 +97,6 @@ export default function AddPropertyPage() {
 
   const updateDetail = (key, val) => setFormData(p => ({ ...p, details: { ...p.details, [key]: val } }));
 
-  // ME FIX: Update the object value in the checklist array
   const updateCheck = (i, val) => {
     const next = [...formData.checklist];
     next[i] = { ...next[i], value: val };
@@ -78,7 +110,6 @@ export default function AddPropertyPage() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // ME FIX: Construct labeled objects for Sections 9-12 before sending to API
       const legalStatusLabels = [
         { label: 'Approved Plan', value: formData.details.approvedPlan },
         { label: 'OC', value: formData.details.oc },
@@ -128,7 +159,7 @@ export default function AddPropertyPage() {
         <aside className={styles.sidebar}>
           <div className={styles.card}>
             <label className={styles.label}>📍 Map Location</label>
-            <MapLibreViewer
+            <MapViewer
               initialLat={formData.lat}
               initialLng={formData.lng}
               onLocationSelect={handleLocationSelect}

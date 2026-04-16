@@ -17,12 +17,11 @@ export default function AddUserPage() {
         role: 'Field Executive',
         department: 'Sales',
         status: 1,
-        is_temporary: 1 // ME ADDED: Default to '1' (Force password change)
+        is_temporary: 1 
     });
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        // Handle checkbox vs standard inputs
         const finalValue = type === 'checkbox' ? (checked ? 1 : 0) : value;
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
@@ -39,7 +38,7 @@ export default function AddUserPage() {
                 body: JSON.stringify({
                     ...formData,
                     status: Number(formData.status),
-                    is_temporary: Number(formData.is_temporary) // Ensure it's numeric for the API
+                    is_temporary: Number(formData.is_temporary)
                 })
             });
 
@@ -119,17 +118,16 @@ export default function AddUserPage() {
                         </select>
                     </div>
 
-                    {/* ME ADDED: Security Toggle */}
-                    <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+                    {/* ME FIX: Used clean CSS class instead of inline styles */}
+                    <div className={styles.checkboxGroup}>
                         <input 
                             type="checkbox" 
                             name="is_temporary" 
                             id="is_temporary" 
                             checked={formData.is_temporary === 1} 
                             onChange={handleChange} 
-                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
-                        <label htmlFor="is_temporary" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: '600', color: '#1e4ec4' }}>
+                        <label htmlFor="is_temporary">
                             Force user to change password on first login
                         </label>
                     </div>

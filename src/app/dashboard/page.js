@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import MapLibreViewer from '@/components/maps/MapLibreViewer';
+// ME FIX: Changed import to point to the universal MapViewer wrapper
+import MapViewer from '@/components/maps/MapViewer'; 
 import { logoPath } from '@/assets/images';
 import styles from './map.module.css';
 
@@ -20,7 +21,6 @@ const formatKeyName = (key) => {
   return result.charAt(0).toUpperCase() + result.slice(1);
 };
 
-// THE FIX: This parser now safely ignores normal words and only parses real JSON!
 const safeJSONParse = (data) => {
   if (data === null || data === undefined) return null;
   if (typeof data === 'object') return data;
@@ -31,15 +31,15 @@ const safeJSONParse = (data) => {
       try {
         let parsed = JSON.parse(trimmed);
         while (typeof parsed === 'string') {
-          parsed = JSON.parse(parsed); // Catch double-escapes
+          parsed = JSON.parse(parsed); 
         }
         return parsed;
       } catch (e) {
-        return data; // Return the raw string if JSON parsing somehow fails
+        return data; 
       }
     }
   }
-  return data; // Return standard strings (like "Mira Road East") untouched
+  return data; 
 };
 
 const CHECKLIST_LABELS = [
@@ -54,16 +54,34 @@ export default function DashboardMapPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedStatus, setExpandedStatus] = useState(null);
   const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
-  const [currentStyle, setCurrentStyle] = useState('streets');
+  
+  // ME FIX: Reverted to 'streets' so MapLibre doesn't crash if switched back. 
+  // Our GoogleMapsViewer component already converts this to 'roadmap' automatically!
+  const [currentStyle, setCurrentStyle] = useState('streets'); 
   const [selectedProperty, setSelectedProperty] = useState(null);
 
   useEffect(() => {
-    fetch('/api/properties').then(res => res.json()).then(data => setProperties(data));
+    fetch('/api/properties')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data.properties)) {
+          setProperties(data.properties);
+        } else if (Array.isArray(data)) {
+          setProperties(data);
+        } else {
+          setProperties([]);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to fetch properties:", err);
+        setProperties([]);
+      });
   }, []);
 
   const getFilteredProperties = (status) => {
+    if (!Array.isArray(properties)) return []; 
     return properties.filter(p =>
-      p.status === status && p.property_name.toLowerCase().includes(searchTerm.toLowerCase())
+      p.status === status && (p.property_name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
 
@@ -202,7 +220,7 @@ export default function DashboardMapPage() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.mapContainer}>
-        <MapLibreViewer properties={properties} mapStyle={currentStyle} onMarkerClick={setSelectedProperty} />
+        <MapViewer properties={properties} mapStyle={currentStyle} onMarkerClick={setSelectedProperty} />
       </div>
 
       <div className={`${styles.detailSidebar} ${selectedProperty ? styles.showSidebar : ''}`}>
@@ -297,7 +315,7 @@ export default function DashboardMapPage() {
         <div className={styles.legendHeader} onClick={() => setIsLegendCollapsed(!isLegendCollapsed)}>
           <div className={styles.headerTitle}>
             <h3>MAP LEGEND</h3>
-            <span className={styles.totalBadge}>{properties.length} total</span>
+            <span className={styles.totalBadge}>{Array.isArray(properties) ? properties.length : 0} total</span>
           </div>
           <i className={`fa ${isLegendCollapsed ? 'fa-caret-up' : 'fa-caret-down'}`}></i>
         </div>
@@ -338,6 +356,7 @@ export default function DashboardMapPage() {
       </div>
 
       <div className={styles.styleSwitcher}>
+        {/* ME FIX: Reverted labels to 'streets'/'satellite' for cross-compatibility */}
         {['streets', 'satellite'].map(style => (
           <button key={style} className={`${styles.styleBtn} ${currentStyle === style ? styles.activeStyle : ''}`} onClick={() => setCurrentStyle(style)}>
             {style.toUpperCase()}

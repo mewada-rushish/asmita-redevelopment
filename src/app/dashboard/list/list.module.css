@@ -9,29 +9,64 @@
 
 .filterBar { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
 .pills { display: flex; gap: 8px; flex-wrap: wrap; }
-.pill { background: white; border: 1px solid #e5e7eb; padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #4b5563; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+
+/* ME FIX: Bulletproofed single-line pills */
+.pill { 
+  background: white; 
+  border: 1px solid #e5e7eb; 
+  padding: 7px 14px; 
+  border-radius: 20px; 
+  font-size: 12px; 
+  font-weight: 600; 
+  color: #4b5563; 
+  cursor: pointer; 
+  display: inline-flex; /* Use inline-flex to prevent block-level wrapping */
+  align-items: center; 
+  gap: 6px; 
+  white-space: nowrap; 
+  flex-shrink: 0; 
+  word-break: keep-all; 
+}
+
 .activePill { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
-.dot { width: 7px; height: 7px; border-radius: 50%; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
-.searchWrapper { position: relative; width: 350px; }
+/* ME FIX: Responsive width for search wrapper so it doesn't break mobile boundaries */
+.searchWrapper { position: relative; width: 100%; max-width: 350px; }
 .searchWrapper i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 13px; }
-.searchWrapper input { width: 100%; padding: 10px 15px 10px 40px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; outline: none; }
+.searchWrapper input { 
+  width: 100%; 
+  padding: 10px 15px 10px 40px; 
+  border: 1px solid #e5e7eb; 
+  border-radius: 8px; 
+  font-size: 13px; 
+  outline: none; 
+  box-sizing: border-box; 
+}
 
-.tableCard { background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
-.table { width: 100%; border-collapse: collapse; }
-.table th { background: #f9fafb; padding: 14px 20px; font-size: 11px; font-weight: 700; color: #6b7280; text-align: left; border-bottom: 1px solid #e5e7eb; letter-spacing: 0.03em; }
+.tableCard { background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow-x: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+.table { width: 100%; border-collapse: collapse; min-width: 850px; /* Fallback min-width */ }
+
+/* ME FIX: Forced column widths to prevent squished text (like "Ursila Apartment") */
+.table th:nth-child(1), .table td:nth-child(1) { min-width: 250px; } /* Building Name */
+.table th:nth-child(2), .table td:nth-child(2) { min-width: 200px; } /* Location */
+.table th:nth-child(3), .table td:nth-child(3) { min-width: 180px; } /* Status */
+.table th:nth-child(4), .table td:nth-child(4) { min-width: 140px; } /* Edited By */
+.table th:nth-child(5), .table td:nth-child(5) { min-width: 100px; } /* Actions */
+
+.table th { background: #f9fafb; padding: 14px 20px; font-size: 11px; font-weight: 700; color: #6b7280; text-align: left; border-bottom: 1px solid #e5e7eb; letter-spacing: 0.03em; white-space: nowrap; }
 .table td { padding: 12px 20px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
 .table tr:hover td { background: #fafafa; }
 
 .buildingCell { display: flex; align-items: center; gap: 10px; }
-.logoPlaceholder { width: 30px; height: 30px; background: #f3f4f6; color: #1e4ec4; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; }
+.logoPlaceholder { width: 30px; height: 30px; background: #f3f4f6; color: #1e4ec4; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; flex-shrink: 0; }
 .areaText { color: #6b7280; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; display: block; }
 
 .statusWrapper { display: flex; align-items: center; gap: 8px; }
 .statusDropdown { padding: 6px 12px; border: 1px solid; border-radius: 6px; font-size: 12px; font-weight: 800; cursor: pointer; color: #000; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; outline: none; }
 
-.emailBadge { background: #f3e8ff; color: #6b21a8; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; }
-.editBtn { border: 1px solid #e5e7eb; color: #4b5563; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: 700; background: #fff; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+.emailBadge { background: #f3e8ff; color: #6b21a8; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.editBtn { border: 1px solid #e5e7eb; color: #4b5563; padding: 5px 12px; border-radius: 6px; text-decoration: none; font-size: 11px; font-weight: 700; background: #fff; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .editBtn:hover { border-color: #fcd34d; background: #fffbeb; color: #b45309; }
 
 /* Pagination Styling */
@@ -39,6 +74,65 @@
 .perPage { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b7280; }
 .perPage select { padding: 4px 8px; border-radius: 6px; border: 1px solid #d1d5db; outline: none; }
 .pages { display: flex; align-items: center; gap: 15px; font-size: 12px; color: #4b5563; }
-.pages button { background: white; border: 1px solid #d1d5db; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #4b5563; display: flex; align-items: center; justify-content: center; }
+.pages button { background: white; border: 1px solid #d1d5db; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; color: #4b5563; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .pages button:disabled { opacity: 0.4; cursor: not-allowed; }
 .loadingCell { text-align: center; padding: 50px; color: #9ca3af; font-size: 14px; }
+
+
+/* ===============================
+   MOBILE OPTIMIZATIONS
+=============================== */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  /* Stack Header Elements */
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .buildingCell{
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* Make Action Buttons Grid Layout (Side-by-side) */
+  .actionBtns {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .exportBtn, .addBtn {
+    justify-content: center;
+    padding: 12px 10px;
+  }
+
+  /* Allow Filter Pills to swipe horizontally */
+  .pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    -webkit-overflow-scrolling: touch; 
+  }
+
+  /* Hide scrollbar for pills for a cleaner look */
+  .pills::-webkit-scrollbar {
+    height: 0px;
+    background: transparent;
+  }
+
+  /* Expand search bar to take full width of mobile screen */
+  .searchWrapper {
+    max-width: 100%; 
+  }
+
+  /* Stack Pagination Footer */
+  .paginationFooter {
+    flex-direction: column;
+    gap: 15px;
+  }
+}

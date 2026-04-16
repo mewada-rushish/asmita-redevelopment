@@ -101,7 +101,7 @@
 
 .saveBtn,
 .dangerBtn {
-  padding: 10px;
+  padding: 12px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
@@ -158,7 +158,28 @@
 }
 
 @media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  .header h1 {
+    font-size: 20px;
+  }
+
   .grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; 
+    gap: 20px;
+  }
+
+  .card {
+    padding: 20px 15px; 
+  }
+
+  .inputRow {
+    grid-template-columns: 1fr; 
+  }
+  
+  .saveBtn, .dangerBtn {
+    width: 100%; 
   }
 }
