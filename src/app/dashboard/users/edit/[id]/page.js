@@ -20,7 +20,8 @@ export default function EditUserPage() {
         password: '',
         role: 'Field Executive',
         department: 'Sales',
-        status: 1
+        status: 1,
+        is_temporary: 0 // Added for security sync
     });
 
     useEffect(() => {
@@ -37,10 +38,11 @@ export default function EditUserPage() {
                     name: data.user.name,
                     email: data.user.email,
                     phone: data.user.phone || '',
-                    password: '',
+                    password: '', // Keep blank unless resetting
                     role: data.user.role,
                     department: data.user.department,
-                    status: data.user.status
+                    status: data.user.status,
+                    is_temporary: data.user.is_temporary || 0 // Population logic
                 });
             } else {
                 setError(data.error || 'Failed to load user');
@@ -53,8 +55,10 @@ export default function EditUserPage() {
     };
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        // Logic to handle checkbox vs standard text/select inputs
+        const finalValue = type === 'checkbox' ? (checked ? 1 : 0) : value;
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
     const handleSubmit = async (e) => {
@@ -68,7 +72,8 @@ export default function EditUserPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
-                    status: Number(formData.status)
+                    status: Number(formData.status),
+                    is_temporary: Number(formData.is_temporary) // Payload sync
                 })
             });
 
@@ -155,6 +160,21 @@ export default function EditUserPage() {
                             <option value={1}>Active</option>
                             <option value={0}>Inactive</option>
                         </select>
+                    </div>
+
+                    {/* NEW: Force Password Change Toggle */}
+                    <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+                        <input 
+                            type="checkbox" 
+                            name="is_temporary" 
+                            id="is_temporary" 
+                            checked={formData.is_temporary === 1} 
+                            onChange={handleChange} 
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="is_temporary" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: '600', color: '#1e4ec4' }}>
+                            Force user to change password on next login
+                        </label>
                     </div>
 
                     <div className={styles.fullWidth}>

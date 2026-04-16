@@ -17,6 +17,7 @@ export async function POST(req) {
 
         const db = await getDbConnection();
 
+        // We fetch the user to verify the current temporary password
         const [users] = await db.query(
             'SELECT id, password_hash FROM users WHERE email = ? AND status = 1',
             [email.toLowerCase().trim()]
@@ -35,15 +36,19 @@ export async function POST(req) {
 
         const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
+        // ME FIX: Added is_temporary = 0 to clear the force-change flag
         await db.query(
-            'UPDATE users SET password_hash = ? WHERE id = ?',
+            'UPDATE users SET password_hash = ?, is_temporary = 0 WHERE id = ?',
             [hashedNewPassword, user.id]
         );
 
-        return NextResponse.json({ success: true, message: 'Password updated successfully' });
+        return NextResponse.json({ 
+            success: true, 
+            message: 'Password updated successfully. You can now log in.' 
+        });
 
     } catch (error) {
-        console.error(error);
+        console.error('CHANGE_PASSWORD_API_ERROR:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -15,33 +15,32 @@ export async function POST(req) {
     }
 
     const db = await getDbConnection();
-    const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    // ME FIX: Added is_temporary to the SELECT query
+    const [rows] = await db.query('SELECT id, name, email, password_hash, role, is_temporary FROM users WHERE email = ?', [email]);
     const user = rows[0];
 
-    // --- SENIOR DEV DEBUGGING ---
-    console.log("--- Login Attempt ---");
-    console.log("Email:", email);
-    
     if (!user) {
-      console.log("Result: User NOT found in DB");
       return NextResponse.json({ error: 'Wrong email or password' }, { status: 401 });
     }
 
-    // Generate fresh hash for console debugging if needed
-    const freshHash = await bcrypt.hash(password, 10);
-    console.log("PRO-TIP: If login fails, run this SQL to fix your DB:");
-    console.log(`UPDATE users SET password_hash = '${freshHash}' WHERE email = '${email}';`);
-
     const isMatch = await bcrypt.compare(password, user.password_hash);
-    // console.log("Password Match Result:", isMatch);
 
     if (!isMatch) {
       return NextResponse.json({ error: 'Wrong email or password' }, { status: 401 });
     }
 
+    // --- ME FIX: TEMPORARY PASSWORD CHECK ---
+    // If this flag is 1, we stop the login process and tell the frontend to force a change.
+    if (user.is_temporary === 1) {
+      return NextResponse.json({ 
+        requiresPasswordChange: true, 
+        email: user.email 
+      });
+    }
+
     // 4. Generate JWT
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role, name: user.name },
       process.env.JWT_SECRET || 'secret_asmita_erp_2026', 
       { expiresIn: '1d' }
     );
@@ -64,8 +63,7 @@ export async function POST(req) {
   } catch (error) {
     console.error('CRITICAL Login error:', error);
     return NextResponse.json({ 
-      error: 'Internal Server Error',
-      details: error.message
+      error: 'Internal Server Error'
     }, { status: 500 });
   }
 }

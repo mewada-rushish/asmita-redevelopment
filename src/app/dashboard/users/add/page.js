@@ -16,12 +16,15 @@ export default function AddUserPage() {
         password: '',
         role: 'Field Executive',
         department: 'Sales',
-        status: 1
+        status: 1,
+        is_temporary: 1 // ME ADDED: Default to '1' (Force password change)
     });
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type, checked } = e.target;
+        // Handle checkbox vs standard inputs
+        const finalValue = type === 'checkbox' ? (checked ? 1 : 0) : value;
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
     const handleSubmit = async (e) => {
@@ -35,7 +38,8 @@ export default function AddUserPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...formData,
-                    status: Number(formData.status) // ensure it's a number for the DB
+                    status: Number(formData.status),
+                    is_temporary: Number(formData.is_temporary) // Ensure it's numeric for the API
                 })
             });
 
@@ -43,7 +47,7 @@ export default function AddUserPage() {
 
             if (res.ok && data.success) {
                 router.push('/dashboard/users');
-                router.refresh(); // Force the list page to re-fetch the new user
+                router.refresh(); 
             } else {
                 setError(data.error || 'Failed to create user');
             }
@@ -113,6 +117,21 @@ export default function AddUserPage() {
                             <option value={1}>Active</option>
                             <option value={0}>Inactive</option>
                         </select>
+                    </div>
+
+                    {/* ME ADDED: Security Toggle */}
+                    <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+                        <input 
+                            type="checkbox" 
+                            name="is_temporary" 
+                            id="is_temporary" 
+                            checked={formData.is_temporary === 1} 
+                            onChange={handleChange} 
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="is_temporary" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: '600', color: '#1e4ec4' }}>
+                            Force user to change password on first login
+                        </label>
                     </div>
 
                     <div className={styles.fullWidth}>

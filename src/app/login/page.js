@@ -1,11 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // ME ADDED: Ensure useRouter is used
 import Image from 'next/image';
 import { logoPath } from '@/assets/images';
 import styles from './page.module.css';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -15,8 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState('login'); // login, forceChange, forgot-email, forgot-otp
-  const router = useRouter();
+  const [mode, setMode] = useState('login'); 
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -44,7 +44,9 @@ export default function LoginPage() {
         return;
       }
 
+      // REDIRECT FIX: Using router.push + refresh for a smooth SPA transition
       router.push('/dashboard');
+      router.refresh(); 
     } catch (err) {
       setError('Connection error.');
       setIsLoading(false);
@@ -84,9 +86,11 @@ export default function LoginPage() {
         body: JSON.stringify({ email: email.trim(), otp, newPassword })
       });
       if (res.ok) {
-        setSuccess('Password reset successful! Logging in...');
+        setSuccess('Password reset successful! Please sign in.');
         setMode('login');
-        setPassword(newPassword);
+        setPassword(''); 
+        setNewPassword('');
+        setConfirmPassword('');
       } else {
         const data = await res.json();
         setError(data.error || 'Invalid OTP.');
@@ -100,20 +104,41 @@ export default function LoginPage() {
     if (newPassword !== confirmPassword) return setError('Passwords do not match');
     setIsLoading(true);
     try {
+      // 1. Update the password
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), currentPassword: password, newPassword })
       });
-      if (res.ok) {
-        setSuccess('Password updated!');
-        router.push('/dashboard');
-      } else {
+
+      if (!res.ok) {
         const data = await res.json();
         setError(data.error || 'Failed to update.');
+        setIsLoading(false);
+        return;
       }
-    } catch (err) { setError('Connection error.'); }
-    setIsLoading(false);
+
+      // 2. AUTO-LOGIN: Immediately call login API with the new password
+      const loginRes = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password: newPassword })
+      });
+
+      if (loginRes.ok) {
+        setSuccess('Password updated! Redirecting...');
+        router.push('/dashboard');
+        router.refresh(); // Ensure Sidebar/Header get fresh user data
+      } else {
+        setError('Password updated, but auto-login failed. Please login manually.');
+        setMode('login');
+        setPassword('');
+        setIsLoading(false);
+      }
+    } catch (err) { 
+      setError('Connection error.'); 
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -141,7 +166,7 @@ export default function LoginPage() {
               {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Sign In'}
             </button>
             <div className={styles.formFooter}>
-              <button type="button" onClick={() => setMode('forgot-email')} className={styles.linkBtn}>Forgot Password?</button>
+              <button type="button" onClick={() => { setMode('forgot-email'); setError(''); setSuccess(''); }} className={styles.linkBtn}>Forgot Password?</button>
             </div>
           </form>
         )}
@@ -167,6 +192,7 @@ export default function LoginPage() {
             <button type="submit" className={styles.loginBtn} disabled={isLoading}>
               {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Reset Password'}
             </button>
+            <button type="button" onClick={() => setMode('login')} className={styles.linkBtn}>Cancel</button>
           </form>
         )}
 

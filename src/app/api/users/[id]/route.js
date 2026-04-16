@@ -24,8 +24,9 @@ export async function GET(req, { params }) {
         const { id } = await params;
         const db = await getDbConnection();
 
+        // ME FIX: Added is_temporary to the selection
         const [users] = await db.query(
-            'SELECT id, name, email, phone, role, department, status FROM users WHERE id = ?',
+            'SELECT id, name, email, phone, role, department, status, is_temporary FROM users WHERE id = ?',
             [id]
         );
 
@@ -44,7 +45,9 @@ export async function PUT(req, { params }) {
 
         const { id } = await params;
         const body = await req.json();
-        const { name, email, phone, password, role, department, status } = body;
+        
+        // ME FIX: Destructure is_temporary from the body
+        const { name, email, phone, password, role, department, status, is_temporary } = body;
 
         if (!name || !email) {
             return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
@@ -57,16 +60,24 @@ export async function PUT(req, { params }) {
             return NextResponse.json({ error: 'Email is already in use by another account' }, { status: 409 });
         }
 
+        // Logic: If admin provides a new password, we force is_temporary to 1 
+        // unless they explicitly sent a different value for is_temporary.
+        let targetTempStatus = is_temporary !== undefined ? is_temporary : 0;
+
         if (password && password.trim() !== '') {
             const hashedPassword = await bcrypt.hash(password, 10);
+            
+            // If admin is changing the password, usually we want to force the user to change it again
+            const finalTempStatus = is_temporary !== undefined ? is_temporary : 1;
+
             await db.query(
-                `UPDATE users SET name=?, email=?, phone=?, password_hash=?, role=?, department=?, status=? WHERE id=?`,
-                [name, email.toLowerCase(), phone || null, hashedPassword, role, department, status, id]
+                `UPDATE users SET name=?, email=?, phone=?, password_hash=?, role=?, department=?, status=?, is_temporary=? WHERE id=?`,
+                [name, email.toLowerCase(), phone || null, hashedPassword, role, department, status, finalTempStatus, id]
             );
         } else {
             await db.query(
-                `UPDATE users SET name=?, email=?, phone=?, role=?, department=?, status=? WHERE id=?`,
-                [name, email.toLowerCase(), phone || null, role, department, status, id]
+                `UPDATE users SET name=?, email=?, phone=?, role=?, department=?, status=?, is_temporary=? WHERE id=?`,
+                [name, email.toLowerCase(), phone || null, role, department, status, targetTempStatus, id]
             );
         }
 

@@ -26,7 +26,7 @@ export async function GET() {
 
         const db = await getDbConnection();
         const [users] = await db.query(
-            `SELECT id, name, email, phone, role, status, department, created_at 
+            `SELECT id, name, email, phone, role, status, department, is_temporary, created_at 
              FROM users 
              ORDER BY created_at DESC`
         );
@@ -46,7 +46,7 @@ export async function POST(req) {
         }
 
         const body = await req.json();
-        const { name, email, phone, password, role, department, status } = body;
+        const { name, email, phone, password, role, department, status, is_temporary } = body;
 
         if (!name || !email || !password) {
             return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
@@ -62,8 +62,8 @@ export async function POST(req) {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         await db.query(
-            `INSERT INTO users (name, email, phone, password_hash, role, department, status) 
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO users (name, email, phone, password_hash, role, department, status, is_temporary) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 name,
                 email.toLowerCase(),
@@ -71,7 +71,8 @@ export async function POST(req) {
                 hashedPassword,
                 role || 'Field Executive',
                 department || 'Sales',
-                status !== undefined ? status : 1
+                status !== undefined ? status : 1,
+                is_temporary !== undefined ? is_temporary : 1 // Defaults to 1 for new users
             ]
         );
 
