@@ -9,6 +9,9 @@ export default function PropertiesList() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
+  
+  // ME ADDED: State to track the current user's role
+  const [userRole, setUserRole] = useState(''); 
 
   // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -17,6 +20,15 @@ export default function PropertiesList() {
   const filterOptions = ['All', 'Not Approached', 'Interested Letter Sent', 'Meeting Finalized', 'Approved'];
 
   useEffect(() => {
+    // ME ADDED: Fetch the logged-in user's role to enforce permissions
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        const u = data.user || data;
+        setUserRole(u.role || '');
+      })
+      .catch(err => console.error("Failed to load user info", err));
+
     fetchProperties();
   }, []);
 
@@ -84,6 +96,9 @@ export default function PropertiesList() {
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
+  // ME ADDED: Security check flag
+  const isAdmin = userRole === 'Super Admin' || userRole === 'Admin';
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -95,7 +110,11 @@ export default function PropertiesList() {
           <button onClick={exportToExcel} className={styles.exportBtn}>
             <i className="fa fa-file-excel-o"></i> Export Excel
           </button>
-          <Link href="/dashboard/add" className={styles.addBtn}>+ Add Property</Link>
+          
+          {/* ME FIX: Conditionally render the Add button based on role */}
+          {isAdmin && (
+            <Link href="/dashboard/add" className={styles.addBtn}>+ Add Property</Link>
+          )}
         </div>
       </header>
 
@@ -167,6 +186,7 @@ export default function PropertiesList() {
                 </td>
                 <td><span className={styles.emailBadge}>admin@asmita.com</span></td>
                 <td>
+                  {/* Note: All users can edit, so this button remains unprotected */}
                   <Link href={`/dashboard/edit/${p.id}`} className={styles.editBtn}>
                     <i className="fa fa-pencil"></i> Edit
                   </Link>

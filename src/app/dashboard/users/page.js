@@ -8,11 +8,17 @@ export default function UsersPage() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewUser, setViewUser] = useState(null);
+    const [currentUserRole, setCurrentUserRole] = useState(''); // ME ADDED: Track logged-in user's role
     const router = useRouter();
 
     const fetchUsers = async () => {
         setLoading(true);
         try {
+            // ME ADDED: Fetch the current logged-in user's profile to get their role
+            const authRes = await fetch('/api/auth/me');
+            const authData = await authRes.json();
+            setCurrentUserRole(authData.user?.role || authData.role || '');
+
             const res = await fetch(`/api/users?_t=${Date.now()}`, {
                 cache: 'no-store',
                 headers: {
@@ -79,6 +85,9 @@ export default function UsersPage() {
             alert('Something went wrong while deleting.');
         }
     };
+
+    // ME ADDED: Security flag for rendering the delete button
+    const canDelete = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
 
     return (
         <div className={styles.container}>
@@ -160,13 +169,17 @@ export default function UsersPage() {
                                             <Link href={`/dashboard/users/edit/${user.id}`} className={`${styles.actionBtn} ${styles.editBtn}`} title="Edit User">
                                                 <i className="fa fa-edit"></i>
                                             </Link>
-                                            <button
-                                                onClick={() => handleDelete(user.id, user.name)}
-                                                className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                                                title="Delete User"
-                                            >
-                                                <i className="fa fa-trash"></i>
-                                            </button>
+                                            
+                                            {/* ME FIX: Conditionally render the delete button based on role */}
+                                            {canDelete && (
+                                                <button
+                                                    onClick={() => handleDelete(user.id, user.name)}
+                                                    className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                                                    title="Delete User"
+                                                >
+                                                    <i className="fa fa-trash"></i>
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

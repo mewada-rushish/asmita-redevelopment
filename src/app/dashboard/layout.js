@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image'; // ME ADDED: For optimized logo rendering
+import Image from 'next/image'; 
 import { usePathname, useRouter } from 'next/navigation';
-import { logoPath } from '@/assets/images'; // Ensure this points to your logo file
+import { logoPath } from '@/assets/images'; 
 import styles from './dashboard.module.css';
 
 export default function DashboardLayout({ children }) {
@@ -28,19 +28,23 @@ export default function DashboardLayout({ children }) {
 
   const closeMenu = () => setIsMenuOpen(false);
 
+  // ME FIX: Base items available to ALL roles (Field Executives included)
   const navItems = [
     { name: 'Global Map', path: '/dashboard', icon: 'fa-globe' },
-    { name: 'Add Property', path: '/dashboard/add', icon: 'fa-plus-circle' },
     { name: 'Properties List', path: '/dashboard/list', icon: 'fa-list' },
   ];
 
+  // ME FIX: Items restricted to Admins & Super Admins ONLY
   if (user.role === 'Super Admin' || user.role === 'Admin') {
+    // Inserts "Add Property" right after Global Map
+    navItems.splice(1, 0, { name: 'Add Property', path: '/dashboard/add', icon: 'fa-plus-circle' });
+    // Appends "User Management" to the bottom
     navItems.push({ name: 'User Management', path: '/dashboard/users', icon: 'fa-users' });
   }
 
   const handleLogout = async (e) => {
     e.preventDefault();
-    closeMenu();
+    closeMenu(); 
     try {
       const res = await fetch('/api/auth/logout', { method: 'POST' });
       if (res.ok) window.location.href = '/login';
@@ -85,7 +89,6 @@ export default function DashboardLayout({ children }) {
               height={75} 
               className={styles.brandLogo}
             />
-            {/* <span className={styles.brandName}>AsmitA ERP</span> */}
           </Link>
           <span className={styles.badge}>{user.role || 'Portal'}</span>
         </div>
