@@ -1,16 +1,40 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Accordion from '@/components/accordion/Accordion';
-import MapViewer from '@/components/maps/MapViewer'; 
+import MapViewer from '@/components/maps/MapViewer';
+import { validatePropertyForm } from '@/utils/propertyForm'; // ME ADDED: Import validation utility
 import styles from './add.module.css';
+
+// --- REUSABLE TOGGLE COMPONENT ---
+const YesNoToggle = ({ value, onChange }) => (
+  <div className={styles.toggle} style={{ display: 'flex', gap: '5px' }}>
+    <button
+      type="button"
+      onClick={() => onChange(1)}
+      className={value === 1 ? styles.activeYes : ''}
+      style={value === 1 ? { backgroundColor: '#10b981', color: 'white', border: '1px solid #10b981', padding: '4px 12px', borderRadius: '4px' } : { padding: '4px 12px', border: '1px solid #ccc', borderRadius: '4px', background: 'white' }}
+    >
+      YES
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange(0)}
+      className={value === 0 ? styles.activeNo : ''}
+      style={value === 0 ? { backgroundColor: '#ef4444', color: 'white', border: '1px solid #ef4444', padding: '4px 12px', borderRadius: '4px' } : { padding: '4px 12px', border: '1px solid #ccc', borderRadius: '4px', background: 'white' }}
+    >
+      NO
+    </button>
+  </div>
+);
 
 export default function AddPropertyPage() {
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [category, setCategory] = useState('Redevelopment');
-  const [committeeMembers, setCommitteeMembers] = useState([{ name: '', contact: '' }]);
+
+  // CP Dropdown state
+  const [executives, setExecutives] = useState([]);
 
   const checklistNames = [
     "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
@@ -19,88 +43,103 @@ export default function AddPropertyPage() {
     "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
   ];
 
+  // --- FLATTENED STATE (Matches DB 1:1) ---
   const [formData, setFormData] = useState({
-    propertyName: '', locality: 'Mira Road East', address: '',
-    lat: 19.2813, lng: 72.8693, status: 'Not Approached',
-    details: {
-      landOwner: '', landType: 'Freehold', cts: '', regStatus: 'NO', regNo: '',
-      chairmanName: '', chairmanContact: '', secretaryName: '', secretaryContact: '', treasurerName: '', treasurerContact: '',
-      responsibleName: '', responsibleContact: '', plotArea: '', totalFlats: '', totalShops: '', wings: '', floors: '',
-      flatArea: '', shopArea: '', approvedPlan: 'NO', oc: 'NO', cc: 'NO', legalDispute: 'NO', mortgaged: 'NO',
-      membersInterested: 'NO', agreeCount: '', priorDiscussion: 'NO', physicalSurvey: 'NO', flatMeasure: 'NO', bannerPerm: 'NO',
-      checklistRemarks: ''
-    },
-    checklist: checklistNames.map(name => ({ label: name, value: 'NO' }))
+    category: 'Redevelopment', status: 'Not Approached',
+    pmc_name: '', pmc_contact: '', assigned_cp_id: '',
+    property_name: '', locality: 'Mira Road East', address: '',
+    lat: 19.2813, lng: 72.8693,
+    land_owner_name: '', land_type: 'Freehold', cts_survey_no: '',
+    is_society_registered: 0, registration_no: '',
+    total_plot_area: '', total_flats: '', total_shops: '', total_flat_area_combined: '',
+
+    // JSON Contacts
+    chairman_details: { name: '', contact: '' },
+    secretary_details: { name: '', contact: '' },
+    treasurer_details: { name: '', contact: '' },
+    responsible_person_details: { name: '', contact: '' },
+    extra_committee_members: [{ name: '', contact: '' }],
+
+    // Toggles
+    has_approved_plan: 0, has_oc: 0, has_cc: 0, has_legal_dispute: 0,
+    is_mortgaged: 0, has_redevelopment_interest: 0, flat_measure_allowed: 0,
+
+    // Survey, Banners & Docs
+    physical_survey: 'Not Started', physical_survey_records: '',
+    banner_permission_allowed: 0, hoarding_date: '',
+    document_checklist: checklistNames.map(name => ({ label: name, value: 0, file_name: '' })),
+    document_remarks: '', interest_letter_file: '', architect_submitted: 0,
+
+    // Pipeline
+    interaction_history: '', offer_letter_status: 'Not Sent', offer_meeting_track: '',
+    offer_acceptance_date: '', sgm_completed: 0, da_agreement_status: 'Not Started'
   });
+
+  // Fetch Channel Partners / Executives
+  useEffect(() => {
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.users) {
+          const cps = data.users.filter(u => u.role === 'Channel Partner' || u.role === 'Field Executive');
+          setExecutives(cps);
+        }
+      }).catch(err => console.error(err));
+  }, []);
 
   const handleAddressSearch = async (query) => {
     setFormData(prev => ({ ...prev, address: query }));
     if (query.length < 3) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
+      setSuggestions([]); setShowSuggestions(false); return;
     }
-
-    setSearching(true);
-    setShowSuggestions(true);
+    setSearching(true); setShowSuggestions(true);
 
     try {
       const apiKey = process.env.NEXT_PUBLIC_GMAP_KEY;
-
-      if (apiKey && process.env.NEXT_PUBLIC_MAP_ENGINE !== 'maplibre') {
-        // GOOGLE GEOCODING API: Hyper-accurate for local addresses
-        // components=locality:Mira+Bhayandar keeps the search focused on your territory
+      if (apiKey) {
         const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&components=locality:Mira+Bhayandar&key=${apiKey}`);
         const data = await res.json();
-
         if (data.status === 'OK') {
-          // We format Google's response to match your existing dropdown UI structure
-          const formattedSuggestions = data.results.slice(0, 5).map(r => ({
+          setSuggestions(data.results.slice(0, 5).map(r => ({
             properties: { name: r.formatted_address.replace(', Maharashtra, India', ''), city: '' },
             geometry: { coordinates: [r.geometry.location.lng, r.geometry.location.lat] }
-          }));
-          setSuggestions(formattedSuggestions);
-        } else {
-          setSuggestions([]);
-        }
-      } else {
-        // FALLBACK: Photon API (Free, open-source)
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lat=19.2813&lon=72.8693`);
-        const data = await res.json();
-        setSuggestions(data.features || []);
+          })));
+        } else setSuggestions([]);
       }
-    } catch (e) { 
-      console.error("Geocoding Error:", e); 
-    } finally {
-      setSearching(false);
-    }
+    } catch (e) { console.error("Geocoding Error", e); }
+    finally { setSearching(false); }
   };
 
   const selectSuggestion = (f) => {
     const [lon, lat] = f.geometry.coordinates;
-    const name = f.properties.name || '';
-    const city = f.properties.city || '';
-    
-    // Clean up the address string for the input field
-    const finalAddress = city ? `${name}, ${city}` : name;
-    
-    setFormData(prev => ({ 
-      ...prev, 
-      address: finalAddress, 
-      lat, 
-      lng: lon 
-    }));
+    const finalAddress = f.properties.city ? `${f.properties.name}, ${f.properties.city}` : f.properties.name;
+    setFormData(prev => ({ ...prev, address: finalAddress, lat, lng: lon }));
     setShowSuggestions(false);
   };
 
   const handleBlur = () => setTimeout(() => setShowSuggestions(false), 300);
 
-  const updateDetail = (key, val) => setFormData(p => ({ ...p, details: { ...p.details, [key]: val } }));
+  // Helpers
+  const updateField = (key, val) => setFormData(p => ({ ...p, [key]: val }));
+  const updateContact = (role, key, val) => setFormData(p => ({ ...p, [role]: { ...p[role], [key]: val } }));
 
   const updateCheck = (i, val) => {
-    const next = [...formData.checklist];
+    const next = [...formData.document_checklist];
     next[i] = { ...next[i], value: val };
-    setFormData(p => ({ ...p, checklist: next }));
+    updateField('document_checklist', next);
+  };
+
+  // Document specific handlers
+  const handleDocUpload = (i, fileName) => {
+    const next = [...formData.document_checklist];
+    next[i].file_name = fileName;
+    updateField('document_checklist', next);
+  };
+
+  const handleDocReupload = (i) => {
+    const next = [...formData.document_checklist];
+    next[i].file_name = '';
+    updateField('document_checklist', next);
   };
 
   const handleLocationSelect = useCallback((c) => {
@@ -108,40 +147,24 @@ export default function AddPropertyPage() {
   }, []);
 
   const handleSave = async () => {
+    // ME FIX: Run validation before sending to API
+    const validation = validatePropertyForm(formData);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
+      alert("Validation Error: " + firstError);
+      return; // Stop execution if validation fails
+    }
+
     setLoading(true);
     try {
-      const legalStatusLabels = [
-        { label: 'Approved Plan', value: formData.details.approvedPlan },
-        { label: 'OC', value: formData.details.oc },
-        { label: 'CC', value: formData.details.cc },
-        { label: 'Legal Dispute', value: formData.details.legalDispute },
-        { label: 'Mortgaged', value: formData.details.mortgaged },
-        { label: 'Redevelopment Interest', value: formData.details.membersInterested }
-      ];
-
-      const surveyLabels = [
-        { label: 'Physical Survey Allowed', value: formData.details.physicalSurvey },
-        { label: 'Flat Measurement Allowed', value: formData.details.flatMeasure },
-        { label: 'Banner Permission', value: formData.details.bannerPerm }
-      ];
-
-      const payload = {
-        ...formData,
-        category,
-        committeeMembers,
-        details: {
-          ...formData.details,
-          legalChecklist: legalStatusLabels,
-          surveyChecklist: surveyLabels
-        }
-      };
-
       const res = await fetch('/api/properties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(formData)
       });
-      if (res.ok) alert("Saved with labels to AsmitA DB!");
+      const data = await res.json();
+      if (res.ok && data.success) alert("Property pipeline successfully saved!");
+      else alert("Save failed: " + (data.error || "Unknown error"));
     } catch (e) { alert("Save failed"); }
     setLoading(false);
   };
@@ -149,7 +172,7 @@ export default function AddPropertyPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1><i className="fa fa-edit"></i> Edit Property</h1>
+        <h1><i className="fa fa-edit"></i> Add Property</h1>
         <button onClick={handleSave} className={styles.saveBtn} disabled={loading}>
           {loading ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>} Save Property
         </button>
@@ -159,51 +182,40 @@ export default function AddPropertyPage() {
         <aside className={styles.sidebar}>
           <div className={styles.card}>
             <label className={styles.label}>📍 Map Location</label>
-            <MapViewer
-              initialLat={formData.lat}
-              initialLng={formData.lng}
-              onLocationSelect={handleLocationSelect}
-            />
-
-            <div className={styles.coordInputs}>
-              <div className={styles.inputSubGroup}>
-                <label>LATITUDE</label>
-                <input
-                  type="number" step="any" className={styles.input}
-                  value={formData.lat}
-                  onChange={e => setFormData({ ...formData, lat: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-              <div className={styles.inputSubGroup}>
-                <label>LONGITUDE</label>
-                <input
-                  type="number" step="any" className={styles.input}
-                  value={formData.lng}
-                  onChange={e => setFormData({ ...formData, lng: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
+            <MapViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={handleLocationSelect} />
             <div className={styles.coords}>Current Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
           </div>
+
           <div className={styles.card}>
-            <label className={styles.label}>🏠 Status *</label>
-            <select className={styles.input} value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+            <label className={styles.label}>👤 Assign Executive / CP</label>
+            <select className={styles.input} value={formData.assigned_cp_id} onChange={e => updateField('assigned_cp_id', e.target.value)}>
+              <option value="">-- Select Executive --</option>
+              {executives.map(ex => <option key={ex.id} value={ex.id}>{ex.name} ({ex.role})</option>)}
+            </select>
+          </div>
+
+          <div className={styles.card}>
+            <label className={styles.label}>🏠 Overall Status *</label>
+            <select className={styles.input} value={formData.status} onChange={e => updateField('status', e.target.value)}>
               <option>Not Approached</option><option>Interested Letter Sent</option><option>Meeting Finalized</option><option>Approved</option>
             </select>
           </div>
         </aside>
 
         <main className={styles.content}>
-          <Accordion title="1. Building Details" icon="fa-building" defaultOpen={true}>
-            <div className={styles.inputGroup}><label>Building Name</label><input className={styles.input} value={formData.propertyName} onChange={e => setFormData({ ...formData, propertyName: e.target.value })} /></div>
+          <Accordion title="1. Building & Lead Details" icon="fa-building" defaultOpen={true}>
+            <div className={styles.inputGroup}><label className={styles.label}>Building / Society Name</label><input className={styles.input} value={formData.property_name} onChange={e => updateField('property_name', e.target.value)} /></div>
+
+            <div className={styles.grid2}>
+              <div className={styles.inputGroup}><label className={styles.label}>PMC / Co-ordinator Name</label><input className={styles.input} placeholder="Name of CP/PMC" value={formData.pmc_name} onChange={e => updateField('pmc_name', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>PMC Contact No.</label><input className={styles.input} placeholder="Phone Number" value={formData.pmc_contact} onChange={e => updateField('pmc_contact', e.target.value)} /></div>
+            </div>
 
             <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 1000 }}>
-              <label>Address {searching && <i className="fa fa-spinner fa-spin" style={{ marginLeft: '10px', color: '#1e4ec4' }}></i>}</label>
+              <label className={styles.label}>Address {searching && <i className="fa fa-spinner fa-spin" style={{ marginLeft: '10px' }}></i>}</label>
               <textarea
-                className={styles.input}
-                value={formData.address}
-                onChange={e => handleAddressSearch(e.target.value)}
-                onBlur={handleBlur}
+                className={styles.input} value={formData.address}
+                onChange={e => handleAddressSearch(e.target.value)} onBlur={handleBlur}
                 onFocus={() => formData.address.length >= 3 && setShowSuggestions(true)}
                 placeholder="Start typing address..."
               />
@@ -220,110 +232,217 @@ export default function AddPropertyPage() {
           </Accordion>
 
           <Accordion title="2. Land & Legal Details" icon="fa-balance-scale">
-            <div className={styles.inputGroup}><label>Land Owner / Society Name</label><input className={styles.input} value={formData.details.landOwner} onChange={e => updateDetail('landOwner', e.target.value)} /></div>
+            <div className={styles.inputGroup}><label className={styles.label}>Land Owner / Society Name</label><input className={styles.input} value={formData.land_owner_name} onChange={e => updateField('land_owner_name', e.target.value)} /></div>
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label>Land Type</label><select className={styles.input} value={formData.details.landType} onChange={e => updateDetail('landType', e.target.value)}><option>Freehold</option><option>Leasehold</option></select></div>
-              <div className={styles.inputGroup}><label>CTS / Survey No.</label><input className={styles.input} value={formData.details.cts} onChange={e => updateDetail('cts', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Land Type</label><select className={styles.input} value={formData.land_type} onChange={e => updateField('land_type', e.target.value)}><option>Freehold</option><option>Leasehold</option></select></div>
+              <div className={styles.inputGroup}><label className={styles.label}>CTS / Survey No.</label><input className={styles.input} value={formData.cts_survey_no} onChange={e => updateField('cts_survey_no', e.target.value)} /></div>
             </div>
           </Accordion>
 
           <Accordion title="3. Society Registration" icon="fa-university">
             <div className={styles.grid2}>
               <div className={styles.inputGroup}>
-                <label>Society Registered?</label>
-                <div className={styles.radioGroup}>
-                  <label><input type="radio" checked={formData.details.regStatus === 'YES'} onChange={() => updateDetail('regStatus', 'YES')} /> YES</label>
-                  <label><input type="radio" checked={formData.details.regStatus === 'NO'} onChange={() => updateDetail('regStatus', 'NO')} /> NO</label>
-                </div>
+                <label className={styles.label}>Society Registered?</label>
+                <YesNoToggle value={formData.is_society_registered} onChange={(v) => updateField('is_society_registered', v)} />
               </div>
-              <div className={styles.inputGroup}><label>Reg No.</label><input className={styles.input} value={formData.details.regNo} onChange={e => updateDetail('regNo', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Reg No.</label><input className={styles.input} value={formData.registration_no} onChange={e => updateField('registration_no', e.target.value)} /></div>
             </div>
           </Accordion>
 
-          <Accordion title="4. Committee Details" icon="fa-users">
-            {['Chairman', 'Secretary', 'Treasurer'].map(role => (
-              <div key={role} className={styles.grid3}>
-                <label>{role}</label>
-                <input placeholder="Name" className={styles.input} value={formData.details[`${role.toLowerCase()}Name`]} onChange={e => updateDetail(`${role.toLowerCase()}Name`, e.target.value)} />
-                <input placeholder="Contact" className={styles.input} value={formData.details[`${role.toLowerCase()}Contact`]} onChange={e => updateDetail(`${role.toLowerCase()}Contact`, e.target.value)} />
-              </div>
-            ))}
+          <Accordion title="4. Core Committee" icon="fa-users">
+            {['Chairman', 'Secretary', 'Treasurer'].map(role => {
+              const stateKey = `${role.toLowerCase()}_details`;
+              return (
+                <div key={role} className={styles.grid3}>
+                  <label className={styles.label}>{role}</label>
+                  <input placeholder="Name" className={styles.input} value={formData[stateKey].name} onChange={e => updateContact(stateKey, 'name', e.target.value)} />
+                  <input placeholder="Contact" className={styles.input} value={formData[stateKey].contact} onChange={e => updateContact(stateKey, 'contact', e.target.value)} />
+                </div>
+              );
+            })}
           </Accordion>
 
-          <Accordion title="5. Committee Members" icon="fa-plus-square">
-            {committeeMembers.map((m, i) => (
+          <Accordion title="5. Extra Committee Members" icon="fa-plus-square">
+            {formData.extra_committee_members.map((m, i) => (
               <div key={i} className={styles.grid3} style={{ marginBottom: '10px' }}>
                 <span>Member {i + 1}</span>
                 <input placeholder="Name" className={styles.input} value={m.name} onChange={e => {
-                  const newM = [...committeeMembers]; newM[i].name = e.target.value; setCommitteeMembers(newM);
+                  const newM = [...formData.extra_committee_members]; newM[i].name = e.target.value; updateField('extra_committee_members', newM);
                 }} />
                 <input placeholder="Contact" className={styles.input} value={m.contact} onChange={e => {
-                  const newM = [...committeeMembers]; newM[i].contact = e.target.value; setCommitteeMembers(newM);
+                  const newM = [...formData.extra_committee_members]; newM[i].contact = e.target.value; updateField('extra_committee_members', newM);
                 }} />
               </div>
             ))}
-            <button type="button" className={styles.addBtn} onClick={() => setCommitteeMembers([...committeeMembers, { name: '', contact: '' }])}>+ Add Member</button>
+            <button type="button" className={styles.addBtn} onClick={() => updateField('extra_committee_members', [...formData.extra_committee_members, { name: '', contact: '' }])}>+ Add Member</button>
           </Accordion>
 
           <Accordion title="6. Responsible Person" icon="fa-user">
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label>Name</label><input className={styles.input} value={formData.details.responsibleName} onChange={e => updateDetail('responsibleName', e.target.value)} /></div>
-              <div className={styles.inputGroup}><label>Contact</label><input className={styles.input} value={formData.details.responsibleContact} onChange={e => updateDetail('responsibleContact', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Name</label><input className={styles.input} value={formData.responsible_person_details.name} onChange={e => updateContact('responsible_person_details', 'name', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Contact</label><input className={styles.input} value={formData.responsible_person_details.contact} onChange={e => updateContact('responsible_person_details', 'contact', e.target.value)} /></div>
             </div>
           </Accordion>
 
-          <Accordion title="7 & 8. Building & Area Info" icon="fa-info-circle">
+          <Accordion title="7 & 8. Area Info" icon="fa-info-circle">
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label>Total Plot Area</label><input className={styles.input} value={formData.details.plotArea} onChange={e => updateDetail('plotArea', e.target.value)} /></div>
-              <div className={styles.inputGroup}><label>Total Flats</label><input className={styles.input} value={formData.details.totalFlats} onChange={e => updateDetail('totalFlats', e.target.value)} /></div>
-              <div className={styles.inputGroup}><label>Total Shops</label><input className={styles.input} value={formData.details.totalShops} onChange={e => updateDetail('totalShops', e.target.value)} /></div>
-              <div className={styles.inputGroup}><label>Total Flat Area Combined</label><input className={styles.input} value={formData.details.flatArea} onChange={e => updateDetail('flatArea', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Total Plot Area</label><input className={styles.input} value={formData.total_plot_area} onChange={e => updateField('total_plot_area', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Total Flats</label><input className={styles.input} type="number" value={formData.total_flats} onChange={e => updateField('total_flats', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Total Shops</label><input className={styles.input} type="number" value={formData.total_shops} onChange={e => updateField('total_shops', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Total Flat Area Combined</label><input className={styles.input} value={formData.total_flat_area_combined} onChange={e => updateField('total_flat_area_combined', e.target.value)} /></div>
             </div>
           </Accordion>
 
-          <Accordion title="9, 10 & 11. Status & Legal" icon="fa-gavel">
+          <Accordion title="9, 10 & 11. Legal Permissions" icon="fa-gavel">
             {[
-              { l: 'Approved Plan', k: 'approvedPlan' },
-              { l: 'OC', k: 'oc' },
-              { l: 'CC', k: 'cc' },
-              { l: 'Legal Dispute', k: 'legalDispute' },
-              { l: 'Mortgaged', k: 'mortgaged' },
-              { l: 'Redevelopment Interest', k: 'membersInterested' }
+              { l: 'Approved Plan', k: 'has_approved_plan' },
+              { l: 'OC', k: 'has_oc' }, { l: 'CC', k: 'has_cc' },
+              { l: 'Legal Dispute', k: 'has_legal_dispute' },
+              { l: 'Mortgaged', k: 'is_mortgaged' },
+              { l: 'Redevelopment Interest', k: 'has_redevelopment_interest' }
             ].map(f => (
               <div key={f.k} className={styles.checkRow}>
-                <span>{f.l}?</span>
-                <div className={styles.radioGroup}>
-                  <label><input type="radio" checked={formData.details[f.k] === 'YES'} onChange={() => updateDetail(f.k, 'YES')} /> YES</label>
-                  <label><input type="radio" checked={formData.details[f.k] === 'NO'} onChange={() => updateDetail(f.k, 'NO')} /> NO</label>
-                </div>
+                <span>{f.l}</span>
+                <YesNoToggle value={formData[f.k]} onChange={(v) => updateField(f.k, v)} />
               </div>
             ))}
           </Accordion>
 
-          <Accordion title="12. Survey & Permissions" icon="fa-search">
-            {[
-              { l: 'Physical Survey Allowed', k: 'physicalSurvey' },
-              { l: 'Flat Measurement Allowed', k: 'flatMeasure' },
-              { l: 'Banner Permission', k: 'bannerPerm' }
-            ].map(p => (
-              <div key={p.k} className={styles.checkRow}>
-                <input type="checkbox" checked={formData.details[p.k] === 'YES'} onChange={e => updateDetail(p.k, e.target.checked ? 'YES' : 'NO')} />
-                <span>{p.l}</span>
+          <Accordion title="12. Survey, Banners & Hoarding" icon="fa-search">
+            <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
+              <label className={styles.label}>Physical Survey Status</label>
+              <select className={styles.input} value={formData.physical_survey} onChange={e => updateField('physical_survey', e.target.value)}>
+                <option>Not Started</option><option>In Progress</option><option>Completed</option>
+              </select>
+            </div>
+
+            <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
+              <label className={styles.label}>Physical Survey Records / Notes</label>
+              <textarea className={styles.input} rows="3" value={formData.physical_survey_records} onChange={e => updateField('physical_survey_records', e.target.value)} placeholder="Enter survey details..." />
+            </div>
+
+            <div className={styles.checkRow} style={{ marginBottom: '15px' }}>
+              <span>Flat Measurement Allowed</span>
+              <YesNoToggle value={formData.flat_measure_allowed} onChange={(v) => updateField('flat_measure_allowed', v)} />
+            </div>
+
+            <div className={styles.checkRow} style={{ marginBottom: '15px' }}>
+              <span>Banner Permission / Hoarding Allowed</span>
+              <YesNoToggle value={formData.banner_permission_allowed} onChange={(v) => updateField('banner_permission_allowed', v)} />
+            </div>
+
+            {formData.banner_permission_allowed === 1 && (
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Hoarding Installation Date</label>
+                <input type="date" className={styles.input} value={formData.hoarding_date} onChange={e => updateField('hoarding_date', e.target.value)} />
               </div>
-            ))}
+            )}
           </Accordion>
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
+            <div className={styles.inputGroup} style={{ marginBottom: '20px' }}>
+              <label className={styles.label}>Interest Letter Upload (File Name Placeholder)</label>
+              <input type="text" className={styles.input} placeholder="e.g., asmita_loi_doc.pdf" value={formData.interest_letter_file} onChange={e => updateField('interest_letter_file', e.target.value)} />
+            </div>
+
             <div className={styles.checklist}>
-              {formData.checklist.map((item, i) => (
+              {formData.document_checklist.map((item, i) => (
                 <div key={i} className={styles.checkItem}>
-                  <span>{i + 1}. {item.label}</span>
-                  <div className={styles.toggle}>
-                    <button type="button" onClick={() => updateCheck(i, 'YES')} className={item.value === 'YES' ? styles.activeYes : ''}>YES</button>
-                    <button type="button" onClick={() => updateCheck(i, 'NO')} className={item.value === 'NO' ? styles.activeNo : ''}>NO</button>
+
+                  {/* Header row with label and actions */}
+                  <div className={styles.docItemHeader}>
+                    <span>{i + 1}. {item.label}</span>
+
+                    {/* Conditional rendering based on upload status */}
+                    {!item.file_name ? (
+                      <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
+                    ) : (
+                      <div className={styles.submittedWrapper}>
+                        <span className={styles.submittedChip}>
+                          <i className="fa fa-check-circle" style={{ marginRight: '4px' }}></i> Submitted
+                        </span>
+                        <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
+                          Re-upload
+                        </button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Upload Input (Only shows if YES is selected and NO file is uploaded yet) */}
+                  {item.value === 1 && !item.file_name && (
+                    <div className={styles.uploadRow}>
+                      <input
+                        type="text"
+                        placeholder={`Enter file name for ${item.label}...`}
+                        className={styles.input}
+                        id={`doc_upload_${i}`}
+                        style={{ margin: 0 }}
+                      />
+                      <button
+                        type="button"
+                        className={styles.uploadBtn}
+                        onClick={() => {
+                          const val = document.getElementById(`doc_upload_${i}`).value;
+                          if (val) handleDocUpload(i, val);
+                        }}
+                      >
+                        <i className="fa fa-upload"></i> Upload
+                      </button>
+                    </div>
+                  )}
+
                 </div>
               ))}
+            </div>
+
+            <div className={styles.checkRow} style={{ margin: '20px 0' }}>
+              <strong>Documents Submitted to Architect?</strong>
+              <YesNoToggle value={formData.architect_submitted} onChange={(v) => updateField('architect_submitted', v)} />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Overall Checklist Remarks</label>
+              <textarea className={styles.input} rows="3" value={formData.document_remarks} onChange={e => updateField('document_remarks', e.target.value)} placeholder="Notes on missing or pending documents..." />
+            </div>
+          </Accordion>
+
+          <Accordion title="14. Interaction & Offer Journey" icon="fa-handshake-o">
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Interaction History</label>
+              <textarea className={styles.input} rows="3" value={formData.interaction_history} onChange={e => updateField('interaction_history', e.target.value)} placeholder="Log of calls and interactions..." />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Offer Letter Status</label>
+              <select className={styles.input} value={formData.offer_letter_status} onChange={e => updateField('offer_letter_status', e.target.value)}>
+                <option>Not Sent</option><option>Offer Sent</option><option>Under Negotiation</option><option>Accepted</option>
+              </select>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Offer Meeting Track</label>
+              <textarea className={styles.input} rows="2" value={formData.offer_meeting_track} onChange={e => updateField('offer_meeting_track', e.target.value)} placeholder="Tracking of society meetings regarding offer..." />
+            </div>
+
+            {formData.offer_letter_status === 'Accepted' && (
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Offer Acceptance Date</label>
+                <input type="date" className={styles.input} value={formData.offer_acceptance_date} onChange={e => updateField('offer_acceptance_date', e.target.value)} />
+              </div>
+            )}
+          </Accordion>
+
+          <Accordion title="15. Legal Pipeline & Milestones" icon="fa-file-text-o">
+            <div className={styles.checkRow} style={{ marginBottom: '15px' }}>
+              <span>SGM Completed (Appointment of Developer)?</span>
+              <YesNoToggle value={formData.sgm_completed} onChange={(v) => updateField('sgm_completed', v)} />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>DA (Development Agreement) Status</label>
+              <select className={styles.input} value={formData.da_agreement_status} onChange={e => updateField('da_agreement_status', e.target.value)}>
+                <option>Not Started</option><option>In Process</option><option>Completed</option>
+              </select>
             </div>
           </Accordion>
         </main>

@@ -2,6 +2,7 @@ import { getDbConnection } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { validatePropertyForm } from '@/utils/propertyForm'; // ME ADDED: Import validation utility
 
 async function verifyAuth() {
   const cookieStore = await cookies();
@@ -10,11 +11,17 @@ async function verifyAuth() {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_asmita_erp_2026');
-    return decoded; // Returns user info if valid
+    return decoded;
   } catch (e) {
     return false;
   }
 }
+
+// Helper to sanitize empty date strings to true NULL for MySQL
+const sanitizeDate = (dateStr) => {
+  if (!dateStr || dateStr.trim() === '') return null;
+  return dateStr;
+};
 
 export async function GET() {
   try {
@@ -37,29 +44,68 @@ export async function POST(req) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
     const data = await req.json();
+
+    // --- ME ADDED: Backend Validation Check ---
+    const validation = validatePropertyForm(data);
+    if (!validation.isValid) {
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: validation.errors },
+        { status: 400 }
+      );
+    }
+    // ------------------------------------------
+
     const db = await getDbConnection();
 
     const query = `
-            INSERT INTO properties (
-                category, status, property_name, address, locality, lat, lng, details, committee, checklist
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+      INSERT INTO properties (
+        assigned_cp_id, pmc_name, pmc_contact, property_name, address, locality, lat, lng, status,
+        land_owner_name, land_type, cts_survey_no, is_society_registered, registration_no,
+        total_plot_area, total_flats, total_shops, total_flat_area_combined,
+        chairman_details, secretary_details, treasurer_details, responsible_person_details, extra_committee_members,
+        has_approved_plan, has_oc, has_cc, has_legal_dispute, is_mortgaged, has_redevelopment_interest, flat_measure_allowed,
+        physical_survey, physical_survey_records, banner_permission_allowed, hoarding_date,
+        document_checklist, document_remarks, interest_letter_file, architect_submitted,
+        interaction_history, offer_letter_status, offer_meeting_track, offer_acceptance_date,
+        sgm_completed, da_agreement_status
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?
+      )
+    `;
 
     const values = [
-      data.category || 'Redevelopment',
-      data.status || 'Not Approached',
-      data.propertyName || 'Unnamed Property',
-      data.address || '',
-      data.locality || '',
-      data.lat || 19.2813,
-      data.lng || 72.8693,
-      // These objects now contain your labeled checklists (Legal & Survey)
-      JSON.stringify(data.details || {}),
-      // The committee list
-      JSON.stringify(data.committeeMembers || []),
-      // This now contains the labeled Section 13 checklist
-      JSON.stringify(data.checklist || [])
+      data.assigned_cp_id || null, data.pmc_name || '', data.pmc_contact || '',
+      data.property_name || 'Unnamed Property', data.address || '', data.locality || '',
+      data.lat || 19.2813, data.lng || 72.8693, data.status || 'Not Approached',
+
+      data.land_owner_name || '', data.land_type || 'Freehold', data.cts_survey_no || '',
+      data.is_society_registered ? 1 : 0, data.registration_no || '',
+      data.total_plot_area || '', data.total_flats || null, data.total_shops || null, data.total_flat_area_combined || '',
+
+      JSON.stringify(data.chairman_details || {}), JSON.stringify(data.secretary_details || {}),
+      JSON.stringify(data.treasurer_details || {}), JSON.stringify(data.responsible_person_details || {}),
+      JSON.stringify(data.extra_committee_members || []),
+
+      data.has_approved_plan ? 1 : 0, data.has_oc ? 1 : 0, data.has_cc ? 1 : 0,
+      data.has_legal_dispute ? 1 : 0, data.is_mortgaged ? 1 : 0, data.has_redevelopment_interest ? 1 : 0, data.flat_measure_allowed ? 1 : 0,
+
+      data.physical_survey || 'Not Started', data.physical_survey_records || '',
+      data.banner_permission_allowed ? 1 : 0, sanitizeDate(data.hoarding_date),
+
+      JSON.stringify(data.document_checklist || []), data.document_remarks || '',
+      data.interest_letter_file || '', data.architect_submitted ? 1 : 0,
+
+      data.interaction_history || '', data.offer_letter_status || 'Not Sent',
+      data.offer_meeting_track || '', sanitizeDate(data.offer_acceptance_date),
+      data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started'
     ];
 
     const [result] = await db.execute(query, values);
@@ -72,7 +118,7 @@ export async function POST(req) {
 
   } catch (error) {
     console.error('API_POST_ERROR:', error.message);
-    return NextResponse.json({ success: false, error: 'Database insertion failed' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Database insertion failed: ' + error.message }, { status: 500 });
   }
 }
 

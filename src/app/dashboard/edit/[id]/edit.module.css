@@ -1,25 +1,25 @@
 /* ===============================
    BASE LAYOUT
 =============================== */
-.container { 
-  font-family: var(--font-poppins), sans-serif; 
-  color: #1f2937; 
+.container {
+  font-family: var(--font-poppins), sans-serif;
+  color: #1f2937;
   padding: 20px;
 }
 
-.header { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  margin-bottom: 30px; 
-  border-bottom: 1px solid #e5e7eb; 
-  padding-bottom: 15px; 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 15px;
 }
 
-.header h1 { 
-  font-family: var(--font-montserrat), sans-serif; 
-  font-size: 22px; 
-  margin: 0; 
+.header h1 {
+  font-family: var(--font-montserrat), sans-serif;
+  font-size: 22px;
+  margin: 0;
   font-weight: 800;
   color: #111827;
 }
@@ -31,83 +31,89 @@
   font-weight: 600;
 }
 
-.saveBtn { 
-  background: #1e4ec4; 
-  color: white; 
-  border: none; 
-  padding: 12px 24px; 
-  border-radius: 8px; 
-  font-weight: 700; 
-  cursor: pointer; 
-  transition: 0.2s; 
+.saveBtn {
+  background: #1e4ec4;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
   font-size: 13px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.saveBtn:hover { background: #163a94; transform: translateY(-1px); }
-.saveBtn:disabled { background: #94a3b8; cursor: not-allowed; }
+.saveBtn:hover {
+  background: #163a94;
+  transform: translateY(-1px);
+}
+.saveBtn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
 
-.mainGrid { 
-  display: grid; 
-  grid-template-columns: 340px 1fr; 
-  gap: 30px; 
+.mainGrid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 30px;
   align-items: start;
 }
 
 /* ===============================
    SIDEBAR & CARDS
 =============================== */
-.sidebar { 
-  position: sticky; 
-  top: 20px; 
+.sidebar {
+  position: sticky;
+  top: 20px;
 }
 
-.card { 
-  background: white; 
-  border: 1px solid #e5e7eb; 
-  border-radius: 12px; 
-  padding: 20px; 
-  margin-bottom: 20px; 
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.label { 
-  font-weight: 800; 
-  font-size: 11px; 
-  text-transform: uppercase; 
-  color: #64748b; 
-  display: block; 
-  margin-bottom: 10px; 
+.label {
+  font-weight: 800;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  display: block;
+  margin-bottom: 10px;
   letter-spacing: 0.05em;
 }
 
 /* ===============================
    INPUTS & GROUPS
 =============================== */
-.inputGroup { 
-  margin-bottom: 20px; 
-  position: relative; 
+.inputGroup {
+  margin-bottom: 20px;
+  position: relative;
 }
 
-.input { 
-  width: 100%; 
-  padding: 11px 14px; 
-  border: 1px solid #d1d5db; 
-  border-radius: 8px; 
-  font-size: 14px; 
+.input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 500;
   color: #334155;
-  box-sizing: border-box; 
+  box-sizing: border-box;
   transition: all 0.2s;
   background: white;
 }
 
-.input:focus { 
-  outline: none; 
-  border-color: #1e4ec4; 
-  box-shadow: 0 0 0 3px rgba(30, 78, 196, 0.1); 
+.input:focus {
+  outline: none;
+  border-color: #1e4ec4;
+  box-shadow: 0 0 0 3px rgba(30, 78, 196, 0.1);
 }
 
 textarea.input {
@@ -115,15 +121,25 @@ textarea.input {
   resize: vertical;
 }
 
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.grid3 { display: grid; grid-template-columns: 100px 1fr 1fr; gap: 10px; align-items: center; margin-bottom: 12px; }
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.grid3 {
+  display: grid;
+  grid-template-columns: 100px 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
 
-.radioGroup { 
-  display: flex; 
-  gap: 20px; 
-  font-weight: 700; 
-  font-size: 12px; 
-  padding-top: 5px; 
+.radioGroup {
+  display: flex;
+  gap: 20px;
+  font-weight: 700;
+  font-size: 12px;
+  padding-top: 5px;
 }
 
 .radioGroup label {
@@ -133,22 +149,26 @@ textarea.input {
   cursor: pointer;
 }
 
-.radioGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.checkRow { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  padding: 10px 0; 
-  border-bottom: 1px solid #f3f4f6; 
-  font-size: 13px; 
+.radioGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.checkRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
   font-weight: 600;
 }
 
-.checkGrid { 
-  display: grid; 
-  grid-template-columns: 1fr; 
-  gap: 10px; 
-  margin-top: 15px; 
+.checkGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 15px;
 }
 
 /* ===============================
@@ -225,37 +245,115 @@ textarea.input {
 /* ===============================
    CHECKLIST TOGGLE
 =============================== */
-.checklist { border: 1px solid #f3f4f6; border-radius: 8px; padding: 10px; background: #fff; }
-.checkItem { 
-  display: flex; 
-  justify-content: space-between; 
-  align-items: center; 
-  padding: 12px 5px; 
-  border-bottom: 1px solid #f3f4f6; 
-  font-size: 12px; 
+.checklist {
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+}
+
+.checkItem {
+  display: flex;
+  flex-direction: column; /* ME FIX: Enables vertical stacking of upload box */
+  padding: 12px 5px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 12px;
   font-weight: 600;
 }
 
-.toggle { 
-  display: flex; 
-  border: 1px solid #d1d5db; 
-  border-radius: 6px; 
-  overflow: hidden; 
+.toggle {
+  display: flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
   flex-shrink: 0;
 }
 
-.toggle button { 
-  border: none; 
-  background: white; 
-  padding: 6px 14px; 
-  font-size: 10px; 
-  font-weight: 800; 
-  cursor: pointer; 
+.toggle button {
+  border: none;
+  background: white;
+  padding: 6px 14px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
   transition: 0.2s;
 }
 
-.activeYes { background: #10b981 !important; color: white !important; }
-.activeNo { background: #ef4444 !important; color: white !important; }
+.activeYes {
+  background: #10b981 !important;
+  color: white !important;
+}
+.activeNo {
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+/* ===============================
+   DOCUMENT UPLOAD UI (NEW)
+=============================== */
+.docItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.submittedWrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.submittedChip {
+  background-color: #dcfce7;
+  color: #166534;
+  padding: 4px 10px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+
+.reuploadBtn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.uploadRow {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f8fafc;
+  border-radius: 6px;
+  display: flex;
+  gap: 10px;
+  border: 1px dashed #cbd5e1;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.uploadBtn {
+  background-color: #1e4ec4;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: 0.2s;
+}
+
+.uploadBtn:hover {
+  background-color: #163a94;
+}
 
 /* ===============================
    EXTRAS
@@ -277,37 +375,41 @@ textarea.input {
   border-top: 1px solid #e5e7eb;
 }
 
-.uploadArea { 
-  border: 2px dashed #d1d5db; 
-  border-radius: 12px; 
-  padding: 40px; 
-  text-align: center; 
-  color: #94a3b8; 
+.uploadArea {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  color: #94a3b8;
   background: #f8fafc;
 }
 
-.addBtn { 
-  background: #f8fafc; 
-  border: 1px dashed #cbd5e1; 
-  padding: 12px; 
-  width: 100%; 
-  border-radius: 8px; 
-  cursor: pointer; 
-  font-size: 12px; 
-  font-weight: 700; 
+.addBtn {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  padding: 12px;
+  width: 100%;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
   color: #475569;
   margin-top: 10px;
   transition: 0.2s;
 }
 
-.addBtn:hover { background: #f1f5f9; border-color: #1e4ec4; color: #1e4ec4; }
+.addBtn:hover {
+  background: #f1f5f9;
+  border-color: #1e4ec4;
+  color: #1e4ec4;
+}
 
-.coords { 
-  font-family: monospace; 
-  font-size: 10px; 
-  color: #94a3b8; 
-  margin-top: 12px; 
-  text-align: center; 
+.coords {
+  font-family: monospace;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 12px;
+  text-align: center;
   background: #f1f5f9;
   padding: 6px;
   border-radius: 4px;
@@ -362,8 +464,9 @@ textarea.input {
     border-radius: 8px;
     border: 1px solid #f1f5f9;
   }
-  
-  .grid3 label, .grid3 span {
+
+  .grid3 label,
+  .grid3 span {
     font-size: 11px;
     color: #64748b;
   }
@@ -402,5 +505,28 @@ textarea.input {
   .toggle button {
     padding: 10px;
     font-size: 12px;
+  }
+
+  /* Document Upload Mobile Fixes */
+  .docItemHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .submittedWrapper {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .uploadRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .uploadBtn {
+    width: 100%;
+    justify-content: center;
+    display: flex;
   }
 }
