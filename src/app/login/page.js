@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation'; // ME ADDED: Ensure useRouter is used
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { logoPath } from '@/assets/images';
 import styles from './page.module.css';
@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState('login'); 
+  const [mode, setMode] = useState('login');
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -44,9 +44,9 @@ export default function LoginPage() {
         return;
       }
 
-      // REDIRECT FIX: Using router.push + refresh for a smooth SPA transition
       router.push('/dashboard');
-      router.refresh(); 
+      router.refresh();
+      setIsLoading(false);
     } catch (err) {
       setError('Connection error.');
       setIsLoading(false);
@@ -77,7 +77,7 @@ export default function LoginPage() {
   const handleFinalReset = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) return setError('Passwords do not match');
-    
+
     setIsLoading(true);
     try {
       const res = await fetch('/api/auth/reset-password', {
@@ -88,7 +88,7 @@ export default function LoginPage() {
       if (res.ok) {
         setSuccess('Password reset successful! Please sign in.');
         setMode('login');
-        setPassword(''); 
+        setPassword('');
         setNewPassword('');
         setConfirmPassword('');
       } else {
@@ -104,7 +104,6 @@ export default function LoginPage() {
     if (newPassword !== confirmPassword) return setError('Passwords do not match');
     setIsLoading(true);
     try {
-      // 1. Update the password
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -118,7 +117,6 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. AUTO-LOGIN: Immediately call login API with the new password
       const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,15 +126,16 @@ export default function LoginPage() {
       if (loginRes.ok) {
         setSuccess('Password updated! Redirecting...');
         router.push('/dashboard');
-        router.refresh(); // Ensure Sidebar/Header get fresh user data
+        router.refresh();
+        setIsLoading(false);
       } else {
         setError('Password updated, but auto-login failed. Please login manually.');
         setMode('login');
         setPassword('');
         setIsLoading(false);
       }
-    } catch (err) { 
-      setError('Connection error.'); 
+    } catch (err) {
+      setError('Connection error.');
       setIsLoading(false);
     }
   };
