@@ -2,11 +2,12 @@
 
 import { useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
-import { 
-  APIProvider, 
-  Map, 
-  AdvancedMarker, 
-  useMap 
+import {
+  APIProvider,
+  Map,
+  AdvancedMarker,
+  useMap,
+  useApiIsLoaded // ME ADDED: Import the loading hook
 } from '@vis.gl/react-google-maps';
 import { logoPath } from '@/assets/images';
 
@@ -14,11 +15,13 @@ const MIRA_ROAD_COORDS = { lat: 19.2813, lng: 72.8693 };
 
 function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocationSelect }) {
   const map = useMap();
+  const apiIsLoaded = useApiIsLoaded(); // ME ADDED: Track API loading state
 
   // 1. Calculate Bounds (Static size: 1 item [properties])
   const bounds = useMemo(() => {
-    if (typeof window === 'undefined' || !window.google || properties.length === 0) return null;
-    
+    // ME FIX: Added !apiIsLoaded to ensure google.maps.LatLngBounds is ready
+    if (!apiIsLoaded || typeof window === 'undefined' || !window.google || properties.length === 0) return null;
+
     const b = new google.maps.LatLngBounds();
     properties.forEach(p => {
       if (p.lat && p.lng) {
@@ -26,7 +29,7 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
       }
     });
     return b;
-  }, [properties]);
+  }, [apiIsLoaded, properties]); // ME ADDED: apiIsLoaded to dependencies
 
   // 2. Auto-fit logic (Static size: 3 items)
   useEffect(() => {
@@ -75,20 +78,20 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
       <Map
         style={{ width: '100%', height: '100%' }}
         defaultZoom={15}
-        defaultCenter={MIRA_ROAD_COORDS} 
+        defaultCenter={MIRA_ROAD_COORDS}
         mapTypeId={mapStyle === 'satellite' ? 'satellite' : 'roadmap'}
-        
+
         /* ME FIX: 'cooperative' stops the map from stealing your scroll! 
            Requires 2 fingers on mobile or Ctrl+Scroll on Desktop to zoom/pan. */
-        gestureHandling={'cooperative'} 
-        
-        disableDefaultUI={true} 
-        mapId={process.env.NEXT_PUBLIC_GMAP_ID} 
+        gestureHandling={'cooperative'}
+
+        disableDefaultUI={true}
+        mapId={process.env.NEXT_PUBLIC_GMAP_ID}
         onClick={(e) => {
           if (onLocationSelect && e.detail.latLng) {
-            onLocationSelect({ 
-              lat: e.detail.latLng.lat, 
-              lng: e.detail.latLng.lng 
+            onLocationSelect({
+              lat: e.detail.latLng.lat,
+              lng: e.detail.latLng.lng
             });
           }
         }}
@@ -130,8 +133,8 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
           >
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateY(-50%)', cursor: 'grab' }}>
               <div style={{
-                width: '38px', height: '38px', backgroundColor: '#1e4ec4', 
-                border: '2px solid white', borderRadius: '50% 50% 50% 0', 
+                width: '38px', height: '38px', backgroundColor: '#1e4ec4',
+                border: '2px solid white', borderRadius: '50% 50% 50% 0',
                 transform: 'rotate(-45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 boxShadow: '0 6px 12px rgba(30, 78, 196, 0.3)',
               }}>
@@ -144,7 +147,7 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
         )}
       </Map>
 
-      <button 
+      <button
         onClick={handleRecenter}
         style={{
           position: 'absolute', bottom: '20px', right: '20px',
@@ -160,24 +163,24 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
   );
 }
 
-export default function GoogleMapsViewer({ 
-  properties = [], 
-  mapStyle = 'roadmap', 
+export default function GoogleMapsViewer({
+  properties = [],
+  mapStyle = 'roadmap',
   onMarkerClick,
-  initialLat = 19.2813, 
-  initialLng = 72.8693, 
-  onLocationSelect 
+  initialLat = 19.2813,
+  initialLng = 72.8693,
+  onLocationSelect
 }) {
   const containerHeight = onLocationSelect ? '400px' : '100%';
 
   return (
     <APIProvider apiKey={process.env.NEXT_PUBLIC_GMAP_KEY}>
-      <div style={{ 
-        height: containerHeight, width: '100%', 
-        borderRadius: '8px', overflow: 'hidden', 
-        backgroundColor: '#e5e7eb', position: 'relative' 
+      <div style={{
+        height: containerHeight, width: '100%',
+        borderRadius: '8px', overflow: 'hidden',
+        backgroundColor: '#e5e7eb', position: 'relative'
       }}>
-        <InnerMap 
+        <InnerMap
           properties={properties}
           mapStyle={mapStyle}
           onMarkerClick={onMarkerClick}
