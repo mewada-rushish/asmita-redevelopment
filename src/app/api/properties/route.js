@@ -2,7 +2,8 @@ import { getDbConnection } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import { validatePropertyForm } from '@/utils/propertyForm'; // ME ADDED: Import validation utility
+import { validatePropertyForm } from '@/utils/propertyForm';
+import { promoteDraftFiles } from '@/utils/bucketManager';
 
 async function verifyAuth() {
   const cookieStore = await cookies();
@@ -10,14 +11,13 @@ async function verifyAuth() {
   if (!token) return false;
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_asmita_erp_2026');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return decoded;
   } catch (e) {
     return false;
   }
 }
 
-// Helper to sanitize empty date strings to true NULL for MySQL
 const sanitizeDate = (dateStr) => {
   if (!dateStr || dateStr.trim() === '') return null;
   return dateStr;
@@ -33,7 +33,6 @@ export async function GET() {
 
     return NextResponse.json(rows);
   } catch (error) {
-    console.error('API_GET_ERROR:', error.message);
     return NextResponse.json({ success: false, error: 'Failed to fetch properties' }, { status: 500 });
   }
 }
@@ -45,7 +44,6 @@ export async function POST(req) {
 
     const data = await req.json();
 
-    // --- ME ADDED: Backend Validation Check ---
     const validation = validatePropertyForm(data);
     if (!validation.isValid) {
       return NextResponse.json(
@@ -53,7 +51,15 @@ export async function POST(req) {
         { status: 400 }
       );
     }
-    // ------------------------------------------
+
+    // Isolate the draft ID
+    let draftFolderId = null;
+    if (data.interest_letter_file && data.interest_letter_file.includes('draft-')) {
+      draftFolderId = data.interest_letter_file.split('/')[1];
+    } else if (data.document_checklist && Array.isArray(data.document_checklist)) {
+      const draftDoc = data.document_checklist.find(d => d.file_name && d.file_name.includes('draft-'));
+      if (draftDoc) draftFolderId = draftDoc.file_name.split('/')[1];
+    }
 
     const db = await getDbConnection();
 
@@ -109,15 +115,36 @@ export async function POST(req) {
     ];
 
     const [result] = await db.execute(query, values);
+    const newPropertyId = result.insertId.toString();
+
+    // FORCE the final property name from the form, bypassing the draft name
+    const finalPropertyName = data.property_name && data.property_name.trim() !== ''
+      ? data.property_name.trim()
+      : 'Unnamed_Property';
+
+    if (draftFolderId && newPropertyId) {
+      const safePropName = finalPropertyName.replace(/[^a-z0-9\s-]/gi, '').trim();
+      const newFolderTarget = `${newPropertyId} - ${safePropName}`;
+
+      // Move files using the strict final property name
+      await promoteDraftFiles(draftFolderId, newPropertyId, finalPropertyName);
+
+      await db.execute(`
+        UPDATE properties 
+        SET 
+            interest_letter_file = REPLACE(interest_letter_file, ?, ?),
+            document_checklist = REPLACE(document_checklist, ?, ?)
+        WHERE id = ?
+      `, [draftFolderId, newFolderTarget, draftFolderId, newFolderTarget, newPropertyId]);
+    }
 
     return NextResponse.json({
       success: true,
-      id: result.insertId,
+      id: newPropertyId,
       message: 'Property successfully added'
     });
 
   } catch (error) {
-    console.error('API_POST_ERROR:', error.message);
     return NextResponse.json({ success: false, error: 'Database insertion failed: ' + error.message }, { status: 500 });
   }
 }
@@ -143,7 +170,6 @@ export async function PATCH(req) {
     });
 
   } catch (error) {
-    console.error('API_PATCH_ERROR:', error.message);
     return NextResponse.json({ success: false, error: 'Update failed' }, { status: 500 });
   }
 }

@@ -10,7 +10,7 @@ async function getAuthUser() {
     const token = cookieStore.get('asmita_auth')?.value;
     if (!token) return null;
     try {
-        return jwt.verify(token, process.env.JWT_SECRET || 'secret_asmita_erp_2026');
+        return jwt.verify(token, process.env.JWT_SECRET);
     } catch (e) {
         return null;
     }

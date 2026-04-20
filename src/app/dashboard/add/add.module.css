@@ -87,12 +87,9 @@
 
 .inputGroup {
   margin-bottom: 15px;
-  position: relative; /* ME FIX: Keep list attached to box */
+  position: relative;
 }
 
-/* ===============================
-   ADDRESS AUTOCOMPLETE (FLOATING)
-=============================== */
 .suggestions {
   position: absolute;
   top: 100%;
@@ -102,7 +99,7 @@
   border: 1px solid #d1d5db;
   border-radius: 8px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  z-index: 99999 !important; /* ME FIX: Force above everything else */
+  z-index: 99999 !important;
   list-style: none;
   padding: 0;
   margin-top: 5px;
@@ -130,9 +127,6 @@
   color: #94a3b8;
 }
 
-/* ===============================
-   LAT/LNG MANUAL INPUTS
-=============================== */
 .coordInputs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -169,9 +163,6 @@
   border-radius: 4px;
 }
 
-/* ===============================
-   FORMS & TOGGLES
-=============================== */
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -265,9 +256,6 @@
   background: #f9fafb;
 }
 
-/* ===============================
-   DOCUMENT UPLOAD UI
-=============================== */
 .docItemHeader {
   display: flex;
   justify-content: space-between;
@@ -293,20 +281,27 @@
 }
 
 .reuploadBtn {
-  background: none;
-  border: none;
-  color: #3b82f6;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #ef4444;
   cursor: pointer;
-  font-size: 13px;
-  text-decoration: underline;
-  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: 0.2s;
+}
+
+.reuploadBtn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .uploadRow {
   margin-top: 12px;
-  padding: 12px;
+  padding: 10px;
   background-color: #f8fafc;
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   gap: 10px;
   border: 1px dashed #cbd5e1;
@@ -315,62 +310,86 @@
   box-sizing: border-box;
 }
 
+.fileInput {
+  flex: 1;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  font-size: 12px;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.fileInput::file-selector-button {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-right: 10px;
+  color: #475569;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.fileInput::file-selector-button:hover {
+  background: #e2e8f0;
+}
+
 .uploadBtn {
-  background-color: #1e4ec4;
+  background-color: #10b981;
   color: white;
   border: none;
-  padding: 10px 16px;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
   font-size: 13px;
   white-space: nowrap;
   transition: 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .uploadBtn:hover {
-  background-color: #163a94;
+  background-color: #059669;
+  transform: translateY(-1px);
 }
 
-/* ===============================
-   MOBILE OPTIMIZATIONS
-=============================== */
 @media (max-width: 768px) {
   .container {
     padding: 15px;
   }
 
-  /* Stack header elements vertically */
   .header {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
   }
 
-  /* Make save button full width for easy tapping */
   .saveBtn {
     width: 100%;
     padding: 14px 20px;
   }
 
-  /* Stack sidebar (map) and main form vertically */
   .mainGrid {
     grid-template-columns: 1fr;
     gap: 20px;
   }
 
-  /* Disable sticky behavior on mobile since it's stacked */
   .sidebar {
     position: static;
   }
 
-  /* Stack 2-column grids (like Land Type / CTS) */
   .grid2 {
     grid-template-columns: 1fr;
     gap: 15px;
   }
 
-  /* Stack 3-column grids (like Committee Members) */
   .grid3 {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -381,7 +400,6 @@
     border: 1px solid #f1f5f9;
   }
 
-  /* Adjust labels for stacked inputs */
   .grid3 label,
   .grid3 span {
     font-size: 11px;
@@ -390,7 +408,6 @@
     text-transform: uppercase;
   }
 
-  /* Allow checkboxes/radios/toggles to wrap nicely */
   .checkRow {
     flex-direction: column;
     align-items: flex-start;
@@ -403,14 +420,12 @@
     padding-top: 0;
   }
 
-  /* Make toggle buttons slightly larger for touch */
   .toggle {
     width: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Document Upload Mobile Fixes */
   .docItemHeader {
     flex-direction: column;
     align-items: flex-start;

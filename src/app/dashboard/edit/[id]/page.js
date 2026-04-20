@@ -4,7 +4,9 @@ import { useParams, useRouter } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
 import MapViewer from '@/components/maps/MapViewer';
 import { validatePropertyForm } from '@/utils/propertyForm';
-import styles from './edit.module.css'; // Assuming you named it edit.module.css or add.module.css
+import { uploadPropertyDocument } from '@/utils/uploadsUtil';
+import toast from 'react-hot-toast';
+import styles from './edit.module.css';
 
 // --- REUSABLE TOGGLE COMPONENT ---
 const YesNoToggle = ({ value, onChange }) => (
@@ -230,12 +232,6 @@ export default function EditPropertyPage() {
     updateField('document_checklist', next);
   };
 
-  const handleDocUpload = (i, fileName) => {
-    const next = [...formData.document_checklist];
-    next[i].file_name = fileName;
-    updateField('document_checklist', next);
-  };
-
   const handleDocReupload = (i) => {
     const next = [...formData.document_checklist];
     next[i].file_name = '';
@@ -246,11 +242,51 @@ export default function EditPropertyPage() {
     setFormData(prev => ({ ...prev, lat: c.lat, lng: c.lng }));
   }, []);
 
+  // --- UPLOAD HANDLERS ---
+  const executeDocUpload = async (index, inputId, item) => {
+    const fileInput = document.getElementById(inputId);
+    const file = fileInput?.files[0];
+    if (!file) return toast.error("Please select a file to upload.");
+
+    // Notice we pass `id` because this property already exists
+    const uploadPromise = uploadPropertyDocument(file, id, formData.property_name, item.label, item.file_name || null);
+
+    toast.promise(uploadPromise, {
+      loading: `Uploading ${item.label}...`,
+      success: (res) => {
+        if (!res.success) throw new Error(res.error);
+        const next = [...formData.document_checklist];
+        next[index].file_name = res.fileKey;
+        updateField('document_checklist', next);
+        return `${item.label} uploaded successfully!`;
+      },
+      error: (err) => `Upload failed: ${err.message}`
+    });
+  };
+
+  const executeInterestLetterUpload = async () => {
+    const fileInput = document.getElementById('interest_letter_upload');
+    const file = fileInput?.files[0];
+    if (!file) return toast.error("Please select a file to upload.");
+
+    const uploadPromise = uploadPropertyDocument(file, id, formData.property_name, "Interest Letter", formData.interest_letter_file || null);
+
+    toast.promise(uploadPromise, {
+      loading: `Uploading Interest Letter...`,
+      success: (res) => {
+        if (!res.success) throw new Error(res.error);
+        updateField('interest_letter_file', res.fileKey);
+        return `Interest Letter uploaded successfully!`;
+      },
+      error: (err) => `Upload failed: ${err.message}`
+    });
+  };
+
   const handleUpdate = async () => {
     const validation = validatePropertyForm(formData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
-      alert("Validation Error: " + firstError);
+      toast.error(firstError);
       return;
     }
 
@@ -263,12 +299,16 @@ export default function EditPropertyPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert("Property successfully updated in AsmitA ERP!");
-        router.push('/dashboard/list');
+        toast.success("Property successfully updated in AsmitA ERP!");
+        setTimeout(() => {
+          router.push('/dashboard/list');
+        }, 1500);
       } else {
-        alert("Update failed: " + (data.error || "Unknown error"));
+        toast.error("Update failed: " + (data.error || "Unknown error"));
       }
-    } catch (e) { alert("Update failed. Check console."); }
+    } catch (e) {
+      toast.error("Update failed. Check console.");
+    }
     setSaving(false);
   };
 
@@ -449,14 +489,30 @@ export default function EditPropertyPage() {
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
             <div className={styles.inputGroup} style={{ marginBottom: '20px' }}>
-              <label className={styles.label}>Interest Letter Upload (File Name Placeholder)</label>
-              <input type="text" className={styles.input} placeholder="e.g., asmita_loi_doc.pdf" value={formData.interest_letter_file} onChange={e => updateField('interest_letter_file', e.target.value)} />
+              <label className={styles.label}>Interest Letter Upload</label>
+
+              {!formData.interest_letter_file ? (
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input type="file" id="interest_letter_upload" className={styles.fileInput} />
+                  <button type="button" className={styles.uploadBtn} onClick={executeInterestLetterUpload}>
+                    <i className="fa fa-upload"></i> Upload
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.submittedWrapper}>
+                  <span className={styles.submittedChip}>
+                    <i className="fa fa-check-circle" style={{ marginRight: '4px' }}></i> Uploaded
+                  </span>
+                  <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
+                    Re-upload
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className={styles.checklist}>
               {formData.document_checklist.map((item, i) => (
                 <div key={i} className={styles.checkItem}>
-
                   <div className={styles.docItemHeader}>
                     <span>{i + 1}. {item.label}</span>
 
@@ -477,25 +533,19 @@ export default function EditPropertyPage() {
                   {item.value === 1 && !item.file_name && (
                     <div className={styles.uploadRow}>
                       <input
-                        type="text"
-                        placeholder={`Enter file name for ${item.label}...`}
-                        className={styles.input}
+                        type="file"
+                        className={styles.fileInput}
                         id={`doc_upload_${i}`}
-                        style={{ margin: 0 }}
                       />
                       <button
                         type="button"
                         className={styles.uploadBtn}
-                        onClick={() => {
-                          const val = document.getElementById(`doc_upload_${i}`).value;
-                          if (val) handleDocUpload(i, val);
-                        }}
+                        onClick={() => executeDocUpload(i, `doc_upload_${i}`, item)}
                       >
                         <i className="fa fa-upload"></i> Upload
                       </button>
                     </div>
                   )}
-
                 </div>
               ))}
             </div>

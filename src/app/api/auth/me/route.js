@@ -11,12 +11,12 @@ export async function GET() {
 
         if (!token) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_asmita_erp_2026');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         // ME FIX: Fetch fresh data from DB instead of relying on the old token payload
         db = await getDbConnection();
         const [rows] = await db.execute(
-            'SELECT name, role, email FROM users WHERE id = ? LIMIT 1', 
+            'SELECT name, role, email FROM users WHERE id = ? LIMIT 1',
             [decoded.id]
         );
 

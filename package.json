@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1032.0",
+    "@aws-sdk/s3-request-presigner": "^3.1032.0",
     "@vis.gl/react-google-maps": "^1.8.3",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
@@ -17,6 +19,7 @@
     "next": "16.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-hot-toast": "^2.6.0",
     "react-map-gl": "^8.1.1"
   },
   "devDependencies": {

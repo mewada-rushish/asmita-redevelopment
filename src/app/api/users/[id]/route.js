@@ -10,7 +10,7 @@ async function verifyAdmin() {
     if (!token) return false;
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_asmita_erp_2026');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         return decoded.role === 'Super Admin' || decoded.role === 'Admin';
     } catch (e) {
         return false;
@@ -45,7 +45,7 @@ export async function PUT(req, { params }) {
 
         const { id } = await params;
         const body = await req.json();
-        
+
         // ME FIX: Destructure is_temporary from the body
         const { name, email, phone, password, role, department, status, is_temporary } = body;
 
@@ -66,7 +66,7 @@ export async function PUT(req, { params }) {
 
         if (password && password.trim() !== '') {
             const hashedPassword = await bcrypt.hash(password, 10);
-            
+
             // If admin is changing the password, usually we want to force the user to change it again
             const finalTempStatus = is_temporary !== undefined ? is_temporary : 1;
 

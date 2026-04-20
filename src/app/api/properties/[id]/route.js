@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { validatePropertyForm } from '@/utils/propertyForm';
+import { promoteDraftFiles } from '@/utils/bucketManager';
 
 // --- Auth Helper ---
 async function verifyAuth() {
@@ -11,7 +12,7 @@ async function verifyAuth() {
   if (!token) return false;
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_asmita_erp_2026');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return decoded;
   } catch (e) {
     return false;
@@ -29,7 +30,6 @@ const sanitizeDate = (dateStr) => {
 // ==========================================
 export async function GET(req, { params }) {
   try {
-    // 1. Authenticate Request
     const auth = await verifyAuth();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
@@ -53,7 +53,6 @@ export async function GET(req, { params }) {
 // ==========================================
 export async function PUT(req, { params }) {
   try {
-    // 1. Authenticate Request
     const auth = await verifyAuth();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
@@ -62,7 +61,6 @@ export async function PUT(req, { params }) {
 
     const data = await req.json();
 
-    // 2. Validate Payload
     const validation = validatePropertyForm(data);
     if (!validation.isValid) {
       return NextResponse.json(
@@ -72,6 +70,40 @@ export async function PUT(req, { params }) {
     }
 
     const db = await getDbConnection();
+
+    // 1. Fetch the existing property to see if the name changed
+    const [existingRows] = await db.execute('SELECT property_name FROM properties WHERE id = ?', [id]);
+    if (existingRows.length === 0) return NextResponse.json({ error: "Property not found" }, { status: 404 });
+
+    const oldName = existingRows[0].property_name || 'Unnamed_Property';
+    const newName = data.property_name && data.property_name.trim() !== '' ? data.property_name.trim() : 'Unnamed_Property';
+
+    let finalInterestLetter = data.interest_letter_file || '';
+    let finalChecklist = data.document_checklist || [];
+
+    // 2. If the property name was modified, rename the folder in DigitalOcean Spaces
+    if (oldName !== newName) {
+      const safeOldName = oldName.replace(/[^a-z0-9\s-]/gi, '').trim() || 'Unnamed_Property';
+      const safeNewName = newName.replace(/[^a-z0-9\s-]/gi, '').trim() || 'Unnamed_Property';
+
+      const oldFolder = `${id} - ${safeOldName}`;
+      const newFolder = `${id} - ${safeNewName}`;
+
+      // Reusing our promote logic to act as a folder renamer
+      await promoteDraftFiles(oldFolder, id, newName);
+
+      // Update the payload strings in memory before saving to DB
+      if (finalInterestLetter) {
+        finalInterestLetter = finalInterestLetter.replace(oldFolder, newFolder);
+      }
+
+      finalChecklist = finalChecklist.map(doc => {
+        if (doc.file_name) {
+          return { ...doc, file_name: doc.file_name.replace(oldFolder, newFolder) };
+        }
+        return doc;
+      });
+    }
 
     // 3. Construct the Flat Update Query
     const query = `
@@ -108,14 +140,14 @@ export async function PUT(req, { params }) {
       data.physical_survey || 'Not Started', data.physical_survey_records || '',
       data.banner_permission_allowed ? 1 : 0, sanitizeDate(data.hoarding_date),
 
-      JSON.stringify(data.document_checklist || []), data.document_remarks || '',
-      data.interest_letter_file || '', data.architect_submitted ? 1 : 0,
+      // Use the updated file paths here
+      JSON.stringify(finalChecklist), data.document_remarks || '',
+      finalInterestLetter, data.architect_submitted ? 1 : 0,
 
       data.interaction_history || '', data.offer_letter_status || 'Not Sent',
       data.offer_meeting_track || '', sanitizeDate(data.offer_acceptance_date),
       data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started',
 
-      // ID goes last for the WHERE clause
       id
     ];
 
@@ -125,6 +157,33 @@ export async function PUT(req, { params }) {
 
   } catch (error) {
     console.error('UPDATE ERROR:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+// ==========================================
+// DELETE: Remove Property Record
+// ==========================================
+export async function DELETE(req, { params }) {
+  try {
+    const auth = await verifyAuth();
+
+    if (!auth || (auth.role !== 'Super Admin' && auth.role !== 'Admin')) {
+      return NextResponse.json({ error: 'Unauthorized: Insufficient permissions' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
+
+    const db = await getDbConnection();
+    await db.execute('DELETE FROM properties WHERE id = ?', [id]);
+
+    // Note: If you want to delete the actual folder from DigitalOcean Spaces when the property
+    // is deleted, you can call a delete utility right here before returning success.
+
+    return NextResponse.json({ success: true, message: "Property deleted successfully" });
+  } catch (error) {
+    console.error('DELETE ERROR:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

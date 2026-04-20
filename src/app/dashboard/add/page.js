@@ -1,11 +1,13 @@
 'use client';
 import { useState, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
 import MapViewer from '@/components/maps/MapViewer';
-import { validatePropertyForm } from '@/utils/propertyForm'; // ME ADDED: Import validation utility
+import { validatePropertyForm } from '@/utils/propertyForm';
+import { uploadPropertyDocument } from '@/utils/uploadsUtil';
+import toast from 'react-hot-toast';
 import styles from './add.module.css';
 
-// --- REUSABLE TOGGLE COMPONENT ---
 const YesNoToggle = ({ value, onChange }) => (
   <div className={styles.toggle} style={{ display: 'flex', gap: '5px' }}>
     <button
@@ -28,12 +30,11 @@ const YesNoToggle = ({ value, onChange }) => (
 );
 
 export default function AddPropertyPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-
-  // CP Dropdown state
   const [executives, setExecutives] = useState([]);
 
   const checklistNames = [
@@ -43,7 +44,6 @@ export default function AddPropertyPage() {
     "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
   ];
 
-  // --- FLATTENED STATE (Matches DB 1:1) ---
   const [formData, setFormData] = useState({
     category: 'Redevelopment', status: 'Not Approached',
     pmc_name: '', pmc_contact: '', assigned_cp_id: '',
@@ -52,30 +52,21 @@ export default function AddPropertyPage() {
     land_owner_name: '', land_type: 'Freehold', cts_survey_no: '',
     is_society_registered: 0, registration_no: '',
     total_plot_area: '', total_flats: '', total_shops: '', total_flat_area_combined: '',
-
-    // JSON Contacts
     chairman_details: { name: '', contact: '' },
     secretary_details: { name: '', contact: '' },
     treasurer_details: { name: '', contact: '' },
     responsible_person_details: { name: '', contact: '' },
     extra_committee_members: [{ name: '', contact: '' }],
-
-    // Toggles
     has_approved_plan: 0, has_oc: 0, has_cc: 0, has_legal_dispute: 0,
     is_mortgaged: 0, has_redevelopment_interest: 0, flat_measure_allowed: 0,
-
-    // Survey, Banners & Docs
     physical_survey: 'Not Started', physical_survey_records: '',
     banner_permission_allowed: 0, hoarding_date: '',
     document_checklist: checklistNames.map(name => ({ label: name, value: 0, file_name: '' })),
     document_remarks: '', interest_letter_file: '', architect_submitted: 0,
-
-    // Pipeline
     interaction_history: '', offer_letter_status: 'Not Sent', offer_meeting_track: '',
     offer_acceptance_date: '', sgm_completed: 0, da_agreement_status: 'Not Started'
   });
 
-  // Fetch Channel Partners / Executives
   useEffect(() => {
     fetch('/api/users')
       .then(res => res.json())
@@ -106,7 +97,7 @@ export default function AddPropertyPage() {
           })));
         } else setSuggestions([]);
       }
-    } catch (e) { console.error("Geocoding Error", e); }
+    } catch (e) { console.error(e); }
     finally { setSearching(false); }
   };
 
@@ -119,20 +110,12 @@ export default function AddPropertyPage() {
 
   const handleBlur = () => setTimeout(() => setShowSuggestions(false), 300);
 
-  // Helpers
   const updateField = (key, val) => setFormData(p => ({ ...p, [key]: val }));
   const updateContact = (role, key, val) => setFormData(p => ({ ...p, [role]: { ...p[role], [key]: val } }));
 
   const updateCheck = (i, val) => {
     const next = [...formData.document_checklist];
     next[i] = { ...next[i], value: val };
-    updateField('document_checklist', next);
-  };
-
-  // Document specific handlers
-  const handleDocUpload = (i, fileName) => {
-    const next = [...formData.document_checklist];
-    next[i].file_name = fileName;
     updateField('document_checklist', next);
   };
 
@@ -146,13 +129,50 @@ export default function AddPropertyPage() {
     setFormData(prev => ({ ...prev, lat: c.lat, lng: c.lng }));
   }, []);
 
+  const executeDocUpload = async (index, inputId, item) => {
+    const fileInput = document.getElementById(inputId);
+    const file = fileInput?.files[0];
+    if (!file) return toast.error("Please select a file to upload.");
+
+    const uploadPromise = uploadPropertyDocument(file, null, formData.property_name, item.label, item.file_name || null);
+
+    toast.promise(uploadPromise, {
+      loading: `Uploading ${item.label}...`,
+      success: (res) => {
+        if (!res.success) throw new Error(res.error);
+        const next = [...formData.document_checklist];
+        next[index].file_name = res.fileKey;
+        updateField('document_checklist', next);
+        return `${item.label} uploaded successfully!`;
+      },
+      error: (err) => `Upload failed: ${err.message}`
+    });
+  };
+
+  const executeInterestLetterUpload = async () => {
+    const fileInput = document.getElementById('interest_letter_upload');
+    const file = fileInput?.files[0];
+    if (!file) return toast.error("Please select a file to upload.");
+
+    const uploadPromise = uploadPropertyDocument(file, null, formData.property_name, "Interest Letter", formData.interest_letter_file || null);
+
+    toast.promise(uploadPromise, {
+      loading: `Uploading Interest Letter...`,
+      success: (res) => {
+        if (!res.success) throw new Error(res.error);
+        updateField('interest_letter_file', res.fileKey);
+        return `Interest Letter uploaded successfully!`;
+      },
+      error: (err) => `Upload failed: ${err.message}`
+    });
+  };
+
   const handleSave = async () => {
-    // ME FIX: Run validation before sending to API
     const validation = validatePropertyForm(formData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
-      alert("Validation Error: " + firstError);
-      return; // Stop execution if validation fails
+      toast.error(firstError);
+      return;
     }
 
     setLoading(true);
@@ -163,9 +183,17 @@ export default function AddPropertyPage() {
         body: JSON.stringify(formData)
       });
       const data = await res.json();
-      if (res.ok && data.success) alert("Property pipeline successfully saved!");
-      else alert("Save failed: " + (data.error || "Unknown error"));
-    } catch (e) { alert("Save failed"); }
+      if (res.ok && data.success) {
+        toast.success("Property pipeline successfully saved!");
+        setTimeout(() => {
+          router.push('/dashboard/list');
+        }, 1500);
+      } else {
+        toast.error("Save failed: " + (data.error || "Unknown error"));
+      }
+    } catch (e) {
+      toast.error("Save failed");
+    }
     setLoading(false);
   };
 
@@ -341,25 +369,39 @@ export default function AddPropertyPage() {
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
             <div className={styles.inputGroup} style={{ marginBottom: '20px' }}>
-              <label className={styles.label}>Interest Letter Upload (File Name Placeholder)</label>
-              <input type="text" className={styles.input} placeholder="e.g., asmita_loi_doc.pdf" value={formData.interest_letter_file} onChange={e => updateField('interest_letter_file', e.target.value)} />
+              <label className={styles.label}>Interest Letter Upload</label>
+
+              {!formData.interest_letter_file ? (
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input type="file" id="interest_letter_upload" className={styles.fileInput} />
+                  <button type="button" className={styles.uploadBtn} onClick={executeInterestLetterUpload}>
+                    <i className="fa fa-upload"></i> Upload
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.submittedWrapper}>
+                  <span className={styles.submittedChip}>
+                    <i className="fa fa-check-circle"></i> Uploaded
+                  </span>
+                  <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
+                    Re-upload
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className={styles.checklist}>
               {formData.document_checklist.map((item, i) => (
                 <div key={i} className={styles.checkItem}>
-
-                  {/* Header row with label and actions */}
                   <div className={styles.docItemHeader}>
                     <span>{i + 1}. {item.label}</span>
 
-                    {/* Conditional rendering based on upload status */}
                     {!item.file_name ? (
                       <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
                     ) : (
                       <div className={styles.submittedWrapper}>
                         <span className={styles.submittedChip}>
-                          <i className="fa fa-check-circle" style={{ marginRight: '4px' }}></i> Submitted
+                          <i className="fa fa-check-circle"></i> Submitted
                         </span>
                         <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
                           Re-upload
@@ -368,29 +410,18 @@ export default function AddPropertyPage() {
                     )}
                   </div>
 
-                  {/* Upload Input (Only shows if YES is selected and NO file is uploaded yet) */}
                   {item.value === 1 && !item.file_name && (
                     <div className={styles.uploadRow}>
-                      <input
-                        type="text"
-                        placeholder={`Enter file name for ${item.label}...`}
-                        className={styles.input}
-                        id={`doc_upload_${i}`}
-                        style={{ margin: 0 }}
-                      />
+                      <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
                       <button
                         type="button"
                         className={styles.uploadBtn}
-                        onClick={() => {
-                          const val = document.getElementById(`doc_upload_${i}`).value;
-                          if (val) handleDocUpload(i, val);
-                        }}
+                        onClick={() => executeDocUpload(i, `doc_upload_${i}`, item)}
                       >
                         <i className="fa fa-upload"></i> Upload
                       </button>
                     </div>
                   )}
-
                 </div>
               ))}
             </div>

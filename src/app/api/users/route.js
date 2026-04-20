@@ -10,7 +10,7 @@ async function verifyAdmin() {
     if (!token) return false;
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_asmita_erp_2026');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         return decoded.role === 'Super Admin' || decoded.role === 'Admin';
     } catch (e) {
         return false;

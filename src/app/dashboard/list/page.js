@@ -3,31 +3,36 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from './list.module.css';
 
+const safeParse = (data) => {
+  if (!data) return {};
+  if (typeof data === 'object') return data;
+  try { return JSON.parse(data); } catch { return {}; }
+};
+
 export default function PropertiesList() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [updatingId, setUpdatingId] = useState(null);
-  
-  // ME ADDED: State to track the current user's role
-  const [userRole, setUserRole] = useState(''); 
+  const [userRole, setUserRole] = useState('');
 
-  // --- Pagination State ---
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState(null);
 
   const filterOptions = ['All', 'Not Approached', 'Interested Letter Sent', 'Meeting Finalized', 'Approved'];
 
   useEffect(() => {
-    // ME ADDED: Fetch the logged-in user's role to enforce permissions
     fetch('/api/auth/me')
       .then(res => res.json())
       .then(data => {
         const u = data.user || data;
         setUserRole(u.role || '');
       })
-      .catch(err => console.error("Failed to load user info", err));
+      .catch(err => console.error(err));
 
     fetchProperties();
   }, []);
@@ -38,7 +43,7 @@ export default function PropertiesList() {
       const data = await res.json();
       setProperties(data);
     } catch (err) {
-      console.error("Failed to fetch properties");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -56,21 +61,47 @@ export default function PropertiesList() {
         setProperties(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
       }
     } catch (err) {
-      console.error("Update error:", err);
+      console.error(err);
     } finally {
       setUpdatingId(null);
     }
   };
 
-  // --- Export to Excel (CSV Format) ---
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this property? This action cannot be undone.")) return;
+
+    try {
+      const res = await fetch(`/api/properties/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setProperties(prev => prev.filter(p => p.id !== id));
+      } else {
+        alert("Failed to delete property.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleViewClick = (property) => {
+    setSelectedProperty(property);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedProperty(null);
+  };
+
   const exportToExcel = () => {
     const headers = ["ID", "Building Name", "Locality", "Address", "Status", "Created At"];
     const rows = filteredData.map(p => [
       p.id, p.property_name, p.locality, p.address.replace(/,/g, ' '), p.status, p.created_at
     ]);
 
-    let csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n" 
+    let csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
       + rows.map(e => e.join(",")).join("\n");
 
     const encodedUri = encodeURI(csvContent);
@@ -82,22 +113,22 @@ export default function PropertiesList() {
     document.body.removeChild(link);
   };
 
-  // --- Filter & Search Logic ---
   const filteredData = properties.filter(p => {
-    const matchesSearch = p.property_name.toLowerCase().includes(search.toLowerCase()) || 
-                          p.locality.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = p.property_name.toLowerCase().includes(search.toLowerCase()) ||
+      p.locality.toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === 'All' || p.status === filter;
     return matchesSearch && matchesFilter;
   });
 
-  // --- Pagination Calculation ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
-  // ME ADDED: Security check flag
-  const isAdmin = userRole === 'Super Admin' || userRole === 'Admin';
+  const roleStr = userRole ? userRole.toLowerCase() : '';
+  const canAdd = ['super admin', 'admin', 'crm team', 'crm', 'field executive', 'channel partner', 'cp'].includes(roleStr);
+  const canEdit = ['super admin', 'admin', 'crm team', 'crm'].includes(roleStr);
+  const canDelete = ['super admin', 'admin'].includes(roleStr);
 
   return (
     <div className={styles.container}>
@@ -110,9 +141,7 @@ export default function PropertiesList() {
           <button onClick={exportToExcel} className={styles.exportBtn}>
             <i className="fa fa-file-excel-o"></i> Export Excel
           </button>
-          
-          {/* ME FIX: Conditionally render the Add button based on role */}
-          {isAdmin && (
+          {canAdd && (
             <Link href="/dashboard/add" className={styles.addBtn}>+ Add Property</Link>
           )}
         </div>
@@ -121,8 +150,8 @@ export default function PropertiesList() {
       <div className={styles.filterBar}>
         <div className={styles.pills}>
           {filterOptions.map(opt => (
-            <button 
-              key={opt} 
+            <button
+              key={opt}
               className={`${styles.pill} ${filter === opt ? styles.activePill : ''}`}
               onClick={() => { setFilter(opt); setCurrentPage(1); }}
             >
@@ -133,9 +162,9 @@ export default function PropertiesList() {
         </div>
         <div className={styles.searchWrapper}>
           <i className="fa fa-search"></i>
-          <input 
-            type="text" 
-            placeholder="Search building name, area..." 
+          <input
+            type="text"
+            placeholder="Search building name, area..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
           />
@@ -167,14 +196,16 @@ export default function PropertiesList() {
                 <td><span className={styles.areaText}>{p.locality || p.address}</span></td>
                 <td>
                   <div className={styles.statusWrapper}>
-                    <select 
-                      className={styles.statusDropdown} 
+                    <select
+                      className={styles.statusDropdown}
                       value={p.status}
                       onChange={(e) => handleStatusChange(p.id, e.target.value)}
-                      disabled={updatingId === p.id}
-                      style={{ 
+                      disabled={!canEdit || updatingId === p.id}
+                      style={{
                         borderColor: getStatusColor(p.status),
-                        backgroundColor: getStatusBgColor(p.status)
+                        backgroundColor: getStatusBgColor(p.status),
+                        opacity: !canEdit ? 0.7 : 1,
+                        cursor: !canEdit ? 'not-allowed' : 'pointer'
                       }}
                     >
                       {filterOptions.filter(o => o !== 'All').map(o => (
@@ -186,17 +217,33 @@ export default function PropertiesList() {
                 </td>
                 <td><span className={styles.emailBadge}>admin@asmita.com</span></td>
                 <td>
-                  {/* Note: All users can edit, so this button remains unprotected */}
-                  <Link href={`/dashboard/edit/${p.id}`} className={styles.editBtn}>
-                    <i className="fa fa-pencil"></i> Edit
-                  </Link>
+                  <div className={styles.actionGroup}>
+                    <button onClick={() => handleViewClick(p)} className={styles.viewBtn}>
+                      <i className="fa fa-eye"></i> View
+                    </button>
+                    {canEdit ? (
+                      <Link href={`/dashboard/edit/${p.id}`} className={styles.editBtn}>
+                        <i className="fa fa-pencil"></i> Edit
+                      </Link>
+                    ) : (
+                      <span className={styles.viewOnlyText}>View Only</span>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className={styles.deleteBtn}
+                        title="Delete Property"
+                      >
+                        <i className="fa fa-trash"></i>
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* --- Pagination Footer --- */}
         <div className={styles.paginationFooter}>
           <div className={styles.perPage}>
             <span>Show</span>
@@ -215,11 +262,60 @@ export default function PropertiesList() {
           </div>
         </div>
       </div>
+
+      {isModalOpen && selectedProperty && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', color: '#1f2937' }}>{selectedProperty.property_name}</h2>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}>&times;</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div>
+                <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Address</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{selectedProperty.address || 'N/A'}</p>
+              </div>
+
+              <div>
+                <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>PMC Details</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{selectedProperty.pmc_name || 'N/A'} {selectedProperty.pmc_contact ? `(${selectedProperty.pmc_contact})` : ''}</p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '10px' }}>
+                <div>
+                  <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Chairman</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{safeParse(selectedProperty.chairman_details).name || 'N/A'}</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#4b5563' }}>{safeParse(selectedProperty.chairman_details).contact || ''}</p>
+                </div>
+                <div>
+                  <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Secretary</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{safeParse(selectedProperty.secretary_details).name || 'N/A'}</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#4b5563' }}>{safeParse(selectedProperty.secretary_details).contact || ''}</p>
+                </div>
+                <div>
+                  <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Treasurer</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{safeParse(selectedProperty.treasurer_details).name || 'N/A'}</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#4b5563' }}>{safeParse(selectedProperty.treasurer_details).contact || ''}</p>
+                </div>
+                <div>
+                  <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Responsible Person</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{safeParse(selectedProperty.responsible_person_details).name || 'N/A'}</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#4b5563' }}>{safeParse(selectedProperty.responsible_person_details).contact || ''}</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '25px', textAlign: 'right' }}>
+              <button onClick={closeModal} style={{ background: '#f3f4f6', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', color: '#374151' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Helper colors (Keep these consistent)
 function getStatusColor(s) {
   const colors = { 'Not Approached': '#ef4444', 'Interested Letter Sent': '#f59e0b', 'Meeting Finalized': '#b45309', 'Approved': '#10b981' };
   return colors[s] || '#9ca3af';
