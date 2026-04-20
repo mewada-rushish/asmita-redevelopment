@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image'; 
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { logoPath } from '@/assets/images'; 
+import { logoPath } from '@/assets/images';
 import styles from './dashboard.module.css';
 
 export default function DashboardLayout({ children }) {
@@ -15,7 +15,7 @@ export default function DashboardLayout({ children }) {
     fetch('/api/auth/me')
       .then(res => res.json())
       .then(data => {
-        const userData = data.user || data; 
+        const userData = data.user || data;
         if (userData.name) {
           setUser({
             name: userData.name,
@@ -28,23 +28,31 @@ export default function DashboardLayout({ children }) {
 
   const closeMenu = () => setIsMenuOpen(false);
 
-  // ME FIX: Base items available to ALL roles (Field Executives included)
+  // Base items available to ALL roles
   const navItems = [
     { name: 'Global Map', path: '/dashboard', icon: 'fa-globe' },
     { name: 'Properties List', path: '/dashboard/list', icon: 'fa-list' },
   ];
 
-  // ME FIX: Items restricted to Admins & Super Admins ONLY
-  if (user.role === 'Super Admin' || user.role === 'Admin') {
-    // Inserts "Add Property" right after Global Map
+  // --- RBAC MENU LOGIC ---
+
+  // 1. Add Property: Available to CRM, Sales, Field Executives, and Admins
+  const canAddProperty = ['Super Admin', 'Admin', 'CRM', 'Sales', 'Field Executive'].includes(user.role);
+  if (canAddProperty) {
+    // Inserts "Add Property" right after Global Map (at index 1)
     navItems.splice(1, 0, { name: 'Add Property', path: '/dashboard/add', icon: 'fa-plus-circle' });
-    // Appends "User Management" to the bottom
+  }
+
+  // 2. User Management: Restricted to Admins & Super Admins ONLY
+  const canManageUsers = ['Super Admin', 'Admin'].includes(user.role);
+  if (canManageUsers) {
+    // Appends "User Management" to the bottom of the list
     navItems.push({ name: 'User Management', path: '/dashboard/users', icon: 'fa-users' });
   }
 
   const handleLogout = async (e) => {
     e.preventDefault();
-    closeMenu(); 
+    closeMenu();
     try {
       const res = await fetch('/api/auth/logout', { method: 'POST' });
       if (res.ok) window.location.href = '/login';
@@ -64,15 +72,15 @@ export default function DashboardLayout({ children }) {
         </button>
 
         <Link href="/dashboard" className={styles.mobileLogoLink} onClick={closeMenu}>
-          <Image 
-            src={logoPath} 
-            alt="AsmitA Logo" 
-            width={40} 
-            height={40} 
+          <Image
+            src={logoPath}
+            alt="AsmitA Logo"
+            width={40}
+            height={40}
             priority
           />
         </Link>
-        
+
         <div className={styles.mobileAvatar}>{initial}</div>
       </header>
 
@@ -82,22 +90,22 @@ export default function DashboardLayout({ children }) {
         <div className={styles.sidebarHeader}>
           {/* SIDEBAR LOGO: Branded home link */}
           <Link href="/dashboard" className={styles.sidebarLogoLink} onClick={closeMenu}>
-            <Image 
-              src={logoPath} 
-              alt="AsmitA Logo" 
-              width={75} 
-              height={75} 
+            <Image
+              src={logoPath}
+              alt="AsmitA Logo"
+              width={75}
+              height={75}
               className={styles.brandLogo}
             />
           </Link>
           <span className={styles.badge}>{user.role || 'Portal'}</span>
         </div>
-        
+
         <nav className={styles.navMenu}>
           {navItems.map((item) => (
-            <Link 
-              href={item.path} 
-              key={item.path} 
+            <Link
+              href={item.path}
+              key={item.path}
               onClick={closeMenu}
               className={`${styles.navLink} ${pathname === item.path ? styles.activeLink : ''}`}
             >
@@ -126,7 +134,7 @@ export default function DashboardLayout({ children }) {
           </div>
         </div>
       </aside>
-      
+
       <main className={styles.mainContent}>
         {children}
       </main>
