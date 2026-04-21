@@ -164,6 +164,7 @@ export default function EditUserPage() {
                             <option value="Admin">Admin</option>
                             <option value="Field Executive">Field Executive</option>
                             <option value="View Only">View Only</option>
+                            <option value="CRM">CRM</option>
                         </select>
                     </div>
 
