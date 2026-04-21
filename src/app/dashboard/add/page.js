@@ -36,6 +36,26 @@ export default function AddPropertyPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [executives, setExecutives] = useState([]);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const verifyAccess = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        const role = (data.user?.role || data.role || '').toLowerCase();
+        const allowed = ['super admin', 'admin', 'crm', 'crm team', 'sales', 'field executive', 'channel partner', 'cp'];
+        if (!allowed.includes(role)) {
+          router.push('/dashboard');
+        }
+      } catch (err) {
+        router.push('/dashboard');
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+    verifyAccess();
+  }, [router]);
 
   const checklistNames = [
     "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
@@ -166,6 +186,14 @@ export default function AddPropertyPage() {
       error: (err) => `Upload failed: ${err.message}`
     });
   };
+
+  if (checkingAuth) {
+    return (
+      <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '250px' }}>
+        <div><i className="fa fa-spinner fa-spin fa-2x"></i> Checking permissions...</div>
+      </div>
+    );
+  }
 
   const handleSave = async () => {
     const validation = validatePropertyForm(formData);
