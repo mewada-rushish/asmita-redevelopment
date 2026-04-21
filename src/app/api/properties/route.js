@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { validatePropertyForm } from '@/utils/propertyForm';
 import { promoteDraftFiles } from '@/utils/bucketManager';
 
+// --- Improved Auth Helper ---
 async function verifyAuth() {
   const cookieStore = await cookies();
   const token = cookieStore.get('asmita_auth')?.value;
@@ -12,6 +13,15 @@ async function verifyAuth() {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const db = await getDbConnection();
+    const [rows] = await db.execute('SELECT role, name, email FROM users WHERE id = ? LIMIT 1', [decoded.id]);
+
+    if (rows.length === 0) return false;
+
+    decoded.role = rows[0].role;
+    decoded.name = rows[0].name;
+    decoded.email = rows[0].email;
     return decoded;
   } catch (e) {
     return false;
@@ -29,7 +39,15 @@ export async function GET() {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
     const db = await getDbConnection();
-    const [rows] = await db.execute('SELECT * FROM properties ORDER BY created_at DESC');
+
+    // ME FIX: LEFT JOIN with users table to fetch the assigned Field Executive's name and phone
+    const query = `
+      SELECT p.*, u.name AS cp_name, u.phone AS cp_phone 
+      FROM properties p 
+      LEFT JOIN users u ON p.assigned_cp_id = u.id 
+      ORDER BY p.created_at DESC
+    `;
+    const [rows] = await db.execute(query);
 
     return NextResponse.json(rows);
   } catch (error) {
@@ -79,7 +97,7 @@ export async function POST(req) {
         physical_survey, physical_survey_records, banner_permission_allowed, hoarding_date,
         document_checklist, document_remarks, interest_letter_file, architect_submitted,
         interaction_history, offer_letter_status, offer_meeting_track, offer_acceptance_date,
-        sgm_completed, da_agreement_status
+        sgm_completed, da_agreement_status, updated_by_name
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
@@ -89,7 +107,7 @@ export async function POST(req) {
         ?, ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?, ?,
-        ?, ?
+        ?, ?, ?
       )
     `;
 
@@ -117,13 +135,14 @@ export async function POST(req) {
 
       data.interaction_history || '', data.offer_letter_status || 'Not Sent',
       data.offer_meeting_track || '', sanitizeDate(data.offer_acceptance_date),
-      data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started'
+      data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started',
+
+      auth.email || 'Unknown User'
     ];
 
     const [result] = await db.execute(query, values);
     const newPropertyId = result.insertId.toString();
 
-    // FORCE the final property name from the form, bypassing the draft name
     const finalPropertyName = data.property_name && data.property_name.trim() !== ''
       ? data.property_name.trim()
       : 'Unnamed_Property';
@@ -132,7 +151,6 @@ export async function POST(req) {
       const safePropName = finalPropertyName.replace(/[^a-z0-9\s-]/gi, '').trim();
       const newFolderTarget = `${newPropertyId} - ${safePropName}`;
 
-      // Move files using the strict final property name
       await promoteDraftFiles(draftFolderId, newPropertyId, finalPropertyName);
 
       await db.execute(`
@@ -173,8 +191,9 @@ export async function PATCH(req) {
     }
 
     const db = await getDbConnection();
-    const query = `UPDATE properties SET status = ? WHERE id = ?`;
-    await db.execute(query, [status, id]);
+
+    const query = `UPDATE properties SET status = ?, updated_by_name = ? WHERE id = ?`;
+    await db.execute(query, [status, auth.email || 'Unknown User', id]);
 
     return NextResponse.json({
       success: true,

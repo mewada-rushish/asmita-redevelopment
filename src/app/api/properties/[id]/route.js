@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { validatePropertyForm } from '@/utils/propertyForm';
 import { promoteDraftFiles } from '@/utils/bucketManager';
 
-// --- Auth Helper ---
+// --- Improved Auth Helper ---
 async function verifyAuth() {
   const cookieStore = await cookies();
   const token = cookieStore.get('asmita_auth')?.value;
@@ -13,13 +13,22 @@ async function verifyAuth() {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const db = await getDbConnection();
+    const [rows] = await db.execute('SELECT role, name, email FROM users WHERE id = ? LIMIT 1', [decoded.id]);
+
+    if (rows.length === 0) return false;
+
+    decoded.role = rows[0].role;
+    decoded.name = rows[0].name;
+    decoded.email = rows[0].email;
     return decoded;
+
   } catch (e) {
     return false;
   }
 }
 
-// --- Date Sanitization Helper ---
 const sanitizeDate = (dateStr) => {
   if (!dateStr || dateStr.trim() === '') return null;
   return dateStr;
@@ -37,7 +46,15 @@ export async function GET(req, { params }) {
     if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
 
     const db = await getDbConnection();
-    const [rows] = await db.execute('SELECT * FROM properties WHERE id = ?', [id]);
+
+    // ME FIX: LEFT JOIN with users table here as well
+    const query = `
+      SELECT p.*, u.name AS cp_name, u.phone AS cp_phone 
+      FROM properties p 
+      LEFT JOIN users u ON p.assigned_cp_id = u.id 
+      WHERE p.id = ?
+    `;
+    const [rows] = await db.execute(query, [id]);
 
     if (rows.length === 0) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
@@ -71,7 +88,6 @@ export async function PUT(req, { params }) {
 
     const db = await getDbConnection();
 
-    // 1. Fetch the existing property to see if the name changed
     const [existingRows] = await db.execute('SELECT property_name FROM properties WHERE id = ?', [id]);
     if (existingRows.length === 0) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
@@ -81,7 +97,6 @@ export async function PUT(req, { params }) {
     let finalInterestLetter = data.interest_letter_file || '';
     let finalChecklist = data.document_checklist || [];
 
-    // 2. If the property name was modified, rename the folder in DigitalOcean Spaces
     if (oldName !== newName) {
       const safeOldName = oldName.replace(/[^a-z0-9\s-]/gi, '').trim() || 'Unnamed_Property';
       const safeNewName = newName.replace(/[^a-z0-9\s-]/gi, '').trim() || 'Unnamed_Property';
@@ -89,10 +104,8 @@ export async function PUT(req, { params }) {
       const oldFolder = `${id} - ${safeOldName}`;
       const newFolder = `${id} - ${safeNewName}`;
 
-      // Reusing our promote logic to act as a folder renamer
       await promoteDraftFiles(oldFolder, id, newName);
 
-      // Update the payload strings in memory before saving to DB
       if (finalInterestLetter) {
         finalInterestLetter = finalInterestLetter.replace(oldFolder, newFolder);
       }
@@ -105,7 +118,6 @@ export async function PUT(req, { params }) {
       });
     }
 
-    // 3. Construct the Flat Update Query
     const query = `
       UPDATE properties SET 
         assigned_cp_id = ?, pmc_name = ?, pmc_contact = ?, property_name = ?, address = ?, locality = ?, lat = ?, lng = ?, status = ?,
@@ -116,11 +128,10 @@ export async function PUT(req, { params }) {
         physical_survey = ?, physical_survey_records = ?, banner_permission_allowed = ?, hoarding_date = ?,
         document_checklist = ?, document_remarks = ?, interest_letter_file = ?, architect_submitted = ?,
         interaction_history = ?, offer_letter_status = ?, offer_meeting_track = ?, offer_acceptance_date = ?,
-        sgm_completed = ?, da_agreement_status = ?
+        sgm_completed = ?, da_agreement_status = ?, updated_by_name = ?
       WHERE id = ?
     `;
 
-    // 4. Map values exactly to the schema
     const values = [
       data.assigned_cp_id || null, data.pmc_name || '', data.pmc_contact || '',
       data.property_name || 'Unnamed Property', data.address || '', data.locality || '',
@@ -140,13 +151,14 @@ export async function PUT(req, { params }) {
       data.physical_survey || 'Not Started', data.physical_survey_records || '',
       data.banner_permission_allowed ? 1 : 0, sanitizeDate(data.hoarding_date),
 
-      // Use the updated file paths here
       JSON.stringify(finalChecklist), data.document_remarks || '',
       finalInterestLetter, data.architect_submitted ? 1 : 0,
 
       data.interaction_history || '', data.offer_letter_status || 'Not Sent',
       data.offer_meeting_track || '', sanitizeDate(data.offer_acceptance_date),
       data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started',
+
+      auth.email || 'Unknown User',
 
       id
     ];
@@ -177,9 +189,6 @@ export async function DELETE(req, { params }) {
 
     const db = await getDbConnection();
     await db.execute('DELETE FROM properties WHERE id = ?', [id]);
-
-    // Note: If you want to delete the actual folder from DigitalOcean Spaces when the property
-    // is deleted, you can call a delete utility right here before returning success.
 
     return NextResponse.json({ success: true, message: "Property deleted successfully" });
   } catch (error) {
