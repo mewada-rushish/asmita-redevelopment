@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import styles from './list.module.css';
 
 const safeParse = (data) => {
@@ -51,6 +52,7 @@ export default function PropertiesList() {
       }
     } catch (err) {
       console.error(err);
+      toast.error("Failed to load properties.");
       setProperties([]);
     } finally {
       setLoading(false);
@@ -67,9 +69,13 @@ export default function PropertiesList() {
       });
       if (res.ok) {
         setProperties(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
+        toast.success("Status updated successfully!");
+      } else {
+        toast.error("Failed to update status.");
       }
     } catch (err) {
       console.error(err);
+      toast.error("An error occurred while updating status.");
     } finally {
       setUpdatingId(null);
     }
@@ -78,18 +84,21 @@ export default function PropertiesList() {
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this property? This action cannot be undone.")) return;
 
-    try {
-      const res = await fetch(`/api/properties/${id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
+    const deletePromise = fetch(`/api/properties/${id}`, {
+      method: 'DELETE'
+    }).then(async res => {
+      if (!res.ok) throw new Error("Failed to delete property");
+      return res.json();
+    });
+
+    toast.promise(deletePromise, {
+      loading: 'Deleting property...',
+      success: () => {
         setProperties(prev => prev.filter(p => p.id !== id));
-      } else {
-        alert("Failed to delete property.");
-      }
-    } catch (err) {
-      console.error(err);
-    }
+        return 'Property deleted successfully!';
+      },
+      error: 'Failed to delete property. Check permissions.'
+    });
   };
 
   const handleViewClick = (property) => {
@@ -103,22 +112,28 @@ export default function PropertiesList() {
   };
 
   const exportToExcel = () => {
-    const headers = ["ID", "Building Name", "Locality", "Address", "Status", "Created At"];
-    const rows = filteredData.map(p => [
-      p.id, p.property_name, p.locality, p.address.replace(/,/g, ' '), p.status, p.created_at
-    ]);
+    try {
+      const headers = ["ID", "Building Name", "Locality", "Address", "Status", "Created At"];
+      const rows = filteredData.map(p => [
+        p.id, p.property_name, p.locality, p.address.replace(/,/g, ' '), p.status, p.created_at
+      ]);
 
-    let csvContent = "data:text/csv;charset=utf-8,"
-      + headers.join(",") + "\n"
-      + rows.map(e => e.join(",")).join("\n");
+      let csvContent = "data:text/csv;charset=utf-8,"
+        + headers.join(",") + "\n"
+        + rows.map(e => e.join(",")).join("\n");
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `AsmitA_Properties_${new Date().toLocaleDateString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `AsmitA_Properties_${new Date().toLocaleDateString()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success("Exported to Excel successfully!");
+    } catch (error) {
+      toast.error("Failed to export data.");
+    }
   };
 
   const filteredData = Array.isArray(properties) ? properties.filter(p => {
@@ -226,7 +241,11 @@ export default function PropertiesList() {
                     {updatingId === p.id && <i className="fa fa-spinner fa-spin"></i>}
                   </div>
                 </td>
-                <td><span className={styles.emailBadge}>admin@asmita.com</span></td>
+                <td>
+                  <span className={styles.emailBadge}>
+                    {p.updated_by_name || p.updated_by_email || 'Unknown'}
+                  </span>
+                </td>
                 <td>
                   <div className={styles.actionGroup}>
                     <button onClick={() => handleViewClick(p)} className={styles.viewBtn}>

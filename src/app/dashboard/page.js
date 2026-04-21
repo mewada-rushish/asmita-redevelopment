@@ -1,8 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-// ME FIX: Changed import to point to the universal MapViewer wrapper
-import MapViewer from '@/components/maps/MapViewer'; 
+import MapViewer from '@/components/maps/MapViewer';
 import { logoPath } from '@/assets/images';
 import styles from './map.module.css';
 
@@ -17,50 +16,42 @@ const getStatusColor = (s) => {
 };
 
 const formatKeyName = (key) => {
-  const result = key.replace(/([A-Z])/g, " $1");
+  const result = key.replace(/([A-Z_])/g, " $1").replace(/_/g, '');
   return result.charAt(0).toUpperCase() + result.slice(1);
 };
 
-const safeJSONParse = (data) => {
-  if (data === null || data === undefined) return null;
+const safeJSONParse = (data, fallback = null) => {
+  if (data === null || data === undefined || data === '') return fallback;
   if (typeof data === 'object') return data;
-
-  if (typeof data === 'string') {
-    const trimmed = data.trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      try {
-        let parsed = JSON.parse(trimmed);
-        while (typeof parsed === 'string') {
-          parsed = JSON.parse(parsed); 
-        }
-        return parsed;
-      } catch (e) {
-        return data; 
-      }
+  try {
+    let parsed = JSON.parse(data);
+    while (typeof parsed === 'string') {
+      parsed = JSON.parse(parsed);
     }
+    return parsed;
+  } catch (e) {
+    return fallback;
   }
-  return data; 
 };
-
-const CHECKLIST_LABELS = [
-  "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
-  "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
-  "Property Tax Bill", "Conveyance Deed", "Society Bye-laws", "Electricity Bill", "Water Bill", "Encumbrance Cert",
-  "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
-];
 
 export default function DashboardMapPage() {
   const [properties, setProperties] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedStatus, setExpandedStatus] = useState(null);
   const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
-  
-  // ME FIX: Reverted to 'streets' so MapLibre doesn't crash if switched back. 
-  // Our GoogleMapsViewer component already converts this to 'roadmap' automatically!
-  const [currentStyle, setCurrentStyle] = useState('streets'); 
+  const [currentStyle, setCurrentStyle] = useState('streets');
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        const u = data.user || data;
+        setUserRole(u.role || '');
+      })
+      .catch(err => console.error(err));
+
     fetch('/api/properties')
       .then(res => res.json())
       .then(data => {
@@ -79,108 +70,98 @@ export default function DashboardMapPage() {
   }, []);
 
   const getFilteredProperties = (status) => {
-    if (!Array.isArray(properties)) return []; 
+    if (!Array.isArray(properties)) return [];
     return properties.filter(p =>
       p.status === status && (p.property_name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   };
 
-  const parsedDetails = useMemo(() => safeJSONParse(selectedProperty?.details) || {}, [selectedProperty]);
+  // --- RBAC PERMISSIONS ---
+  const roleStr = (userRole || '').trim().toLowerCase();
 
-  const getVal = (keyBase) => {
-    if (!selectedProperty) return null;
-    const snake = keyBase.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-    const camel = keyBase.replace(/_([a-z])/g, g => g[1].toUpperCase());
-    return parsedDetails[snake] ?? parsedDetails[camel] ?? selectedProperty[snake] ?? selectedProperty[camel];
-  };
+  const isFieldExec = roleStr === 'field executive';
+
+  const canViewContacts = ['super admin', 'admin', 'crm', 'sales', 'view only', 'field executive'].includes(roleStr);
+  const canViewOffers = ['super admin', 'admin', 'crm', 'sales', 'view only'].includes(roleStr);
+  const canViewAdvancedDetails = !isFieldExec;
+  const canViewSystemInfo = ['super admin', 'admin', 'view only'].includes(roleStr);
 
   const buildCommitteeList = () => {
+    if (!selectedProperty) return null;
     const list = [];
-    const addCard = (role, name, contact) => {
-      if (name || contact) {
-        list.push({ Role: role, Name: name || '-', Contact: contact || '-' });
+
+    const addCard = (role, detailStr) => {
+      const detail = safeJSONParse(detailStr, {});
+      if (detail && (detail.name || detail.contact)) {
+        list.push({
+          Role: role,
+          Name: detail.name || '-',
+          Contact: canViewContacts ? (detail.contact || '-') : '*** RESTRICTED ***'
+        });
       }
     };
 
-    addCard('Chairman', getVal('chairmanName'), getVal('chairmanContact'));
-    addCard('Secretary', getVal('secretaryName'), getVal('secretaryContact'));
-    addCard('Treasurer', getVal('treasurerName'), getVal('treasurerContact'));
-    addCard('Responsible Person', getVal('responsibleName'), getVal('responsibleContact'));
+    addCard('Chairman', selectedProperty.chairman_details);
+    addCard('Secretary', selectedProperty.secretary_details);
+    addCard('Treasurer', selectedProperty.treasurer_details);
+    addCard('Responsible Person', selectedProperty.responsible_person_details);
 
-    const others = safeJSONParse(selectedProperty?.committee);
+    const others = safeJSONParse(selectedProperty.extra_committee_members, []);
     if (Array.isArray(others)) {
-      others.forEach(o => {
-        if (o.name || o.contact) {
-          list.push({ Role: 'Member', Name: o.name || '-', Contact: o.contact || '-' });
-        }
-      });
+      others.forEach((o, i) => addCard(`Member ${i + 1}`, JSON.stringify(o)));
     }
+
     return list.length > 0 ? list : null;
   };
 
-  const renderField = (label, rawVal, isPill = false, keyProp = undefined) => {
-    if (rawVal === null || rawVal === undefined || rawVal === '') return null;
-
-    const val = safeJSONParse(rawVal);
+  const renderField = (label, val, isPill = false, isDocList = false) => {
+    if (val === null || val === undefined || val === '') return null;
 
     if (isPill) {
-      const isYes = val === 'YES' || val === true;
+      const isYes = val === 1 || val === 'YES' || val === true;
       return (
-        <div className={styles.field} key={keyProp}>
+        <div className={styles.field} key={label}>
           {label && <label>{label}</label>}
           <span className={styles.yesBadge} style={{
             background: isYes ? '#dcfce7' : '#fee2e2',
-            color: isYes ? '#166534' : '#991b1b'
+            color: isYes ? '#166534' : '#991b1b',
+            border: `1px solid ${isYes ? '#bbf7d0' : '#fecaca'}`
           }}>
-            {String(val).toUpperCase()}
+            {isYes ? 'YES' : 'NO'}
           </span>
         </div>
       );
     }
 
-    if (Array.isArray(val)) {
-      if (val.length === 0) return null;
-
-      if (typeof val[0] === 'object' && !val[0].label) {
-        return (
-          <div className={styles.field} key={keyProp}>
-            {label && <label>{label}</label>}
-            <div className={styles.nestedCardList}>
-              {val.map((item, idx) => (
-                <div key={`${keyProp}-${idx}`} className={styles.nestedCard}>
-                  {Object.entries(item).map(([k, v]) => (
-                    <div key={k} className={styles.nestedRow}>
-                      <span className={styles.nestedKey}>{formatKeyName(k)}:</span>
-                      <span className={styles.nestedVal}>{String(v)}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      }
+    if (isDocList) {
+      const docs = safeJSONParse(val, []);
+      if (!Array.isArray(docs) || docs.length === 0) return <p>No documents specified</p>;
 
       return (
-        <div className={styles.field} key={keyProp}>
+        <div className={styles.field} key={label}>
           {label && <label>{label}</label>}
           <div className={styles.badgeGroup}>
-            {val.map((item, idx) => {
-              const dLabel = item.label || CHECKLIST_LABELS[idx] || `Document ${idx + 1}`;
-              const dValue = item.value !== undefined ? item.value : item;
-              const isYes = dValue === 'YES' || dValue === true;
-
+            {docs.map((doc, idx) => {
+              const isYes = doc.value === 1;
               return (
-                <span key={idx} className={styles.neutralBadge} style={{
+                <div key={idx} className={styles.neutralBadge} style={{
                   background: isYes ? '#f1f8f5' : '#fff1f2',
                   color: isYes ? '#0f766e' : '#9f1239',
                   borderColor: isYes ? '#ccfbf1' : '#ffe4e6',
                   display: 'flex',
-                  gap: '6px'
+                  flexDirection: 'column',
+                  gap: '4px'
                 }}>
-                  <span style={{ color: '#64748b', fontWeight: 600 }}>{dLabel}:</span>
-                  <span>{String(dValue)}</span>
-                </span>
+                  <div style={{ display: 'flex', gap: '6px', fontWeight: 600 }}>
+                    <span style={{ color: '#64748b' }}>{doc.label}:</span>
+                    <span>{isYes ? 'YES' : 'NO'}</span>
+                  </div>
+                  {isYes && doc.file_name && (
+                    <span style={{ fontSize: '11px', color: '#0369a1', wordBreak: 'break-all' }}>
+                      <i className="fa fa-paperclip"></i> {doc.file_name.split('/').pop()}
+                    </span>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -188,34 +169,34 @@ export default function DashboardMapPage() {
       );
     }
 
+    if (Array.isArray(val)) {
+      if (val.length === 0) return null;
+      return (
+        <div className={styles.field} key={label}>
+          {label && <label>{label}</label>}
+          <div className={styles.nestedCardList}>
+            {val.map((item, idx) => (
+              <div key={`${label}-${idx}`} className={styles.nestedCard}>
+                {Object.entries(item).map(([k, v]) => (
+                  <div key={k} className={styles.nestedRow}>
+                    <span className={styles.nestedKey}>{formatKeyName(k)}:</span>
+                    <span className={styles.nestedVal} style={{ color: v === '*** RESTRICTED ***' ? '#ef4444' : 'inherit' }}>{String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className={styles.field} key={keyProp}>
+      <div className={styles.field} key={label}>
         {label && <label>{label}</label>}
         <p>{String(val)}</p>
       </div>
     );
   };
-
-  const ignoredKeys = [
-    'id', 'lat', 'lng', 'property_name', 'status', 'address', 'details',
-    'created_at', 'updated_at', 'committee', 'checklist', 'locality'
-  ];
-
-  const handledKeys = [
-    'landOwner', 'land_owner', 'landType', 'land_type', 'ctsNo', 'cts_no', 'cts',
-    'regStatus', 'reg_status', 'regNo', 'reg_no',
-    'totalPlotArea', 'total_plot_area', 'totalFlats', 'total_flats', 'totalShops', 'total_shops',
-    'totalAreaCombined', 'total_area_combined', 'plotArea', 'flatArea', 'shopArea',
-    'chairmanName', 'chairman_name', 'chairmanContact', 'chairman_contact',
-    'secretaryName', 'secretary_name', 'secretaryContact', 'secretary_contact',
-    'treasurerName', 'treasurer_name', 'treasurerContact', 'treasurer_contact',
-    'responsibleName', 'responsible_name', 'responsibleContact', 'responsible_contact',
-    'committeeMembers', 'committee_members', 'checklist', 'documentChecklist', 'document_checklist',
-    'approvedPlan', 'approved_plan', 'oc', 'cc', 'legalDispute', 'legal_dispute',
-    'mortgaged', 'membersInterested', 'members_interested', 'redevelopmentInterest', 'redevelopment_interest',
-    'physicalSurvey', 'physical_survey', 'flatMeasure', 'flat_measure', 'bannerPerm', 'banner_perm',
-    'legalChecklist', 'surveyChecklist'
-  ];
 
   return (
     <div className={styles.wrapper}>
@@ -247,65 +228,110 @@ export default function DashboardMapPage() {
 
               <div className={styles.sideSection}>
                 <h4 className={styles.sectionHeading}><i className="fa fa-building-o"></i> 1. BUILDING & LAND</h4>
-                {renderField('BUILDING NAME', selectedProperty.property_name)}
+
+                {/* PMC Details */}
+                {renderField('PMC / CO-ORDINATOR', selectedProperty.pmc_name)}
+                {renderField('PMC CONTACT', selectedProperty.pmc_contact ? (canViewContacts ? selectedProperty.pmc_contact : '*** RESTRICTED ***') : null)}
+
+                {/* Field Executive Details */}
+                {renderField('FIELD EXECUTIVE', selectedProperty.cp_name || (selectedProperty.assigned_cp_id ? `ID: ${selectedProperty.assigned_cp_id}` : null))}
+                {renderField('FIELD EXEC CONTACT', selectedProperty.cp_phone ? (canViewContacts ? selectedProperty.cp_phone : '*** RESTRICTED ***') : null)}
+
+                {/* Property Core Details */}
                 {renderField('ADDRESS', selectedProperty.address || 'Address not provided')}
                 {renderField('LOCALITY', selectedProperty.locality)}
-                {renderField('LAND OWNER / SOCIETY', getVal('landOwner'))}
-                {renderField('LAND TYPE', getVal('landType'))}
-                {renderField('CTS / SURVEY NO', getVal('ctsNo') || getVal('cts'))}
+                {renderField('LAND OWNER / SOCIETY', selectedProperty.land_owner_name)}
+                {renderField('LAND TYPE', selectedProperty.land_type)}
+                {renderField('CTS / SURVEY NO', selectedProperty.cts_survey_no)}
               </div>
 
-              <div className={styles.sideSection}>
-                <h4 className={styles.sectionHeading}><i className="fa fa-university"></i> 2. REGISTRATION</h4>
-                {renderField('SOCIETY REGISTERED?', getVal('regStatus'), true)}
-                {renderField('REGISTRATION NO.', getVal('regNo'))}
-              </div>
+              {canViewAdvancedDetails && (
+                <>
+                  <div className={styles.sideSection}>
+                    <h4 className={styles.sectionHeading}><i className="fa fa-university"></i> 2. REGISTRATION</h4>
+                    {renderField('SOCIETY REGISTERED?', selectedProperty.is_society_registered, true)}
+                    {renderField('REGISTRATION NO.', selectedProperty.registration_no)}
+                  </div>
 
-              <div className={styles.sideSection}>
-                <h4 className={styles.sectionHeading}><i className="fa fa-users"></i> 3. COMMITTEE & CONTACTS</h4>
-                {renderField('', buildCommitteeList(), false, 'committee-list')}
-              </div>
+                  <div className={styles.sideSection}>
+                    <h4 className={styles.sectionHeading}><i className="fa fa-users"></i> 3. COMMITTEE & CONTACTS</h4>
+                    {renderField('', buildCommitteeList())}
+                  </div>
 
-              <div className={styles.sideSection}>
-                <h4 className={styles.sectionHeading}><i className="fa fa-pie-chart"></i> 4. AREA INFO</h4>
-                {renderField('TOTAL PLOT AREA', getVal('totalPlotArea') || getVal('plotArea'))}
-                {renderField('TOTAL FLATS', getVal('totalFlats'))}
-                {renderField('TOTAL SHOPS', getVal('totalShops'))}
-                {renderField('TOTAL AREA COMBINED', getVal('totalAreaCombined') || getVal('flatArea'))}
-              </div>
+                  <div className={styles.sideSection}>
+                    <h4 className={styles.sectionHeading}><i className="fa fa-pie-chart"></i> 4. AREA INFO</h4>
+                    {renderField('TOTAL PLOT AREA', selectedProperty.total_plot_area)}
+                    {renderField('TOTAL FLATS', selectedProperty.total_flats)}
+                    {renderField('TOTAL SHOPS', selectedProperty.total_shops)}
+                    {renderField('TOTAL AREA COMBINED', selectedProperty.total_flat_area_combined)}
+                  </div>
 
-              <div className={styles.sideSection}>
-                <h4 className={styles.sectionHeading}><i className="fa fa-balance-scale"></i> 5. STATUS & LEGAL</h4>
-                {getVal('legalChecklist')
-                  ? renderField('', getVal('legalChecklist'), false, 'legal-checks')
-                  : ['approvedPlan', 'oc', 'cc', 'legalDispute', 'mortgaged', 'membersInterested'].map(k => renderField(formatKeyName(k).toUpperCase(), getVal(k), true, k))
-                }
-              </div>
+                  <div className={styles.sideSection}>
+                    <h4 className={styles.sectionHeading}><i className="fa fa-balance-scale"></i> 5. STATUS & LEGAL</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      {renderField('APPROVED PLAN', selectedProperty.has_approved_plan, true)}
+                      {renderField('OC', selectedProperty.has_oc, true)}
+                      {renderField('CC', selectedProperty.has_cc, true)}
+                      {renderField('LEGAL DISPUTE', selectedProperty.has_legal_dispute, true)}
+                      {renderField('MORTGAGED', selectedProperty.is_mortgaged, true)}
+                      {renderField('REDEV. INTEREST', selectedProperty.has_redevelopment_interest, true)}
+                    </div>
+                  </div>
 
-              <div className={styles.sideSection}>
-                <h4 className={styles.sectionHeading}><i className="fa fa-eye"></i> 6. PERMISSIONS</h4>
-                {getVal('surveyChecklist')
-                  ? renderField('', getVal('surveyChecklist'), false, 'survey-checks')
-                  : ['physicalSurvey', 'flatMeasure', 'bannerPerm'].map(k => renderField(formatKeyName(k).toUpperCase(), getVal(k), true, k))
-                }
-              </div>
+                  <div className={styles.sideSection}>
+                    <h4 className={styles.sectionHeading}><i className="fa fa-search"></i> 6. PERMISSIONS & SURVEY</h4>
+                    {renderField('PHYSICAL SURVEY STATUS', selectedProperty.physical_survey)}
+                    {renderField('SURVEY RECORDS', selectedProperty.physical_survey_records)}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                      {renderField('FLAT MEASUREMENT', selectedProperty.flat_measure_allowed, true)}
+                      {renderField('BANNER PERMISSION', selectedProperty.banner_permission_allowed, true)}
+                    </div>
+                    {selectedProperty.banner_permission_allowed === 1 && renderField('HOARDING DATE', new Date(selectedProperty.hoarding_date).toLocaleDateString())}
+                  </div>
 
-              <div className={styles.sideSection}>
-                <h4 className={styles.sectionHeading}><i className="fa fa-file-text-o"></i> 7. DOCUMENTS</h4>
-                {renderField('', getVal('checklist'), false, 'doc-checklist')}
-              </div>
+                  <div className={styles.sideSection}>
+                    <h4 className={styles.sectionHeading}><i className="fa fa-file-text-o"></i> 7. DOCUMENTS</h4>
+                    {selectedProperty.interest_letter_file && (
+                      <div className={styles.field}>
+                        <label>INTEREST LETTER</label>
+                        <p style={{ color: '#0369a1', fontSize: '13px', wordBreak: 'break-all' }}>
+                          <i className="fa fa-download"></i> {selectedProperty.interest_letter_file.split('/').pop()}
+                        </p>
+                      </div>
+                    )}
+                    {renderField('ARCHITECT SUBMITTED?', selectedProperty.architect_submitted, true)}
+                    {renderField('DOCUMENT CHECKLIST', selectedProperty.document_checklist, false, true)}
+                    {renderField('DOCUMENT REMARKS', selectedProperty.document_remarks)}
+                  </div>
+                </>
+              )}
 
-              <div className={styles.sideSection}>
-                <h4 className={styles.sectionHeading}><i className="fa fa-database"></i> ADDITIONAL INFO</h4>
-                {Object.keys(selectedProperty).map(key => {
-                  if (ignoredKeys.includes(key) || handledKeys.includes(key)) return null;
-                  return renderField(formatKeyName(key).toUpperCase(), selectedProperty[key], false, `prop-${key}`);
-                })}
-                {Object.keys(parsedDetails).map(key => {
-                  if (handledKeys.includes(key)) return null;
-                  return renderField(formatKeyName(key).toUpperCase(), parsedDetails[key], false, `det-${key}`);
-                })}
-              </div>
+              {canViewOffers && (
+                <div className={styles.sideSection} style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <h4 className={styles.sectionHeading} style={{ color: '#0f172a' }}>
+                    <i className="fa fa-handshake-o"></i> 8. INTERACTION & OFFERS
+                  </h4>
+                  {renderField('INTERACTION HISTORY', selectedProperty.interaction_history)}
+                  {renderField('OFFER LETTER STATUS', selectedProperty.offer_letter_status)}
+                  {renderField('OFFER MEETING TRACK', selectedProperty.offer_meeting_track)}
+                  {selectedProperty.offer_letter_status === 'Accepted' && renderField('ACCEPTANCE DATE', new Date(selectedProperty.offer_acceptance_date).toLocaleDateString())}
+
+                  <hr style={{ borderTop: '1px solid #cbd5e1', margin: '15px 0' }} />
+
+                  {renderField('SGM COMPLETED?', selectedProperty.sgm_completed, true)}
+                  {renderField('DA AGREEMENT STATUS', selectedProperty.da_agreement_status)}
+                </div>
+              )}
+
+              {canViewSystemInfo && (
+                <div className={styles.sideSection} style={{ background: '#f1f5f9', padding: '15px', borderRadius: '8px', marginTop: '10px' }}>
+                  <h4 className={styles.sectionHeading} style={{ color: '#334155', margin: 0, paddingBottom: '10px' }}>
+                    <i className="fa fa-info-circle"></i> SYSTEM INFO
+                  </h4>
+                  {renderField('LAST EDITED BY', selectedProperty.updated_by_name || 'Unknown')}
+                </div>
+              )}
+
             </div>
           </>
         )}
@@ -356,7 +382,6 @@ export default function DashboardMapPage() {
       </div>
 
       <div className={styles.styleSwitcher}>
-        {/* ME FIX: Reverted labels to 'streets'/'satellite' for cross-compatibility */}
         {['streets', 'satellite'].map(style => (
           <button key={style} className={`${styles.styleBtn} ${currentStyle === style ? styles.activeStyle : ''}`} onClick={() => setCurrentStyle(style)}>
             {style.toUpperCase()}
