@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './addusers.module.css';
@@ -8,6 +8,7 @@ export default function AddUserPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [checkingAuth, setCheckingAuth] = useState(true);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -19,6 +20,25 @@ export default function AddUserPage() {
         status: 1,
         is_temporary: 1 
     });
+
+    useEffect(() => {
+        const verifyRole = async () => {
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                const role = (data.user?.role || data.role || '').toLowerCase();
+                if (role !== 'super admin' && role !== 'admin') {
+                    router.push('/dashboard');
+                }
+            } catch (err) {
+                router.push('/dashboard');
+            } finally {
+                setCheckingAuth(false);
+            }
+        };
+
+        verifyRole();
+    }, [router]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -56,6 +76,14 @@ export default function AddUserPage() {
             setLoading(false);
         }
     };
+
+    if (checkingAuth) {
+        return (
+            <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '250px' }}>
+                <div><i className="fa fa-spinner fa-spin fa-2x"></i> Checking permissions...</div>
+            </div>
+        );
+    }
 
     return (
         <div className={styles.container}>
@@ -96,6 +124,7 @@ export default function AddUserPage() {
                             <option value="Super Admin">Super Admin</option>
                             <option value="Admin">Admin</option>
                             <option value="Field Executive">Field Executive</option>
+                            <option value="View Only">View Only</option>
                         </select>
                     </div>
 

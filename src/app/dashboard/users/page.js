@@ -65,6 +65,7 @@ export default function UsersPage() {
     const getRoleBadge = (role) => {
         if (role === 'Super Admin') return styles.roleSuper;
         if (role === 'Admin') return styles.roleAdmin;
+        if (role === 'View Only') return styles.roleView;
         return styles.roleExec;
     };
 
@@ -93,9 +94,11 @@ export default function UsersPage() {
         <div className={styles.container}>
             <header className={styles.header}>
                 <h1><i className="fa fa-users"></i> User Management</h1>
-                <Link href="/dashboard/users/add" className={styles.addBtn}>
-                    <i className="fa fa-user-plus"></i> Add New User
-                </Link>
+                {canDelete && (
+                    <Link href="/dashboard/users/add" className={styles.addBtn}>
+                        <i className="fa fa-user-plus"></i> Add New User
+                    </Link>
+                )}
             </header>
 
             <div className={styles.tableContainer}>
@@ -146,6 +149,7 @@ export default function UsersPage() {
                                         <div className={styles.roleCell}>
                                             <span className={`${styles.badge} ${getRoleBadge(user.role)}`}>
                                                 {user.role}
+                                                {user.role === 'View Only' }
                                             </span>
                                             <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
                                                 {user.department}
@@ -209,7 +213,7 @@ export default function UsersPage() {
                                 <span>Phone:</span> <strong>{viewUser.phone || 'N/A'}</strong>
                             </div>
                             <div className={styles.infoRow}>
-                                <span>Role:</span> <strong>{viewUser.role}</strong>
+                                <span>Role:</span> <strong>{viewUser.role} {viewUser.role === 'View Only' && <i className="fa fa-eye" style={{ marginLeft: '4px' }}></i>}</strong>
                             </div>
                             <div className={styles.infoRow}>
                                 <span>Department:</span> <strong>{viewUser.department}</strong>

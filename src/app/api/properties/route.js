@@ -42,6 +42,12 @@ export async function POST(req) {
     const auth = await verifyAuth();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
 
+    const roleStr = (auth.role || '').toLowerCase();
+    const allowedCreateRoles = ['super admin', 'admin', 'crm', 'crm team', 'sales', 'field executive', 'channel partner', 'cp'];
+    if (!allowedCreateRoles.includes(roleStr)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     const data = await req.json();
 
     const validation = validatePropertyForm(data);
@@ -153,6 +159,12 @@ export async function PATCH(req) {
   try {
     const auth = await verifyAuth();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+    const roleStr = (auth.role || '').toLowerCase();
+    const allowedUpdateRoles = ['super admin', 'admin', 'crm', 'crm team'];
+    if (!allowedUpdateRoles.includes(roleStr)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
 
     const { id, status } = await req.json();
 

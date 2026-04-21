@@ -41,9 +41,17 @@ export default function PropertiesList() {
     try {
       const res = await fetch('/api/properties');
       const data = await res.json();
-      setProperties(data);
+      if (Array.isArray(data)) {
+        setProperties(data);
+      } else if (data && Array.isArray(data.properties)) {
+        setProperties(data.properties);
+      } else {
+        console.warn('Unexpected /api/properties response:', data);
+        setProperties([]);
+      }
     } catch (err) {
       console.error(err);
+      setProperties([]);
     } finally {
       setLoading(false);
     }
@@ -113,12 +121,12 @@ export default function PropertiesList() {
     document.body.removeChild(link);
   };
 
-  const filteredData = properties.filter(p => {
-    const matchesSearch = p.property_name.toLowerCase().includes(search.toLowerCase()) ||
-      p.locality.toLowerCase().includes(search.toLowerCase());
+  const filteredData = Array.isArray(properties) ? properties.filter(p => {
+    const matchesSearch = (p.property_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.locality || '').toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === 'All' || p.status === filter;
     return matchesSearch && matchesFilter;
-  });
+  }) : [];
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -129,6 +137,7 @@ export default function PropertiesList() {
   const canAdd = ['super admin', 'admin', 'crm team', 'crm', 'field executive', 'channel partner', 'cp'].includes(roleStr);
   const canEdit = ['super admin', 'admin', 'crm team', 'crm'].includes(roleStr);
   const canDelete = ['super admin', 'admin'].includes(roleStr);
+  const canExport = roleStr && roleStr !== 'view only';
 
   return (
     <div className={styles.container}>
@@ -138,9 +147,11 @@ export default function PropertiesList() {
           <p>{filteredData.length} entries match your filters</p>
         </div>
         <div className={styles.actionBtns}>
-          <button onClick={exportToExcel} className={styles.exportBtn}>
-            <i className="fa fa-file-excel-o"></i> Export Excel
-          </button>
+          {canExport && (
+            <button onClick={exportToExcel} className={styles.exportBtn}>
+              <i className="fa fa-file-excel-o"></i> Export Excel
+            </button>
+          )}
           {canAdd && (
             <Link href="/dashboard/add" className={styles.addBtn}>+ Add Property</Link>
           )}

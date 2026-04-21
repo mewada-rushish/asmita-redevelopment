@@ -93,7 +93,7 @@
   min-width: 220px;
 } /* Contact */
 .table td:nth-child(5) {
-  min-width: 160px;
+  min-width: 200px;
 } /* Role */
 
 .table tr:last-child td {
@@ -109,6 +109,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+  width: 100%;
+  overflow: visible;
 }
 
 .badge {
@@ -118,22 +120,34 @@
   font-weight: 600;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
+  min-height: 20px;
+  visibility: visible;
+  opacity: 1;
 }
 
 .roleSuper {
   background: #fee2e2;
   color: #991b1b;
+  border: 1px solid #fecaca;
 }
 .roleAdmin {
   background: #dbeafe;
   color: #1e40af;
+  border: 1px solid #bfdbfe;
 }
 .roleExec {
   background: #f3f4f6;
   color: #4b5563;
+  border: 1px solid #d1d5db;
+}
+.roleView {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
 }
 .statusActive {
   color: #166534;
@@ -287,6 +301,8 @@
   color: #1f2937;
   text-align: right;
   word-break: break-all;
+  flex: 1;
+  min-width: 0;
 }
 
 /* ===============================

@@ -11,6 +11,7 @@ export default function EditUserPage() {
 
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
+    const [checkingAuth, setCheckingAuth] = useState(true);
     const [error, setError] = useState('');
 
     const [formData, setFormData] = useState({
@@ -25,8 +26,25 @@ export default function EditUserPage() {
     });
 
     useEffect(() => {
-        if (id) fetchUser();
-    }, [id]);
+        const verifyRoleAndFetch = async () => {
+            try {
+                const authRes = await fetch('/api/auth/me');
+                const authData = await authRes.json();
+                const role = (authData.user?.role || authData.role || '').toLowerCase();
+                if (role !== 'super admin' && role !== 'admin') {
+                    router.push('/dashboard');
+                    return;
+                }
+                await fetchUser();
+            } catch (err) {
+                router.push('/dashboard');
+            } finally {
+                setCheckingAuth(false);
+            }
+        };
+
+        if (id) verifyRoleAndFetch();
+    }, [id, router]);
 
     const fetchUser = async () => {
         try {
@@ -35,14 +53,14 @@ export default function EditUserPage() {
 
             if (res.ok && data.success) {
                 setFormData({
-                    name: data.user.name,
-                    email: data.user.email,
+                    name: data.user.name || '',
+                    email: data.user.email || '',
                     phone: data.user.phone || '',
                     password: '', // Keep blank unless resetting
-                    role: data.user.role,
-                    department: data.user.department,
-                    status: data.user.status,
-                    is_temporary: data.user.is_temporary || 0 // Population logic
+                    role: data.user.role || 'Field Executive',
+                    department: data.user.department || 'Sales',
+                    status: Number(data.user.status) || 1,
+                    is_temporary: Number(data.user.is_temporary) || 0 // Population logic
                 });
             } else {
                 setError(data.error || 'Failed to load user');
@@ -56,8 +74,13 @@ export default function EditUserPage() {
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
-        // Logic to handle checkbox vs standard text/select inputs
-        const finalValue = type === 'checkbox' ? (checked ? 1 : 0) : value;
+        let finalValue = type === 'checkbox' ? (checked ? 1 : 0) : value;
+        
+        // Convert status to number for consistency
+        if (name === 'status') {
+            finalValue = Number(value);
+        }
+        
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
@@ -92,7 +115,7 @@ export default function EditUserPage() {
         }
     };
 
-    if (fetching) {
+    if (checkingAuth || fetching) {
         return (
             <div className={styles.container} style={{ textAlign: 'center', padding: '50px' }}>
                 <i className="fa fa-spinner fa-spin fa-2x"></i>
@@ -140,6 +163,7 @@ export default function EditUserPage() {
                             <option value="Super Admin">Super Admin</option>
                             <option value="Admin">Admin</option>
                             <option value="Field Executive">Field Executive</option>
+                            <option value="View Only">View Only</option>
                         </select>
                     </div>
 
@@ -156,9 +180,9 @@ export default function EditUserPage() {
 
                     <div className={styles.formGroup}>
                         <label>Account Status</label>
-                        <select name="status" value={formData.status} onChange={handleChange} className={styles.input}>
-                            <option value={1}>Active</option>
-                            <option value={0}>Inactive</option>
+                        <select name="status" value={String(formData.status)} onChange={handleChange} className={styles.input}>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
                         </select>
                     </div>
 
