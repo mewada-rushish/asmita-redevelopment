@@ -60,6 +60,7 @@ export default function EditPropertyPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [executives, setExecutives] = useState([]);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   const checklistNames = [
     "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
@@ -97,6 +98,27 @@ export default function EditPropertyPage() {
   });
 
   // Fetch Channel Partners
+  useEffect(() => {
+    const verifyAccess = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        const role = (data.user?.role || data.role || '').toLowerCase();
+        const allowed = ['super admin', 'admin', 'crm', 'crm team'];
+        if (!allowed.includes(role)) {
+          router.push('/dashboard');
+          return;
+        }
+      } catch (err) {
+        router.push('/dashboard');
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    verifyAccess();
+  }, [router]);
+
   useEffect(() => {
     fetch('/api/users')
       .then(res => res.json())
@@ -312,7 +334,7 @@ export default function EditPropertyPage() {
     setSaving(false);
   };
 
-  if (loading) return <div className={styles.loader || ''} style={{ padding: '40px', textAlign: 'center' }}>Synchronizing with Database...</div>;
+  if (checkingAuth || loading) return <div className={styles.loader || ''} style={{ padding: '40px', textAlign: 'center' }}>Synchronizing with Database...</div>;
 
   return (
     <div className={styles.container}>
