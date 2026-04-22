@@ -277,6 +277,7 @@
   font-size: 12px;
   font-weight: 700;
   display: inline-flex;
+  gap: 5px;
   align-items: center;
 }
 
