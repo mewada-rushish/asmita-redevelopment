@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { logoPath } from '@/assets/images';
@@ -11,16 +11,42 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [otp, setOtp] = useState('');
+
+  // --- Visibility Toggle States ---
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState('login'); // Only 'login' or 'forceChange'
+
+  // --- Security UI States ---
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutTimer, setLockoutTimer] = useState(0);
+
+  // Lockout countdown interval
+  useEffect(() => {
+    let timer;
+    if (lockoutTimer > 0) {
+      timer = setInterval(() => setLockoutTimer((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [lockoutTimer]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (lockoutTimer > 0) return;
+
     setError('');
+    setSuccess('');
     setIsLoading(true);
 
     try {
@@ -31,15 +57,34 @@ export default function LoginPage() {
       });
       const data = await res.json();
 
+      if (res.status === 429) {
+        const match = data.error?.match(/(\d+) minutes/);
+        if (match) setLockoutTimer(parseInt(match[1]) * 60);
+        setError(data.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (res.status === 401) {
+        setFailedAttempts((prev) => prev + 1);
+        setError(data.error || 'Wrong email or password');
+        setIsLoading(false);
+        return;
+      }
+
       if (!res.ok) {
         setError(data.error || 'Login failed');
         setIsLoading(false);
         return;
       }
 
+      setFailedAttempts(0);
+
+      // Trigger the mandatory password change
       if (data.requiresPasswordChange) {
         setMode('forceChange');
-        setError('Security Notice: Update temporary password.');
+        setError('Security Notice: You must update your temporary password.');
+        setShowPassword(false);
         setIsLoading(false);
         return;
       }
@@ -51,52 +96,6 @@ export default function LoginPage() {
       setError('Connection error.');
       setIsLoading(false);
     }
-  };
-
-  const handleResetRequest = async (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/auth/reset-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() })
-      });
-      if (res.ok) {
-        setSuccess('OTP sent to your email!');
-        setMode('forgot-otp');
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Email not found.');
-      }
-    } catch (err) { setError('Failed to send OTP.'); }
-    setIsLoading(false);
-  };
-
-  const handleFinalReset = async (e) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) return setError('Passwords do not match');
-
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), otp, newPassword })
-      });
-      if (res.ok) {
-        setSuccess('Password reset successful! Please sign in.');
-        setMode('login');
-        setPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Invalid OTP.');
-      }
-    } catch (err) { setError('Reset failed.'); }
-    setIsLoading(false);
   };
 
   const handleForceChange = async (e) => {
@@ -132,6 +131,7 @@ export default function LoginPage() {
         setError('Password updated, but auto-login failed. Please login manually.');
         setMode('login');
         setPassword('');
+        setShowPassword(false);
         setIsLoading(false);
       }
     } catch (err) {
@@ -148,57 +148,91 @@ export default function LoginPage() {
           <p style={{ marginTop: -5 }}>Property Tracker System</p>
         </div>
 
-        {error && <div className={styles.errorAlert}>{error}</div>}
-        {success && <div className={styles.successAlert}>{success}</div>}
+        {lockoutTimer > 0 ? (
+          <div className={styles.lockoutAlert}>
+            <i className="fa fa-lock"></i>
+            <div className={styles.lockoutText}>
+              <strong>Account Temporarily Locked</strong>
+              <p>Try again in <span>{formatTime(lockoutTimer)}</span></p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {error && (
+              <div className={styles.errorAlert}>
+                {error}
+                {failedAttempts > 0 && failedAttempts < 5 && (
+                  <div className={styles.attemptWarning}>
+                    <i className="fa fa-warning"></i> Warning: {5 - failedAttempts} attempts remaining before lockout.
+                  </div>
+                )}
+              </div>
+            )}
+            {success && <div className={styles.successAlert}>{success}</div>}
+          </>
+        )}
 
         {mode === 'login' && (
           <form onSubmit={handleLogin} className={styles.form}>
             <div className={styles.inputGroup}>
               <label>Email Address</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={lockoutTimer > 0} />
             </div>
             <div className={styles.inputGroup}>
               <label>Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <div className={styles.passwordWrapper}>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  required 
+                  disabled={lockoutTimer > 0}
+                />
+                <button type="button" className={styles.visibilityBtn} onClick={() => setShowPassword(!showPassword)} tabIndex="-1" disabled={lockoutTimer > 0}>
+                  <i className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
             </div>
-            <button type="submit" className={styles.loginBtn} disabled={isLoading}>
+            <button type="submit" className={styles.loginBtn} disabled={isLoading || lockoutTimer > 0}>
               {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Sign In'}
             </button>
             <div className={styles.formFooter}>
-              <button type="button" onClick={() => { setMode('forgot-email'); setError(''); setSuccess(''); }} className={styles.linkBtn}>Forgot Password?</button>
+              {/* ME FIX: Changed this button to simply inform the user to contact IT/Admin */}
+              <button 
+                type="button" 
+                onClick={() => {
+                  setError('Please contact your System Administrator to receive a temporary reset password.');
+                  setSuccess('');
+                }} 
+                className={styles.linkBtn} 
+                disabled={lockoutTimer > 0}
+              >
+                Forgot Password?
+              </button>
             </div>
-          </form>
-        )}
-
-        {mode === 'forgot-email' && (
-          <form onSubmit={handleResetRequest} className={styles.form}>
-            <div className={styles.inputGroup}>
-              <label>Enter Registered Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <button type="submit" className={styles.loginBtn} disabled={isLoading}>
-              {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Send Reset OTP'}
-            </button>
-            <button type="button" onClick={() => setMode('login')} className={styles.linkBtn}>Back to Login</button>
-          </form>
-        )}
-
-        {mode === 'forgot-otp' && (
-          <form onSubmit={handleFinalReset} className={styles.form}>
-            <div className={styles.inputGroup}><label>Enter 6-Digit OTP</label><input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength="6" /></div>
-            <div className={styles.inputGroup}><label>New Password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required /></div>
-            <div className={styles.inputGroup}><label>Confirm Password</label><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required /></div>
-            <button type="submit" className={styles.loginBtn} disabled={isLoading}>
-              {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Reset Password'}
-            </button>
-            <button type="button" onClick={() => setMode('login')} className={styles.linkBtn}>Cancel</button>
           </form>
         )}
 
         {mode === 'forceChange' && (
           <form onSubmit={handleForceChange} className={styles.form}>
-            <div className={styles.inputGroup}><label>New Password</label><input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required /></div>
-            <div className={styles.inputGroup}><label>Confirm Password</label><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required /></div>
+            <div className={styles.inputGroup}>
+              <label>New Password</label>
+              <div className={styles.passwordWrapper}>
+                <input type={showNewPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+                <button type="button" className={styles.visibilityBtn} onClick={() => setShowNewPassword(!showNewPassword)} tabIndex="-1">
+                  <i className={`fa ${showNewPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+            </div>
+            <div className={styles.inputGroup}>
+              <label>Confirm Password</label>
+              <div className={styles.passwordWrapper}>
+                <input type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                <button type="button" className={styles.visibilityBtn} onClick={() => setShowConfirmPassword(!showConfirmPassword)} tabIndex="-1">
+                  <i className={`fa ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+            </div>
             <button type="submit" className={styles.loginBtn} disabled={isLoading}>
               {isLoading ? <i className="fa fa-spinner fa-spin"></i> : 'Update & Continue'}
             </button>

@@ -66,6 +66,52 @@
   box-shadow: 0 0 0 3px rgba(30, 78, 196, 0.1);
 }
 
+.inputGroup input:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.passwordWrapper input {
+  width: 100%;
+  padding-right: 40px; 
+}
+
+.visibilityBtn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  font-size: 16px;
+}
+
+.visibilityBtn:hover {
+  color: #4b5563;
+}
+
+.visibilityBtn:focus {
+  outline: none;
+}
+
+.visibilityBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* PRIMARY LOGIN BUTTON */
 .loginBtn {
   background-color: #1e4ec4;
@@ -83,18 +129,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 45px; /* Ensures button doesn't jump when loader appears */
+  min-height: 45px; 
 }
 
 .loginBtn i {
   font-size: 18px;
 }
 
-.loginBtn:hover {
+.loginBtn:hover:not(:disabled) {
   background-color: #1a44ad;
 }
 
-.loginBtn:active {
+.loginBtn:active:not(:disabled) {
   transform: scale(0.98);
 }
 
@@ -121,22 +167,40 @@
   padding: 5px;
 }
 
-.linkBtn:hover {
+.linkBtn:hover:not(:disabled) {
   text-decoration: underline;
   color: #1a44ad;
 }
 
+.linkBtn:disabled {
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
 /* ALERTS & INFO */
 .errorAlert {
-  background-color: #fee2e2;
+  background-color: #fef2f2;
   color: #b91c1c;
-  padding: 12px;
+  padding: 14px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   margin-bottom: 20px;
   text-align: center;
   border: 1px solid #fecaca;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attemptWarning {
+  font-size: 12px;
+  color: #c2410c;
+  background: #fff7ed;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #fed7aa;
+  font-weight: 700;
 }
 
 .successAlert {
@@ -151,10 +215,66 @@
   border: 1px solid #bbf7d0;
 }
 
-.infoText {
-  color: #4b5563;
-  font-size: 14px;
-  line-height: 1.5;
-  text-align: center;
-  margin-bottom: 10px;
+/* PREMIUM LOCKOUT TIMER UI */
+.lockoutAlert {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  /* Adds a soft red glow behind the alert */
+  box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.15); 
+}
+
+/* Framing the icon in a circular badge */
+.lockoutAlert i {
+  font-size: 22px;
+  color: #dc2626;
+  background: #fee2e2;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.lockoutText {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lockoutText strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #7f1d1d;
+}
+
+.lockoutText p {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #991b1b;
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Spaces the text and the timer badge nicely */
+}
+
+/* Solid high-contrast pill for the timer */
+.lockoutText span {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 700;
+  background: #dc2626;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: none;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3); /* Tiny shadow on the badge itself */
 }

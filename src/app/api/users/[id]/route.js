@@ -24,7 +24,6 @@ export async function GET(req, { params }) {
         const { id } = await params;
         const db = await getDbConnection();
 
-        // ME FIX: Added is_temporary to the selection
         const [users] = await db.query(
             'SELECT id, name, email, phone, role, department, status, is_temporary FROM users WHERE id = ?',
             [id]
@@ -45,12 +44,15 @@ export async function PUT(req, { params }) {
 
         const { id } = await params;
         const body = await req.json();
-
-        // ME FIX: Destructure is_temporary from the body
         const { name, email, phone, password, role, department, status, is_temporary } = body;
 
         if (!name || !email) {
             return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+        }
+
+        // ME FIX: If password is provided for update, validate length is >= 8
+        if (password && password.trim() !== '' && password.length < 8) {
+            return NextResponse.json({ error: 'New password must be at least 8 characters long' }, { status: 400 });
         }
 
         const db = await getDbConnection();
@@ -60,14 +62,10 @@ export async function PUT(req, { params }) {
             return NextResponse.json({ error: 'Email is already in use by another account' }, { status: 409 });
         }
 
-        // Logic: If admin provides a new password, we force is_temporary to 1 
-        // unless they explicitly sent a different value for is_temporary.
         let targetTempStatus = is_temporary !== undefined ? is_temporary : 0;
 
         if (password && password.trim() !== '') {
             const hashedPassword = await bcrypt.hash(password, 10);
-
-            // If admin is changing the password, usually we want to force the user to change it again
             const finalTempStatus = is_temporary !== undefined ? is_temporary : 1;
 
             await db.query(

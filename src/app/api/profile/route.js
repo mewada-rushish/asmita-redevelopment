@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getDbConnection } from '@/lib/db';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 
 // Helper to securely get the logged-in user from the HTTP-only cookie
 async function getAuthUser() {
@@ -43,21 +42,21 @@ export async function PUT(req) {
         if (!userToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await req.json();
-        // Destructure the new admin fields as well
-        const { name, phone, email, role, department, currentPassword, newPassword } = body;
+        // ME FIX: Removed password fields from destructuring, this API no longer handles passwords
+        const { name, phone, email, role, department } = body;
 
         const db = await getDbConnection();
 
         // Fetch the user's role to securely verify admin privileges on the server side
         const [users] = await db.execute(
-            'SELECT id, password_hash, role FROM users WHERE email = ? OR id = ? LIMIT 1',
+            'SELECT id, role FROM users WHERE email = ? OR id = ? LIMIT 1',
             [userToken.email || '', userToken.id || 0]
         );
 
         if (users.length === 0) return NextResponse.json({ error: 'User not found' }, { status: 404 });
         const dbUser = users[0];
 
-        // 1. Handle Info Update
+        // Handle Info Update
         if (name) {
             const isSuperAdmin = dbUser.role === 'Super Admin' || dbUser.role === 'Admin';
 
@@ -76,23 +75,13 @@ export async function PUT(req) {
             }
         }
 
-        // 2. Handle Password Update (If requested)
-        if (currentPassword && newPassword) {
-            const isMatch = await bcrypt.compare(currentPassword, dbUser.password_hash);
-            if (!isMatch) {
-                return NextResponse.json({ error: 'Incorrect current password' }, { status: 401 });
-            }
-            if (newPassword.length < 6) {
-                return NextResponse.json({ error: 'New password must be at least 6 characters' }, { status: 400 });
-            }
-
-            const hashedNew = await bcrypt.hash(newPassword, 10);
-            await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hashedNew, dbUser.id]);
-        }
-
         return NextResponse.json({ success: true, message: 'Profile updated successfully' });
     } catch (error) {
         console.error('PROFILE_PUT_ERROR:', error);
+        // Added a quick catch for Duplicate Email errors
+        if (error.code === 'ER_DUP_ENTRY') {
+             return NextResponse.json({ error: 'That email is already in use by another account.' }, { status: 400 });
+        }
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

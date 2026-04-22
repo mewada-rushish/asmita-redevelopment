@@ -201,6 +201,7 @@ export default function PropertiesList() {
         <table className={styles.table}>
           <thead>
             <tr>
+              <th>ID</th>
               <th>BUILDING NAME</th>
               <th>LOCATION / AREA</th>
               <th>STATUS</th>
@@ -210,9 +211,21 @@ export default function PropertiesList() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="5" className={styles.loadingCell}>Loading...</td></tr>
+              <tr><td colSpan="6" className={styles.loadingCell}>Loading...</td></tr>
+            ) : currentItems.length === 0 ? (
+              <tr>
+                <td colSpan="6" className={styles.emptyCell}>
+                  <div className={styles.emptyState}>
+                    <i className="fa fa-folder-open-o"></i>
+                    <p>No properties found matching your search or filter.</p>
+                  </div>
+                </td>
+              </tr>
             ) : currentItems.map(p => (
               <tr key={p.id}>
+                <td>
+                  <span className={styles.idBadge}>#{p.id}</span>
+                </td>
                 <td>
                   <div className={styles.buildingCell}>
                     <div className={styles.logoPlaceholder}><i className="fa fa-building"></i></div>
@@ -249,11 +262,11 @@ export default function PropertiesList() {
                 <td>
                   <div className={styles.actionGroup}>
                     <button onClick={() => handleViewClick(p)} className={styles.viewBtn}>
-                      <i className="fa fa-eye"></i> View
+                      <i className="fa fa-eye"></i>
                     </button>
                     {canEdit ? (
                       <Link href={`/dashboard/edit/${p.id}`} className={styles.editBtn}>
-                        <i className="fa fa-pencil"></i> Edit
+                        <i className="fa fa-pencil"></i>
                       </Link>
                     ) : (
                       <span className={styles.viewOnlyText}>View Only</span>
@@ -297,47 +310,47 @@ export default function PropertiesList() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', color: '#1f2937' }}>{selectedProperty.property_name}</h2>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}>&times;</button>
+              <h2 style={{ margin: 0, fontSize: '20px', color: '#1f2937' }}>{selectedProperty.property_name}</h2>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#6b7280' }}>&times;</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
-                <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Address</strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{selectedProperty.address || 'N/A'}</p>
+                <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Address</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937' }}>{selectedProperty.address || 'N/A'}</p>
               </div>
 
               <div>
-                <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>PMC Details</strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{selectedProperty.pmc_name || 'N/A'} {selectedProperty.pmc_contact ? `(${selectedProperty.pmc_contact})` : ''}</p>
+                <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>PMC Details</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937' }}>{selectedProperty.pmc_name || 'N/A'} {selectedProperty.pmc_contact ? `(${selectedProperty.pmc_contact})` : ''}</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
                 <div>
-                  <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Chairman</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{safeParse(selectedProperty.chairman_details).name || 'N/A'}</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#4b5563' }}>{safeParse(selectedProperty.chairman_details).contact || ''}</p>
+                  <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Chairman</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937', fontWeight: 600 }}>{safeParse(selectedProperty.chairman_details).name || 'N/A'}</p>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>{safeParse(selectedProperty.chairman_details).contact || ''}</p>
                 </div>
                 <div>
-                  <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Secretary</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{safeParse(selectedProperty.secretary_details).name || 'N/A'}</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#4b5563' }}>{safeParse(selectedProperty.secretary_details).contact || ''}</p>
+                  <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Secretary</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937', fontWeight: 600 }}>{safeParse(selectedProperty.secretary_details).name || 'N/A'}</p>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>{safeParse(selectedProperty.secretary_details).contact || ''}</p>
                 </div>
                 <div>
-                  <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Treasurer</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{safeParse(selectedProperty.treasurer_details).name || 'N/A'}</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#4b5563' }}>{safeParse(selectedProperty.treasurer_details).contact || ''}</p>
+                  <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Treasurer</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937', fontWeight: 600 }}>{safeParse(selectedProperty.treasurer_details).name || 'N/A'}</p>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>{safeParse(selectedProperty.treasurer_details).contact || ''}</p>
                 </div>
                 <div>
-                  <strong style={{ fontSize: '12px', color: '#6b7280', textTransform: 'uppercase' }}>Responsible Person</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#1f2937' }}>{safeParse(selectedProperty.responsible_person_details).name || 'N/A'}</p>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#4b5563' }}>{safeParse(selectedProperty.responsible_person_details).contact || ''}</p>
+                  <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Responsible Person</strong>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937', fontWeight: 600 }}>{safeParse(selectedProperty.responsible_person_details).name || 'N/A'}</p>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>{safeParse(selectedProperty.responsible_person_details).contact || ''}</p>
                 </div>
               </div>
             </div>
 
-            <div style={{ marginTop: '25px', textAlign: 'right' }}>
-              <button onClick={closeModal} style={{ background: '#f3f4f6', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', color: '#374151' }}>Close</button>
+            <div style={{ marginTop: '30px', textAlign: 'right' }}>
+              <button onClick={closeModal} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '14px', color: '#374151' }}>Close</button>
             </div>
           </div>
         </div>

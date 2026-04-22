@@ -13,6 +13,9 @@ export default function EditUserPage() {
     const [fetching, setFetching] = useState(true);
     const [checkingAuth, setCheckingAuth] = useState(true);
     const [error, setError] = useState('');
+    
+    // ME ADDED: State for password visibility
+    const [showPassword, setShowPassword] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -22,7 +25,7 @@ export default function EditUserPage() {
         role: 'Field Executive',
         department: 'Sales',
         status: 1,
-        is_temporary: 0 // Added for security sync
+        is_temporary: 0 
     });
 
     useEffect(() => {
@@ -56,11 +59,11 @@ export default function EditUserPage() {
                     name: data.user.name || '',
                     email: data.user.email || '',
                     phone: data.user.phone || '',
-                    password: '', // Keep blank unless resetting
+                    password: '', 
                     role: data.user.role || 'Field Executive',
                     department: data.user.department || 'Sales',
                     status: Number(data.user.status) || 1,
-                    is_temporary: Number(data.user.is_temporary) || 0 // Population logic
+                    is_temporary: Number(data.user.is_temporary) || 0 
                 });
             } else {
                 setError(data.error || 'Failed to load user');
@@ -76,7 +79,6 @@ export default function EditUserPage() {
         const { name, value, type, checked } = e.target;
         let finalValue = type === 'checkbox' ? (checked ? 1 : 0) : value;
         
-        // Convert status to number for consistency
         if (name === 'status') {
             finalValue = Number(value);
         }
@@ -96,7 +98,7 @@ export default function EditUserPage() {
                 body: JSON.stringify({
                     ...formData,
                     status: Number(formData.status),
-                    is_temporary: Number(formData.is_temporary) // Payload sync
+                    is_temporary: Number(formData.is_temporary) 
                 })
             });
 
@@ -154,7 +156,24 @@ export default function EditUserPage() {
 
                     <div className={styles.formGroup}>
                         <label>Update Password</label>
-                        <input type="password" name="password" value={formData.password} onChange={handleChange} className={styles.input} placeholder="(Leave blank to keep current)" minLength="6" />
+                        <div className={styles.passwordWrapper}>
+                            <input 
+                                type={showPassword ? "text" : "password"} 
+                                name="password" 
+                                value={formData.password} 
+                                onChange={handleChange} 
+                                className={styles.input} 
+                                placeholder="(Leave blank to keep current)" 
+                                minLength="8" 
+                            />
+                            <button 
+                                type="button" 
+                                className={styles.visibilityBtn} 
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                <i className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div className={styles.formGroup}>
@@ -187,19 +206,20 @@ export default function EditUserPage() {
                         </select>
                     </div>
 
-                    {/* NEW: Force Password Change Toggle */}
-                    <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
-                        <input 
-                            type="checkbox" 
-                            name="is_temporary" 
-                            id="is_temporary" 
-                            checked={formData.is_temporary === 1} 
-                            onChange={handleChange} 
-                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                        />
-                        <label htmlFor="is_temporary" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: '600', color: '#1e4ec4' }}>
-                            Force user to change password on next login
-                        </label>
+                    {/* Checkbox moved to its own container to force next line */}
+                    <div className={styles.checkboxContainer}>
+                        <div className={styles.checkboxGroup}>
+                            <input 
+                                type="checkbox" 
+                                name="is_temporary" 
+                                id="is_temporary" 
+                                checked={formData.is_temporary === 1} 
+                                onChange={handleChange} 
+                            />
+                            <label htmlFor="is_temporary">
+                                Force user to change password on next login
+                            </label>
+                        </div>
                     </div>
 
                     <div className={styles.fullWidth}>
