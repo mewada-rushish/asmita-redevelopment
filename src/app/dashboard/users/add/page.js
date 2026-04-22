@@ -115,7 +115,8 @@ export default function AddUserPage() {
 
                     <div className={styles.formGroup}>
                         <label>Temporary Password *</label>
-                        <input type="password" name="password" required value={formData.password} onChange={handleChange} className={styles.input} placeholder="••••••••" minLength="6" />
+                        {/* ME FIX: Updated minLength to 8 to match system security rules */}
+                        <input type="password" name="password" required value={formData.password} onChange={handleChange} className={styles.input} placeholder="••••••••" minLength="8" />
                     </div>
 
                     <div className={styles.formGroup}>
@@ -149,7 +150,6 @@ export default function AddUserPage() {
                         </select>
                     </div>
 
-                    {/* ME FIX: Used clean CSS class instead of inline styles */}
                     <div className={styles.checkboxGroup}>
                         <input 
                             type="checkbox" 

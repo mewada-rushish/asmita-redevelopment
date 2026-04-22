@@ -38,7 +38,6 @@ export default function ProfilePage() {
             const res = await fetch('/api/profile', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                // ME FIX: Now sending email, role, and department too!
                 body: JSON.stringify({
                     name: user.name,
                     phone: user.phone,
@@ -63,10 +62,15 @@ export default function ProfilePage() {
         }
         setSavingPass(true);
         try {
-            const res = await fetch('/api/profile', {
-                method: 'PUT',
+            // Pointed to our dedicated, secure auth route
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new })
+                body: JSON.stringify({ 
+                    email: user.email, // Required by the change-password API
+                    currentPassword: passwords.current, 
+                    newPassword: passwords.new 
+                })
             });
             const data = await res.json();
             if (res.ok) {
@@ -83,7 +87,6 @@ export default function ProfilePage() {
 
     if (loading) return <div className={styles.loader}><i className="fa fa-spinner fa-spin fa-2x"></i></div>;
 
-    // ME FIX: Check if the user is an admin to unlock fields
     const isAdmin = user.role === 'Super Admin' || user.role === 'Admin';
 
     return (
@@ -114,7 +117,6 @@ export default function ProfilePage() {
                             <input type="text" value={user.phone || ''} onChange={e => setUser({ ...user, phone: e.target.value })} />
                         </div>
 
-                        {/* ME FIX: Conditionally locked based on isAdmin */}
                         <div className={styles.inputGroup}>
                             <label>Email Address {!isAdmin && <span className={styles.locked}>(Locked)</span>}</label>
                             <input
@@ -164,12 +166,14 @@ export default function ProfilePage() {
                             <input type="password" value={passwords.current} onChange={e => setPasswords({ ...passwords, current: e.target.value })} required />
                         </div>
                         <div className={styles.inputGroup}>
+                            {/* Updated minLength to 8 */}
                             <label>New Password</label>
-                            <input type="password" value={passwords.new} onChange={e => setPasswords({ ...passwords, new: e.target.value })} required minLength="6" />
+                            <input type="password" value={passwords.new} onChange={e => setPasswords({ ...passwords, new: e.target.value })} required minLength="8" />
                         </div>
                         <div className={styles.inputGroup}>
+                            {/* Updated minLength to 8 */}
                             <label>Confirm New Password</label>
-                            <input type="password" value={passwords.confirm} onChange={e => setPasswords({ ...passwords, confirm: e.target.value })} required minLength="6" />
+                            <input type="password" value={passwords.confirm} onChange={e => setPasswords({ ...passwords, confirm: e.target.value })} required minLength="8" />
                         </div>
                         <button type="submit" className={styles.dangerBtn} disabled={savingPass}>
                             {savingPass ? 'Updating...' : 'Change Password'}

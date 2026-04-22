@@ -48,8 +48,14 @@ export async function POST(req) {
         const body = await req.json();
         const { name, email, phone, password, role, department, status, is_temporary } = body;
 
+        // ME FIX: Updated password requirement check (if applicable, though usually handled by minLength)
         if (!name || !email || !password) {
             return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
+        }
+
+        // ME FIX: Backend validation for 8 characters
+        if (password.length < 8) {
+            return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
         }
 
         const db = await getDbConnection();
@@ -72,7 +78,7 @@ export async function POST(req) {
                 role || 'Field Executive',
                 department || 'Sales',
                 status !== undefined ? status : 1,
-                is_temporary !== undefined ? is_temporary : 1 // Defaults to 1 for new users
+                is_temporary !== undefined ? is_temporary : 1 
             ]
         );
 
