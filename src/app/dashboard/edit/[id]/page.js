@@ -8,7 +8,6 @@ import { uploadPropertyDocument } from '@/utils/uploadsUtil';
 import toast from 'react-hot-toast';
 import styles from './edit.module.css';
 
-// --- REUSABLE TOGGLE COMPONENT ---
 const YesNoToggle = ({ value, onChange }) => (
   <div className={styles.toggle} style={{ display: 'flex', gap: '5px' }}>
     <button
@@ -30,7 +29,6 @@ const YesNoToggle = ({ value, onChange }) => (
   </div>
 );
 
-// Improved JSON parser with fallback
 const safeJSONParse = (data, fallback = {}) => {
   if (!data) return fallback;
   if (typeof data === 'object') return data;
@@ -45,7 +43,6 @@ const safeJSONParse = (data, fallback = {}) => {
   }
 };
 
-// Helper to format MySQL Date strings to YYYY-MM-DD for HTML inputs
 const formatDateForInput = (dateStr) => {
   if (!dateStr) return '';
   return new Date(dateStr).toISOString().split('T')[0];
@@ -62,15 +59,15 @@ export default function EditPropertyPage() {
   const [executives, setExecutives] = useState([]);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // ME ADDED: Track user role to conditionally show the Add Executive button
   const [currentUserRole, setCurrentUserRole] = useState('');
-
-  // ME ADDED: Modal States for creating an executive
   const [showExecModal, setShowExecModal] = useState(false);
   const [creatingExec, setCreatingExec] = useState(false);
   const [newExecForm, setNewExecForm] = useState({
     name: '', email: '', phone: '', password: ''
   });
+
+  // ME ADDED: Bulk Upload Toggle State
+  const [isBulkUpload, setIsBulkUpload] = useState(false);
 
   const checklistNames = [
     "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
@@ -79,7 +76,6 @@ export default function EditPropertyPage() {
     "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
   ];
 
-  // --- FLATTENED STATE ---
   const [formData, setFormData] = useState({
     category: 'Redevelopment', status: 'Not Approached',
     pmc_name: '', pmc_contact: '', assigned_cp_id: '',
@@ -88,26 +84,24 @@ export default function EditPropertyPage() {
     land_owner_name: '', land_type: 'Freehold', cts_survey_no: '',
     is_society_registered: 0, registration_no: '',
     total_plot_area: '', total_flats: '', total_shops: '', total_flat_area_combined: '',
-
     chairman_details: { name: '', contact: '' },
     secretary_details: { name: '', contact: '' },
     treasurer_details: { name: '', contact: '' },
     responsible_person_details: { name: '', contact: '' },
     extra_committee_members: [{ name: '', contact: '' }],
-
     has_approved_plan: 0, has_oc: 0, has_cc: 0, has_legal_dispute: 0,
     is_mortgaged: 0, has_redevelopment_interest: 0, flat_measure_allowed: 0,
-
     physical_survey: 'Not Started', physical_survey_records: '',
     banner_permission_allowed: 0, hoarding_date: '',
     document_checklist: checklistNames.map(name => ({ label: name, value: 0, file_name: '' })),
-    document_remarks: '', interest_letter_file: '', architect_submitted: 0,
-
+    document_remarks: '', 
+    interest_letter_file: '', 
+    has_interest_letter: 0, // ME ADDED: Tracker for Yes/No toggle
+    architect_submitted: 0,
     interaction_history: '', offer_letter_status: 'Not Sent', offer_meeting_track: '',
     offer_acceptance_date: '', sgm_completed: 0, da_agreement_status: 'Not Started'
   });
 
-  // Verify Role & Set Current User Role
   useEffect(() => {
     const verifyAccess = async () => {
       try {
@@ -126,11 +120,9 @@ export default function EditPropertyPage() {
         setCheckingAuth(false);
       }
     };
-
     verifyAccess();
   }, [router]);
 
-  // ME ADDED: Extracted to a function so we can refresh it after modal submission
   const fetchExecutives = async () => {
     try {
       const res = await fetch('/api/users');
@@ -148,7 +140,6 @@ export default function EditPropertyPage() {
     fetchExecutives();
   }, []);
 
-  // Fetch Existing Property Data
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -157,7 +148,6 @@ export default function EditPropertyPage() {
         const data = await res.json();
 
         if (data) {
-          // Standardize checklist ensuring all items exist and file_name is tracked
           let incomingCheck = safeJSONParse(data.document_checklist, []);
           const standardizedCheck = checklistNames.map((name, i) => {
             const existing = incomingCheck[i] || {};
@@ -211,6 +201,7 @@ export default function EditPropertyPage() {
             document_checklist: standardizedCheck,
             document_remarks: data.document_remarks || '',
             interest_letter_file: data.interest_letter_file || '',
+            has_interest_letter: data.has_interest_letter !== undefined ? data.has_interest_letter : (data.interest_letter_file ? 1 : 0), // Handle backward compatibility
             architect_submitted: data.architect_submitted || 0,
 
             interaction_history: data.interaction_history || '',
@@ -230,7 +221,6 @@ export default function EditPropertyPage() {
     if (id) loadData();
   }, [id]);
 
-  // ME ADDED: Secure Local Proxy Map Fetch
   const handleAddressSearch = async (query) => {
     setFormData(prev => ({ ...prev, address: query }));
     if (query.length < 3) {
@@ -241,7 +231,6 @@ export default function EditPropertyPage() {
     try {
       const res = await fetch(`/api/location?address=${encodeURIComponent(query)}`);
       const data = await res.json();
-      
       if (data.status === 'OK') {
         setSuggestions(data.results.slice(0, 5).map(r => ({
           formatted_address: r.formatted_address,
@@ -271,7 +260,6 @@ export default function EditPropertyPage() {
 
   const handleBlur = () => setTimeout(() => setShowSuggestions(false), 300);
 
-  // Helpers
   const updateField = (key, val) => setFormData(p => ({ ...p, [key]: val }));
   const updateContact = (role, key, val) => setFormData(p => ({ ...p, [role]: { ...p[role], [key]: val } }));
 
@@ -291,7 +279,7 @@ export default function EditPropertyPage() {
     setFormData(prev => ({ ...prev, lat: c.lat, lng: c.lng }));
   }, []);
 
-  // --- UPLOAD HANDLERS ---
+  // --- UPLOADS ---
   const executeDocUpload = async (index, inputId, item) => {
     const fileInput = document.getElementById(inputId);
     const file = fileInput?.files[0];
@@ -330,7 +318,36 @@ export default function EditPropertyPage() {
     });
   };
 
-  // ME ADDED: Function to handle modal submission
+  // ME ADDED: Bulk Upload Handler
+  const executeBulkUpload = async () => {
+    const fileInput = document.getElementById('bulk_upload_input');
+    const files = fileInput?.files;
+    
+    if (!files || files.length === 0) {
+      return toast.error("Please select files to upload.");
+    }
+
+    const newBulkItems = [];
+    const uploadPromises = Array.from(files).map(async (file) => {
+      const res = await uploadPropertyDocument(file, id, formData.property_name, `Bulk: ${file.name}`, null);
+      if (res.success) {
+        newBulkItems.push({ label: `Bulk: ${file.name}`, value: 1, file_name: res.fileKey });
+      } else {
+        throw new Error(`Failed to upload ${file.name}`);
+      }
+    });
+
+    toast.promise(Promise.all(uploadPromises), {
+      loading: `Uploading ${files.length} files...`,
+      success: () => {
+        updateField('document_checklist', [...formData.document_checklist, ...newBulkItems]);
+        fileInput.value = '';
+        return "Bulk upload completed!";
+      },
+      error: "Some files failed to upload."
+    });
+  };
+
   const handleCreateExecutive = async (e) => {
     e.preventDefault();
     if (newExecForm.password.length < 8) return toast.error("Temporary password must be at least 8 characters");
@@ -426,7 +443,6 @@ export default function EditPropertyPage() {
               {executives.map(ex => <option key={ex.id} value={ex.id}>{ex.name} ({ex.role})</option>)}
             </select>
 
-            {/* ME ADDED: Conditionally rendered quick-add button */}
             {isAdmin && (
               <button 
                 type="button" 
@@ -584,40 +600,63 @@ export default function EditPropertyPage() {
           </Accordion>
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
-            <div className={styles.inputGroup} style={{ marginBottom: '20px' }}>
-              <label className={styles.label}>Interest Letter Upload</label>
-
-              {!formData.interest_letter_file ? (
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="file" id="interest_letter_upload" className={styles.fileInput} />
-                  <button type="button" className={styles.uploadBtn} onClick={executeInterestLetterUpload}>
-                    <i className="fa fa-upload"></i> Upload
-                  </button>
-                </div>
-              ) : (
-                <div className={styles.submittedWrapper}>
-                  <span className={styles.submittedChip}>
-                    <i className="fa fa-check-circle" style={{ marginRight: '4px' }}></i> Uploaded
-                  </span>
-                  <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
-                    Re-upload
-                  </button>
-                </div>
-              )}
+            {/* ME ADDED: Bulk Upload Toggle */}
+            <div className={styles.checkRow} style={{ marginBottom: '15px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <strong>Enable Bulk Document Upload?</strong>
+              <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
             </div>
 
+            {/* ME ADDED: Bulk Upload Input (Allows Multiple) */}
+            {isBulkUpload && (
+              <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                <input type="file" multiple id="bulk_upload_input" className={styles.fileInput} />
+                <button type="button" className={styles.uploadBtn} onClick={executeBulkUpload}>
+                  <i className="fa fa-upload"></i> Upload All
+                </button>
+              </div>
+            )}
+
             <div className={styles.checklist}>
+              {/* ME ADDED: Interest Letter standardized with Yes/No Toggle */}
+              <div className={styles.checkItem}>
+                <div className={styles.docItemHeader}>
+                  <span>Interest Letter</span>
+                  {!formData.interest_letter_file ? (
+                    <YesNoToggle value={formData.has_interest_letter} onChange={(v) => updateField('has_interest_letter', v)} />
+                  ) : (
+                    <div className={styles.submittedWrapper}>
+                      <span className={styles.submittedChip}>
+                        <i className="fa fa-check-circle"></i> Submitted
+                      </span>
+                      <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
+                        Re-upload
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {formData.has_interest_letter === 1 && !formData.interest_letter_file && !isBulkUpload && (
+                  <div className={styles.uploadRow}>
+                    <input type="file" id="interest_letter_upload" className={styles.fileInput} />
+                    <button type="button" className={styles.uploadBtn} onClick={executeInterestLetterUpload}>
+                      <i className="fa fa-upload"></i> Upload
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Standard Checklist Documents */}
               {formData.document_checklist.map((item, i) => (
                 <div key={i} className={styles.checkItem}>
                   <div className={styles.docItemHeader}>
-                    <span>{i + 1}. {item.label}</span>
+                    <span>{item.label.startsWith('Bulk:') ? item.label : `${i + 1}. ${item.label}`}</span>
 
                     {!item.file_name ? (
                       <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
                     ) : (
                       <div className={styles.submittedWrapper}>
                         <span className={styles.submittedChip}>
-                          <i className="fa fa-check-circle" style={{ marginRight: '4px' }}></i> Submitted
+                          <i className="fa fa-check-circle"></i> Submitted
                         </span>
                         <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
                           Re-upload
@@ -626,7 +665,8 @@ export default function EditPropertyPage() {
                     )}
                   </div>
 
-                  {item.value === 1 && !item.file_name && (
+                  {/* ME FIX: Only show individual upload input if bulk upload is DISABLED */}
+                  {item.value === 1 && !item.file_name && !isBulkUpload && (
                     <div className={styles.uploadRow}>
                       <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
                       <button
@@ -695,7 +735,6 @@ export default function EditPropertyPage() {
         </main>
       </div>
 
-      {/* ME ADDED: Quick Add Executive Modal (Click to close restricted) */}
       {showExecModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
