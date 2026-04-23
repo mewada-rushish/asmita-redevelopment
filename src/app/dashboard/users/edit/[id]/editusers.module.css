@@ -53,6 +53,58 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
+/* --- LOCKED ACCOUNT ALERT UI --- */
+.lockedAlert {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lockedAlertHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #991b1b;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.lockedAlertHeader i {
+  font-size: 18px;
+  color: #dc2626;
+}
+
+.unlockCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #fca5a5;
+  width: fit-content;
+}
+
+.unlockCheckbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.unlockCheckbox label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #b91c1c;
+  cursor: pointer;
+  user-select: none;
+  margin: 0;
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -91,6 +143,68 @@
   outline: none;
   border-color: #1e4ec4;
   box-shadow: 0 0 0 3px rgba(30, 78, 196, 0.1);
+}
+
+/* --- PASSWORD VISIBILITY CSS --- */
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.passwordWrapper input {
+  width: 100%;
+  padding-right: 40px; /* Make room for the eye icon */
+}
+
+.visibilityBtn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  font-size: 16px;
+}
+
+.visibilityBtn:hover {
+  color: #4b5563;
+}
+
+.visibilityBtn:focus {
+  outline: none;
+}
+
+/* Force Checkbox to full width row */
+.checkboxContainer {
+  grid-column: 1 / -1;
+  padding: 10px 0;
+}
+
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.checkboxGroup input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checkboxGroup label {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e4ec4;
+  user-select: none;
 }
 
 .submitBtn {
@@ -134,34 +248,10 @@
 }
 
 @media (max-width: 768px) {
-  .container {
-    padding: 15px;
-  }
-
-  .header h1 {
-    font-size: 18px;
-  }
-
-  .formCard {
-    padding: 20px 15px;
-  }
-
-  .formGrid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-
-  .formGroup[style*="flex"] {
-    align-items: flex-start !important;
-    margin-top: 5px !important;
-  }
-
-  .formGroup[style*="flex"] label {
-    font-size: 13px;
-    line-height: 1.4;
-  }
-
-  .submitBtn {
-    padding: 16px;
-  }
+  .container { padding: 15px; }
+  .header h1 { font-size: 18px; }
+  .formCard { padding: 20px 15px; }
+  .formGrid { grid-template-columns: 1fr; gap: 15px; }
+  .checkboxGroup label { font-size: 13px; line-height: 1.4; }
+  .submitBtn { padding: 16px; }
 }
