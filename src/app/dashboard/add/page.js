@@ -38,15 +38,15 @@ export default function AddPropertyPage() {
   const [executives, setExecutives] = useState([]);
   const [checkingAuth, setCheckingAuth] = useState(true);
   
-  // ME ADDED: Track user role to conditionally show the Add Executive button
   const [currentUserRole, setCurrentUserRole] = useState('');
-
-  // ME ADDED: Modal States for creating an executive
   const [showExecModal, setShowExecModal] = useState(false);
   const [creatingExec, setCreatingExec] = useState(false);
   const [newExecForm, setNewExecForm] = useState({
     name: '', email: '', phone: '', password: ''
   });
+
+  // ME ADDED: Bulk Upload Toggle State
+  const [isBulkUpload, setIsBulkUpload] = useState(false);
 
   useEffect(() => {
     const verifyAccess = async () => {
@@ -54,7 +54,7 @@ export default function AddPropertyPage() {
         const res = await fetch('/api/auth/me');
         const data = await res.json();
         const role = (data.user?.role || data.role || '').toLowerCase();
-        setCurrentUserRole(role); // Save role for later
+        setCurrentUserRole(role); 
         const allowed = ['super admin', 'admin', 'crm', 'crm team', 'sales', 'field executive', 'channel partner', 'cp'];
         if (!allowed.includes(role)) {
           router.push('/dashboard');
@@ -93,12 +93,14 @@ export default function AddPropertyPage() {
     physical_survey: 'Not Started', physical_survey_records: '',
     banner_permission_allowed: 0, hoarding_date: '',
     document_checklist: checklistNames.map(name => ({ label: name, value: 0, file_name: '' })),
-    document_remarks: '', interest_letter_file: '', architect_submitted: 0,
+    document_remarks: '', 
+    interest_letter_file: '', 
+    has_interest_letter: 0, // ME ADDED: Tracker for Yes/No toggle
+    architect_submitted: 0,
     interaction_history: '', offer_letter_status: 'Not Sent', offer_meeting_track: '',
     offer_acceptance_date: '', sgm_completed: 0, da_agreement_status: 'Not Started'
   });
 
-  // ME ADDED: Extracted to a function so we can refresh it after modal submission
   const fetchExecutives = async () => {
     try {
       const res = await fetch('/api/users');
@@ -118,20 +120,17 @@ export default function AddPropertyPage() {
 
   const handleAddressSearch = async (query) => {
     setFormData(prev => ({ ...prev, address: query }));
-    
     if (query.length < 3) {
       setSuggestions([]); 
       setShowSuggestions(false); 
       return;
     }
-    
     setSearching(true); 
     setShowSuggestions(true);
 
     try {
       const res = await fetch(`/api/location?address=${encodeURIComponent(query)}`);
       const data = await res.json();
-      
       if (data.status === 'OK') {
         setSuggestions(data.results.slice(0, 5).map(r => ({
           formatted_address: r.formatted_address,
@@ -180,6 +179,7 @@ export default function AddPropertyPage() {
     setFormData(prev => ({ ...prev, lat: c.lat, lng: c.lng }));
   }, []);
 
+  // --- UPLOADS ---
   const executeDocUpload = async (index, inputId, item) => {
     const fileInput = document.getElementById(inputId);
     const file = fileInput?.files[0];
@@ -218,7 +218,36 @@ export default function AddPropertyPage() {
     });
   };
 
-  // ME ADDED: Function to handle modal submission
+  // ME ADDED: Bulk Upload Handler
+  const executeBulkUpload = async () => {
+    const fileInput = document.getElementById('bulk_upload_input');
+    const files = fileInput?.files;
+    
+    if (!files || files.length === 0) {
+      return toast.error("Please select files to upload.");
+    }
+
+    const newBulkItems = [];
+    const uploadPromises = Array.from(files).map(async (file) => {
+      const res = await uploadPropertyDocument(file, null, formData.property_name, `Bulk: ${file.name}`, null);
+      if (res.success) {
+        newBulkItems.push({ label: `Bulk: ${file.name}`, value: 1, file_name: res.fileKey });
+      } else {
+        throw new Error(`Failed to upload ${file.name}`);
+      }
+    });
+
+    toast.promise(Promise.all(uploadPromises), {
+      loading: `Uploading ${files.length} files...`,
+      success: () => {
+        updateField('document_checklist', [...formData.document_checklist, ...newBulkItems]);
+        fileInput.value = '';
+        return "Bulk upload completed!";
+      },
+      error: "Some files failed to upload."
+    });
+  };
+
   const handleCreateExecutive = async (e) => {
     e.preventDefault();
     if (newExecForm.password.length < 8) return toast.error("Temporary password must be at least 8 characters");
@@ -233,7 +262,7 @@ export default function AddPropertyPage() {
           role: 'Field Executive',
           department: 'Sales',
           status: 1,
-          is_temporary: 1 // Force password change
+          is_temporary: 1 
         })
       });
 
@@ -242,7 +271,7 @@ export default function AddPropertyPage() {
         toast.success("Executive created successfully!");
         setNewExecForm({ name: '', email: '', phone: '', password: '' });
         setShowExecModal(false);
-        await fetchExecutives(); // Silently fetch the updated list
+        await fetchExecutives(); 
       } else {
         toast.error(data.error || "Failed to create user.");
       }
@@ -317,7 +346,6 @@ export default function AddPropertyPage() {
               {executives.map(ex => <option key={ex.id} value={ex.id}>{ex.name} ({ex.role})</option>)}
             </select>
 
-            {/* ME ADDED: Conditionally rendered quick-add button */}
             {isAdmin && (
               <button 
                 type="button" 
@@ -475,33 +503,56 @@ export default function AddPropertyPage() {
           </Accordion>
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
-            <div className={styles.inputGroup} style={{ marginBottom: '20px' }}>
-              <label className={styles.label}>Interest Letter Upload</label>
-
-              {!formData.interest_letter_file ? (
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="file" id="interest_letter_upload" className={styles.fileInput} />
-                  <button type="button" className={styles.uploadBtn} onClick={executeInterestLetterUpload}>
-                    <i className="fa fa-upload"></i> Upload
-                  </button>
-                </div>
-              ) : (
-                <div className={styles.submittedWrapper}>
-                  <span className={styles.submittedChip}>
-                    <i className="fa fa-check-circle"></i> Uploaded
-                  </span>
-                  <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
-                    Re-upload
-                  </button>
-                </div>
-              )}
+            {/* ME ADDED: Bulk Upload Toggle */}
+            <div className={styles.checkRow} style={{ marginBottom: '15px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <strong>Enable Bulk Document Upload?</strong>
+              <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
             </div>
 
+            {/* ME ADDED: Bulk Upload Input (Allows Multiple) */}
+            {isBulkUpload && (
+              <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                <input type="file" multiple id="bulk_upload_input" className={styles.fileInput} />
+                <button type="button" className={styles.uploadBtn} onClick={executeBulkUpload}>
+                  <i className="fa fa-upload"></i> Upload All
+                </button>
+              </div>
+            )}
+
             <div className={styles.checklist}>
+              {/* ME ADDED: Interest Letter standardized with Yes/No Toggle */}
+              <div className={styles.checkItem}>
+                <div className={styles.docItemHeader}>
+                  <span>Interest Letter</span>
+                  {!formData.interest_letter_file ? (
+                    <YesNoToggle value={formData.has_interest_letter} onChange={(v) => updateField('has_interest_letter', v)} />
+                  ) : (
+                    <div className={styles.submittedWrapper}>
+                      <span className={styles.submittedChip}>
+                        <i className="fa fa-check-circle"></i> Submitted
+                      </span>
+                      <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
+                        Re-upload
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {formData.has_interest_letter === 1 && !formData.interest_letter_file && !isBulkUpload && (
+                  <div className={styles.uploadRow}>
+                    <input type="file" id="interest_letter_upload" className={styles.fileInput} />
+                    <button type="button" className={styles.uploadBtn} onClick={executeInterestLetterUpload}>
+                      <i className="fa fa-upload"></i> Upload
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Standard Checklist Documents */}
               {formData.document_checklist.map((item, i) => (
                 <div key={i} className={styles.checkItem}>
                   <div className={styles.docItemHeader}>
-                    <span>{i + 1}. {item.label}</span>
+                    <span>{item.label.startsWith('Bulk:') ? item.label : `${i + 1}. ${item.label}`}</span>
 
                     {!item.file_name ? (
                       <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
@@ -517,7 +568,8 @@ export default function AddPropertyPage() {
                     )}
                   </div>
 
-                  {item.value === 1 && !item.file_name && (
+                  {/* ME FIX: Only show individual upload input if bulk upload is DISABLED */}
+                  {item.value === 1 && !item.file_name && !isBulkUpload && (
                     <div className={styles.uploadRow}>
                       <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
                       <button
@@ -586,7 +638,6 @@ export default function AddPropertyPage() {
         </main>
       </div>
 
-      {/* ME ADDED: Quick Add Executive Modal */}
       {showExecModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
