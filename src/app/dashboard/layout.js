@@ -36,17 +36,13 @@ export default function DashboardLayout({ children }) {
 
   // --- RBAC MENU LOGIC ---
 
-  // 1. Add Property: Available to CRM, Sales, Field Executives, and Admins
   const canAddProperty = ['Super Admin', 'Admin', 'CRM', 'Sales', 'Field Executive'].includes(user.role);
   if (canAddProperty) {
-    // Inserts "Add Property" right after Global Map (at index 1)
     navItems.splice(1, 0, { name: 'Add Property', path: '/dashboard/add', icon: 'fa-plus-circle' });
   }
 
-  // 2. User Management: Restricted to Admins & Super Admins ONLY
-  const canManageUsers = ['Super Admin', 'Admin'].includes(user.role);
+  const canManageUsers = ['Super Admin'].includes(user.role);
   if (canManageUsers) {
-    // Appends "User Management" to the bottom of the list
     navItems.push({ name: 'User Management', path: '/dashboard/users', icon: 'fa-users' });
   }
 
@@ -88,7 +84,6 @@ export default function DashboardLayout({ children }) {
 
       <aside className={`${styles.sidebar} ${isMenuOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.sidebarHeader}>
-          {/* SIDEBAR LOGO: Branded home link */}
           <Link href="/dashboard" className={styles.sidebarLogoLink} onClick={closeMenu}>
             <Image
               src={logoPath}

@@ -307,13 +307,6 @@ textarea.input {
   background: #f9fafb;
 }
 
-.docItemHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
 .submittedWrapper {
   display: flex;
   align-items: center;
@@ -412,6 +405,93 @@ textarea.input {
   transform: translateY(-1px);
 }
 
+/* ===============================
+   QUICK ADD EXECUTIVE BTN & MODAL
+=============================== */
+.quickAddBtn {
+  background: none;
+  border: none;
+  color: #1e4ec4;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s;
+}
+
+.quickAddBtn:hover {
+  color: #163a94;
+  text-decoration: underline;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0; 
+  left: 0; 
+  right: 0; 
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.modalContent {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 10px;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalHeader h2 i {
+  color: #1e4ec4;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #6b7280;
+  transition: color 0.2s;
+}
+
+.closeBtn:hover {
+  color: #ef4444;
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.modalBody .inputGroup {
+  margin-bottom: 12px;
+}
 
 /* ===============================
    EXTRAS
@@ -431,15 +511,6 @@ textarea.input {
   margin: 25px 0;
   border: 0;
   border-top: 1px solid #e5e7eb;
-}
-
-.uploadArea {
-  border: 2px dashed #d1d5db;
-  border-radius: 12px;
-  padding: 40px;
-  text-align: center;
-  color: #94a3b8;
-  background: #f8fafc;
 }
 
 .addBtn {

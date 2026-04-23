@@ -37,6 +37,16 @@ export default function AddPropertyPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [executives, setExecutives] = useState([]);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  
+  // ME ADDED: Track user role to conditionally show the Add Executive button
+  const [currentUserRole, setCurrentUserRole] = useState('');
+
+  // ME ADDED: Modal States for creating an executive
+  const [showExecModal, setShowExecModal] = useState(false);
+  const [creatingExec, setCreatingExec] = useState(false);
+  const [newExecForm, setNewExecForm] = useState({
+    name: '', email: '', phone: '', password: ''
+  });
 
   useEffect(() => {
     const verifyAccess = async () => {
@@ -44,6 +54,7 @@ export default function AddPropertyPage() {
         const res = await fetch('/api/auth/me');
         const data = await res.json();
         const role = (data.user?.role || data.role || '').toLowerCase();
+        setCurrentUserRole(role); // Save role for later
         const allowed = ['super admin', 'admin', 'crm', 'crm team', 'sales', 'field executive', 'channel partner', 'cp'];
         if (!allowed.includes(role)) {
           router.push('/dashboard');
@@ -87,44 +98,64 @@ export default function AddPropertyPage() {
     offer_acceptance_date: '', sgm_completed: 0, da_agreement_status: 'Not Started'
   });
 
+  // ME ADDED: Extracted to a function so we can refresh it after modal submission
+  const fetchExecutives = async () => {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      if (data.success && data.users) {
+        const cps = data.users.filter(u => u.role === 'Channel Partner' || u.role === 'Field Executive');
+        setExecutives(cps);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    fetch('/api/users')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.users) {
-          const cps = data.users.filter(u => u.role === 'Channel Partner' || u.role === 'Field Executive');
-          setExecutives(cps);
-        }
-      }).catch(err => console.error(err));
+    fetchExecutives();
   }, []);
 
   const handleAddressSearch = async (query) => {
     setFormData(prev => ({ ...prev, address: query }));
+    
     if (query.length < 3) {
-      setSuggestions([]); setShowSuggestions(false); return;
+      setSuggestions([]); 
+      setShowSuggestions(false); 
+      return;
     }
-    setSearching(true); setShowSuggestions(true);
+    
+    setSearching(true); 
+    setShowSuggestions(true);
 
     try {
-      const apiKey = process.env.NEXT_PUBLIC_GMAP_KEY;
-      if (apiKey) {
-        const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&components=locality:Mira+Bhayandar&key=${apiKey}`);
-        const data = await res.json();
-        if (data.status === 'OK') {
-          setSuggestions(data.results.slice(0, 5).map(r => ({
-            properties: { name: r.formatted_address.replace(', Maharashtra, India', ''), city: '' },
-            geometry: { coordinates: [r.geometry.location.lng, r.geometry.location.lat] }
-          })));
-        } else setSuggestions([]);
+      const res = await fetch(`/api/location?address=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      
+      if (data.status === 'OK') {
+        setSuggestions(data.results.slice(0, 5).map(r => ({
+          formatted_address: r.formatted_address,
+          lat: r.geometry.location.lat,
+          lng: r.geometry.location.lng
+        })));
+      } else {
+        setSuggestions([]);
       }
-    } catch (e) { console.error(e); }
-    finally { setSearching(false); }
+    } catch (e) { 
+      console.error('Search failed:', e); 
+      setSuggestions([]);
+    } finally { 
+      setSearching(false); 
+    }
   };
 
-  const selectSuggestion = (f) => {
-    const [lon, lat] = f.geometry.coordinates;
-    const finalAddress = f.properties.city ? `${f.properties.name}, ${f.properties.city}` : f.properties.name;
-    setFormData(prev => ({ ...prev, address: finalAddress, lat, lng: lon }));
+  const selectSuggestion = (suggestion) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      address: suggestion.formatted_address, 
+      lat: suggestion.lat, 
+      lng: suggestion.lng 
+    }));
     setShowSuggestions(false);
   };
 
@@ -187,6 +218,41 @@ export default function AddPropertyPage() {
     });
   };
 
+  // ME ADDED: Function to handle modal submission
+  const handleCreateExecutive = async (e) => {
+    e.preventDefault();
+    if (newExecForm.password.length < 8) return toast.error("Temporary password must be at least 8 characters");
+    
+    setCreatingExec(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newExecForm,
+          role: 'Field Executive',
+          department: 'Sales',
+          status: 1,
+          is_temporary: 1 // Force password change
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success("Executive created successfully!");
+        setNewExecForm({ name: '', email: '', phone: '', password: '' });
+        setShowExecModal(false);
+        await fetchExecutives(); // Silently fetch the updated list
+      } else {
+        toast.error(data.error || "Failed to create user.");
+      }
+    } catch (err) {
+      toast.error("Network error while creating executive.");
+    } finally {
+      setCreatingExec(false);
+    }
+  };
+
   if (checkingAuth) {
     return (
       <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '250px' }}>
@@ -225,6 +291,8 @@ export default function AddPropertyPage() {
     setLoading(false);
   };
 
+  const isAdmin = currentUserRole === 'super admin' || currentUserRole === 'admin';
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -248,6 +316,17 @@ export default function AddPropertyPage() {
               <option value="">-- Select Executive --</option>
               {executives.map(ex => <option key={ex.id} value={ex.id}>{ex.name} ({ex.role})</option>)}
             </select>
+
+            {/* ME ADDED: Conditionally rendered quick-add button */}
+            {isAdmin && (
+              <button 
+                type="button" 
+                onClick={() => setShowExecModal(true)} 
+                className={styles.quickAddBtn}
+              >
+                <i className="fa fa-plus-circle"></i> Add New Executive
+              </button>
+            )}
           </div>
 
           <div className={styles.card}>
@@ -279,7 +358,7 @@ export default function AddPropertyPage() {
                 <ul className={styles.suggestions}>
                   {suggestions.map((s, i) => (
                     <li key={i} onMouseDown={() => selectSuggestion(s)} style={{ cursor: 'pointer' }}>
-                      <i className="fa fa-map-marker"></i> {s.properties.name}{s.properties.city ? `, ${s.properties.city}` : ''}
+                      <i className="fa fa-map-marker"></i> {s.formatted_address}
                     </li>
                   ))}
                 </ul>
@@ -506,6 +585,50 @@ export default function AddPropertyPage() {
           </Accordion>
         </main>
       </div>
+
+      {/* ME ADDED: Quick Add Executive Modal */}
+      {showExecModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fa fa-user-plus"></i> Add Field Executive</h2>
+              <button className={styles.closeBtn} onClick={() => setShowExecModal(false)}>
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+            <form onSubmit={handleCreateExecutive} className={styles.modalBody}>
+              <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#6b7280' }}>
+                This creates a new <strong>Field Executive</strong> account. They will be forced to change their password upon first login.
+              </p>
+              
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Full Name *</label>
+                <input type="text" required className={styles.input} value={newExecForm.name} onChange={e => setNewExecForm(prev => ({...prev, name: e.target.value}))} placeholder="John Doe" />
+              </div>
+              
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Email Address *</label>
+                <input type="email" required className={styles.input} value={newExecForm.email} onChange={e => setNewExecForm(prev => ({...prev, email: e.target.value}))} placeholder="john@asmita.com" />
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Contact Number</label>
+                <input type="text" className={styles.input} value={newExecForm.phone} onChange={e => setNewExecForm(prev => ({...prev, phone: e.target.value}))} placeholder="+91 9876543210" />
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Temporary Password *</label>
+                <input type="text" required minLength="8" className={styles.input} value={newExecForm.password} onChange={e => setNewExecForm(prev => ({...prev, password: e.target.value}))} placeholder="Min 8 characters" />
+              </div>
+
+              <button type="submit" disabled={creatingExec} className={styles.saveBtn} style={{ marginTop: '10px' }}>
+                {creatingExec ? 'Creating...' : 'Create Executive'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -14,8 +14,11 @@ export default function EditUserPage() {
     const [checkingAuth, setCheckingAuth] = useState(true);
     const [error, setError] = useState('');
     
-    // ME ADDED: State for password visibility
     const [showPassword, setShowPassword] = useState(false);
+
+    // ME ADDED: States for lockout management
+    const [isCurrentlyLocked, setIsCurrentlyLocked] = useState(false);
+    const [unlockAccount, setUnlockAccount] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -55,16 +58,22 @@ export default function EditUserPage() {
             const data = await res.json();
 
             if (res.ok && data.success) {
+                const u = data.user;
                 setFormData({
-                    name: data.user.name || '',
-                    email: data.user.email || '',
-                    phone: data.user.phone || '',
+                    name: u.name || '',
+                    email: u.email || '',
+                    phone: u.phone || '',
                     password: '', 
-                    role: data.user.role || 'Field Executive',
-                    department: data.user.department || 'Sales',
-                    status: Number(data.user.status) || 1,
-                    is_temporary: Number(data.user.is_temporary) || 0 
+                    role: u.role || 'Field Executive',
+                    department: u.department || 'Sales',
+                    status: Number(u.status) || 1,
+                    is_temporary: Number(u.is_temporary) || 0 
                 });
+
+                // Determine if user is locked (Requires backend to return failed_attempts/locked_until)
+                const locked = u.failed_attempts >= 5 || (u.locked_until && new Date(u.locked_until) > new Date());
+                setIsCurrentlyLocked(locked);
+
             } else {
                 setError(data.error || 'Failed to load user');
             }
@@ -78,11 +87,7 @@ export default function EditUserPage() {
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         let finalValue = type === 'checkbox' ? (checked ? 1 : 0) : value;
-        
-        if (name === 'status') {
-            finalValue = Number(value);
-        }
-        
+        if (name === 'status') finalValue = Number(value);
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
@@ -98,7 +103,8 @@ export default function EditUserPage() {
                 body: JSON.stringify({
                     ...formData,
                     status: Number(formData.status),
-                    is_temporary: Number(formData.is_temporary) 
+                    is_temporary: Number(formData.is_temporary),
+                    unlock_account: unlockAccount // Send unlock request to backend
                 })
             });
 
@@ -138,6 +144,25 @@ export default function EditUserPage() {
             <form className={styles.formCard} onSubmit={handleSubmit}>
                 {error && <div className={styles.error}><i className="fa fa-exclamation-circle"></i> {error}</div>}
 
+                {/* ME ADDED: Locked Account Alert Banner */}
+                {isCurrentlyLocked && (
+                    <div className={styles.lockedAlert}>
+                        <div className={styles.lockedAlertHeader}>
+                            <i className="fa fa-lock"></i>
+                            This account is currently locked due to too many failed login attempts.
+                        </div>
+                        <div className={styles.unlockCheckbox}>
+                            <input 
+                                type="checkbox" 
+                                id="unlock_account" 
+                                checked={unlockAccount} 
+                                onChange={(e) => setUnlockAccount(e.target.checked)} 
+                            />
+                            <label htmlFor="unlock_account">Unlock this account</label>
+                        </div>
+                    </div>
+                )}
+
                 <div className={styles.formGrid}>
                     <div className={styles.formGroup}>
                         <label>Full Name *</label>
@@ -170,6 +195,7 @@ export default function EditUserPage() {
                                 type="button" 
                                 className={styles.visibilityBtn} 
                                 onClick={() => setShowPassword(!showPassword)}
+                                tabIndex="-1"
                             >
                                 <i className={`fa ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                             </button>
@@ -206,7 +232,6 @@ export default function EditUserPage() {
                         </select>
                     </div>
 
-                    {/* Checkbox moved to its own container to force next line */}
                     <div className={styles.checkboxContainer}>
                         <div className={styles.checkboxGroup}>
                             <input 

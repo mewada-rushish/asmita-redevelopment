@@ -11,10 +11,14 @@ export default function UsersPage() {
     const [currentUserRole, setCurrentUserRole] = useState('');
     const router = useRouter();
 
-    // --- ME ADDED: Reset Password States ---
     const [resetUser, setResetUser] = useState(null);
     const [tempPassword, setTempPassword] = useState('');
     const [isResetting, setIsResetting] = useState(false);
+
+    // --- ME ADDED: Search & Pagination States ---
+    const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -91,7 +95,6 @@ export default function UsersPage() {
         }
     };
 
-    // --- ME ADDED: Admin Reset Submission logic ---
     const handleResetPassword = async (e) => {
         e.preventDefault();
         if (tempPassword.length < 8) {
@@ -122,6 +125,21 @@ export default function UsersPage() {
         }
     };
 
+    // --- ME ADDED: Filter & Pagination Logic ---
+    const filteredUsers = users.filter(u => {
+        const term = searchTerm.toLowerCase();
+        return (u.name || '').toLowerCase().includes(term) ||
+               (u.email || '').toLowerCase().includes(term) ||
+               (u.phone || '').toLowerCase().includes(term) ||
+               (u.department || '').toLowerCase().includes(term) ||
+               (u.role || '').toLowerCase().includes(term);
+    });
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
+
     const isAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
 
     return (
@@ -135,15 +153,29 @@ export default function UsersPage() {
                 )}
             </header>
 
+            {/* ME ADDED: Search Bar & Filter Section */}
+            <div className={styles.filterBar}>
+                <div className={styles.searchWrapper}>
+                    <i className="fa fa-search"></i>
+                    <input 
+                        type="text" 
+                        placeholder="Search by name, email, role or phone..." 
+                        value={searchTerm}
+                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                        className={styles.searchInput}
+                    />
+                </div>
+            </div>
+
             <div className={styles.tableContainer}>
                 {loading && users.length === 0 ? (
                     <div className={styles.emptyState}>
                         <i className="fa fa-spinner fa-spin fa-2x"></i>
                         <p>Loading staff records...</p>
                     </div>
-                ) : users.length === 0 ? (
+                ) : currentUsers.length === 0 ? (
                     <div className={styles.emptyState}>
-                        <p>No users found in the system.</p>
+                        <p>No users found matching your search.</p>
                     </div>
                 ) : (
                     <table className={styles.table}>
@@ -155,14 +187,14 @@ export default function UsersPage() {
                                 <th>Contact</th>
                                 <th>Role & Dept</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th className={styles.stickyCol}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map((user, index) => (
+                            {currentUsers.map((user, index) => (
                                 <tr key={user.id}>
                                     <td style={{ textAlign: 'center', fontWeight: '600', color: '#9ca3af' }}>
-                                        {index + 1}
+                                        {indexOfFirstItem + index + 1}
                                     </td>
                                     <td style={{ textAlign: 'center', fontFamily: 'monospace', color: '#4b5563', fontWeight: '600' }}>
                                         #{user.id}
@@ -195,7 +227,7 @@ export default function UsersPage() {
                                             {user.status === 1 ? 'Active' : 'Inactive'}
                                         </span>
                                     </td>
-                                    <td>
+                                    <td className={styles.stickyCol}>
                                         <div className={styles.actionsCell}>
                                             <button
                                                 onClick={() => setViewUser(user)}
@@ -211,10 +243,9 @@ export default function UsersPage() {
                                                         <i className="fa fa-edit"></i>
                                                     </Link>
 
-                                                    {/* ME ADDED: Reset Password Button */}
                                                     <button
                                                         onClick={() => setResetUser(user)}
-                                                        className={`${styles.actionBtn} ${styles.editBtn}`} // reusing editBtn styling for neutral color
+                                                        className={`${styles.actionBtn} ${styles.editBtn}`} 
                                                         style={{ color: '#d97706', borderColor: '#fcd34d', backgroundColor: '#fffbeb' }}
                                                         title="Force Password Reset"
                                                     >
@@ -238,6 +269,40 @@ export default function UsersPage() {
                     </table>
                 )}
             </div>
+
+            {/* ME ADDED: Pagination Controls */}
+            {!loading && filteredUsers.length > 0 && (
+                <div className={styles.paginationFooter}>
+                    <div className={styles.perPage}>
+                        <span>Show</span>
+                        <select 
+                            value={itemsPerPage} 
+                            onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                        >
+                            <option value={5}>5</option>
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                        </select>
+                        <span>entries</span>
+                    </div>
+                    <div className={styles.pages}>
+                        <button 
+                            disabled={currentPage === 1} 
+                            onClick={() => setCurrentPage(p => p - 1)}
+                        >
+                            <i className="fa fa-chevron-left"></i>
+                        </button>
+                        <span>Page <strong>{currentPage}</strong> of {totalPages}</span>
+                        <button 
+                            disabled={currentPage === totalPages} 
+                            onClick={() => setCurrentPage(p => p + 1)}
+                        >
+                            <i className="fa fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* View User Modal */}
             {viewUser && (
@@ -273,7 +338,7 @@ export default function UsersPage() {
                 </div>
             )}
 
-            {/* ME ADDED: Reset Password Modal */}
+            {/* Reset Password Modal */}
             {resetUser && (
                 <div className={styles.modalOverlay} onClick={() => { setResetUser(null); setTempPassword(''); }}>
                     <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -319,7 +384,6 @@ export default function UsersPage() {
                     </div>
                 </div>
             )}
-
         </div>
     );
 }
