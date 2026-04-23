@@ -4,24 +4,26 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-async function verifyAdmin() {
+// ME FIX: Changed from returning a boolean to returning the decoded user data
+async function getAuthUser() {
     const cookieStore = await cookies();
     const token = cookieStore.get('asmita_auth')?.value;
-    if (!token) return false;
+    if (!token) return null;
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        return decoded.role === 'Super Admin' || decoded.role === 'Admin';
+        return jwt.verify(token, process.env.JWT_SECRET);
     } catch (e) {
-        return false;
+        return null;
     }
 }
 
 export async function GET() {
     try {
-        const isAdmin = await verifyAdmin();
-        if (!isAdmin) {
-            return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
+        const user = await getAuthUser();
+        
+        // ME FIX: Anyone with a valid login token can GET the user list (needed for dropdowns)
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized access' }, { status: 401 });
         }
 
         const db = await getDbConnection();
@@ -40,20 +42,20 @@ export async function GET() {
 
 export async function POST(req) {
     try {
-        const isAdmin = await verifyAdmin();
-        if (!isAdmin) {
-            return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
+        const user = await getAuthUser();
+        
+        // ME FIX: STRICT CHECK - Only Admins can POST (create) new users
+        if (!user || (user.role !== 'Super Admin' && user.role !== 'Admin')) {
+            return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
         const body = await req.json();
         const { name, email, phone, password, role, department, status, is_temporary } = body;
 
-        // ME FIX: Updated password requirement check (if applicable, though usually handled by minLength)
         if (!name || !email || !password) {
             return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
         }
 
-        // ME FIX: Backend validation for 8 characters
         if (password.length < 8) {
             return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
         }
