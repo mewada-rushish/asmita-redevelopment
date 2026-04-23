@@ -418,6 +418,14 @@
 
   .tableContainer { border-radius: 8px; }
 
+  /* --- ME ADDED: Disable Sticky Column on Mobile --- */
+  .stickyCol, 
+  .table th.stickyCol {
+    position: static;
+    box-shadow: none;
+    z-index: auto;
+  }
+
   /* Stack Pagination on Mobile */
   .paginationFooter {
     flex-direction: column;
