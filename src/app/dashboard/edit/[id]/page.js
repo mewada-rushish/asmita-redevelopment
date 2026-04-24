@@ -48,6 +48,13 @@ const formatDateForInput = (dateStr) => {
   return new Date(dateStr).toISOString().split('T')[0];
 };
 
+const checklistNames = [
+  "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
+  "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
+  "Property Tax Bill", "Conveyance Deed", "Society Bye-laws", "Electricity Bill", "Water Bill", "Encumbrance Cert",
+  "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
+];
+
 export default function EditPropertyPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -56,29 +63,25 @@ export default function EditPropertyPage() {
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  
   const [executives, setExecutives] = useState([]);
+  const [admins, setAdmins] = useState([]);
+  
   const [checkingAuth, setCheckingAuth] = useState(true);
-
   const [currentUserRole, setCurrentUserRole] = useState('');
   const [showExecModal, setShowExecModal] = useState(false);
   const [creatingExec, setCreatingExec] = useState(false);
+  
   const [newExecForm, setNewExecForm] = useState({
     name: '', email: '', phone: '', password: ''
   });
 
-  // ME ADDED: Bulk Upload Toggle State
   const [isBulkUpload, setIsBulkUpload] = useState(false);
-
-  const checklistNames = [
-    "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
-    "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
-    "Property Tax Bill", "Conveyance Deed", "Society Bye-laws", "Electricity Bill", "Water Bill", "Encumbrance Cert",
-    "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
-  ];
 
   const [formData, setFormData] = useState({
     category: 'Redevelopment', status: 'Not Approached',
-    pmc_name: '', pmc_contact: '', assigned_cp_id: '',
+    pmc_name: '', pmc_contact: '', 
+    assigned_cp_id: '', assigned_admin_id: '', 
     property_name: '', locality: '', address: '',
     lat: 19.2813, lng: 72.8693,
     land_owner_name: '', land_type: 'Freehold', cts_survey_no: '',
@@ -96,7 +99,7 @@ export default function EditPropertyPage() {
     document_checklist: checklistNames.map(name => ({ label: name, value: 0, file_name: '' })),
     document_remarks: '', 
     interest_letter_file: '', 
-    has_interest_letter: 0, // ME ADDED: Tracker for Yes/No toggle
+    has_interest_letter: 0,
     architect_submitted: 0,
     interaction_history: '', offer_letter_status: 'Not Sent', offer_meeting_track: '',
     offer_acceptance_date: '', sgm_completed: 0, da_agreement_status: 'Not Started'
@@ -123,13 +126,16 @@ export default function EditPropertyPage() {
     verifyAccess();
   }, [router]);
 
-  const fetchExecutives = async () => {
+  const fetchUsersData = async () => {
     try {
       const res = await fetch('/api/users');
       const data = await res.json();
       if (data.success && data.users) {
-        const cps = data.users.filter(u => u.role === 'Channel Partner' || u.role === 'Field Executive');
+        const cps = data.users.filter(u => u.role === 'CP' || u.role === 'Channel Partner' || u.role === 'Field Executive');
         setExecutives(cps);
+        
+        const adminList = data.users.filter(u => u.role === 'Admin');
+        setAdmins(adminList);
       }
     } catch (err) {
       console.error(err);
@@ -137,7 +143,7 @@ export default function EditPropertyPage() {
   };
 
   useEffect(() => {
-    fetchExecutives();
+    fetchUsersData();
   }, []);
 
   useEffect(() => {
@@ -164,6 +170,7 @@ export default function EditPropertyPage() {
             pmc_name: data.pmc_name || '',
             pmc_contact: data.pmc_contact || '',
             assigned_cp_id: data.assigned_cp_id || '',
+            assigned_admin_id: data.assigned_admin_id || '', 
             property_name: data.property_name || '',
             locality: data.locality || '',
             address: data.address || '',
@@ -201,7 +208,7 @@ export default function EditPropertyPage() {
             document_checklist: standardizedCheck,
             document_remarks: data.document_remarks || '',
             interest_letter_file: data.interest_letter_file || '',
-            has_interest_letter: data.has_interest_letter !== undefined ? data.has_interest_letter : (data.interest_letter_file ? 1 : 0), // Handle backward compatibility
+            has_interest_letter: data.has_interest_letter !== undefined ? data.has_interest_letter : (data.interest_letter_file ? 1 : 0),
             architect_submitted: data.architect_submitted || 0,
 
             interaction_history: data.interaction_history || '',
@@ -221,41 +228,60 @@ export default function EditPropertyPage() {
     if (id) loadData();
   }, [id]);
 
-  const handleAddressSearch = async (query) => {
+  const handleAddressSearch = (query) => {
     setFormData(prev => ({ ...prev, address: query }));
+    
     if (query.length < 3) {
-      setSuggestions([]); setShowSuggestions(false); return;
-    }
-    setSearching(true); setShowSuggestions(true);
-
-    try {
-      const res = await fetch(`/api/location?address=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      if (data.status === 'OK') {
-        setSuggestions(data.results.slice(0, 5).map(r => ({
-          formatted_address: r.formatted_address,
-          lat: r.geometry.location.lat,
-          lng: r.geometry.location.lng
-        })));
-      } else {
-        setSuggestions([]);
-      }
-    } catch (e) { 
-      console.error("Geocoding Error", e); 
       setSuggestions([]); 
-    } finally { 
-      setSearching(false); 
+      setShowSuggestions(false); 
+      return;
+    }
+    
+    setSearching(true); 
+    setShowSuggestions(true);
+
+    if (typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.places) {
+      const autocompleteService = new window.google.maps.places.AutocompleteService();
+      
+      autocompleteService.getPlacePredictions({
+        input: `${query}, Mira Bhayandar`,
+        componentRestrictions: { country: 'in' },
+      }, (predictions, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+          setSuggestions(predictions.map(p => ({
+            description: p.description,
+            place_id: p.place_id
+          })));
+        } else {
+          setSuggestions([]);
+        }
+        setSearching(false);
+      });
+    } else {
+      console.warn("Google Maps Places API not loaded yet.");
+      setSearching(false);
     }
   };
 
   const selectSuggestion = (suggestion) => {
     setFormData(prev => ({ 
       ...prev, 
-      address: suggestion.formatted_address, 
-      lat: suggestion.lat, 
-      lng: suggestion.lng 
+      address: suggestion.description
     }));
     setShowSuggestions(false);
+
+    if (typeof window !== 'undefined' && window.google && window.google.maps) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ placeId: suggestion.place_id }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          setFormData(prev => ({
+            ...prev,
+            lat: results[0].geometry.location.lat(),
+            lng: results[0].geometry.location.lng()
+          }));
+        }
+      });
+    }
   };
 
   const handleBlur = () => setTimeout(() => setShowSuggestions(false), 300);
@@ -279,7 +305,6 @@ export default function EditPropertyPage() {
     setFormData(prev => ({ ...prev, lat: c.lat, lng: c.lng }));
   }, []);
 
-  // --- UPLOADS ---
   const executeDocUpload = async (index, inputId, item) => {
     const fileInput = document.getElementById(inputId);
     const file = fileInput?.files[0];
@@ -318,7 +343,6 @@ export default function EditPropertyPage() {
     });
   };
 
-  // ME ADDED: Bulk Upload Handler
   const executeBulkUpload = async () => {
     const fileInput = document.getElementById('bulk_upload_input');
     const files = fileInput?.files;
@@ -359,7 +383,7 @@ export default function EditPropertyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newExecForm,
-          role: 'Field Executive',
+          role: 'CP', 
           department: 'Sales',
           status: 1,
           is_temporary: 1 
@@ -368,15 +392,15 @@ export default function EditPropertyPage() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        toast.success("Executive created successfully!");
+        toast.success("CP created successfully!");
         setNewExecForm({ name: '', email: '', phone: '', password: '' });
         setShowExecModal(false);
-        await fetchExecutives(); 
+        await fetchUsersData(); 
       } else {
         toast.error(data.error || "Failed to create user.");
       }
     } catch (err) {
-      toast.error("Network error while creating executive.");
+      toast.error("Network error while creating CP.");
     } finally {
       setCreatingExec(false);
     }
@@ -432,14 +456,20 @@ export default function EditPropertyPage() {
         <aside className={styles.sidebar}>
           <div className={styles.card}>
             <label className={styles.label}>📍 Map Location</label>
-            <MapViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={handleLocationSelect} />
+            {/* ME FIX: Added mapStyle="satellite" here to default to the hybrid view */}
+            <MapViewer 
+              initialLat={formData.lat} 
+              initialLng={formData.lng} 
+              onLocationSelect={handleLocationSelect} 
+              mapStyle="satellite" 
+            />
             <div className={styles.coords}>Current Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
           </div>
 
           <div className={styles.card}>
-            <label className={styles.label}>👤 Assign Executive / CP</label>
+            <label className={styles.label}>👤 Assign CP</label>
             <select className={styles.input} value={formData.assigned_cp_id} onChange={e => updateField('assigned_cp_id', e.target.value)}>
-              <option value="">-- Select Executive --</option>
+              <option value="">-- Select CP --</option>
               {executives.map(ex => <option key={ex.id} value={ex.id}>{ex.name} ({ex.role})</option>)}
             </select>
 
@@ -448,8 +478,9 @@ export default function EditPropertyPage() {
                 type="button" 
                 onClick={() => setShowExecModal(true)} 
                 className={styles.quickAddBtn}
+                style={{ marginTop: '10px' }}
               >
-                <i className="fa fa-plus-circle"></i> Add New Executive
+                <i className="fa fa-plus-circle"></i> Add New CP
               </button>
             )}
           </div>
@@ -467,8 +498,18 @@ export default function EditPropertyPage() {
             <div className={styles.inputGroup}><label className={styles.label}>Building / Society Name</label><input className={styles.input} value={formData.property_name} onChange={e => updateField('property_name', e.target.value)} /></div>
 
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label className={styles.label}>PMC / Co-ordinator Name</label><input className={styles.input} placeholder="Name of CP/PMC" value={formData.pmc_name} onChange={e => updateField('pmc_name', e.target.value)} /></div>
+              <div className={styles.inputGroup}><label className={styles.label}>PMC / Co-ordinator Name</label><input className={styles.input} placeholder="Name of PMC" value={formData.pmc_name} onChange={e => updateField('pmc_name', e.target.value)} /></div>
               <div className={styles.inputGroup}><label className={styles.label}>PMC Contact No.</label><input className={styles.input} placeholder="Phone Number" value={formData.pmc_contact} onChange={e => updateField('pmc_contact', e.target.value)} /></div>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Reporting Manager *</label>
+              <select className={styles.input} value={formData.assigned_admin_id} onChange={e => updateField('assigned_admin_id', e.target.value)} required>
+                <option value="">-- Select Admin --</option>
+                {admins.map(admin => (
+                  <option key={admin.id} value={admin.id}>{admin.name}</option>
+                ))}
+              </select>
             </div>
 
             <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 1000 }}>
@@ -483,7 +524,7 @@ export default function EditPropertyPage() {
                 <ul className={styles.suggestions}>
                   {suggestions.map((s, i) => (
                     <li key={i} onMouseDown={() => selectSuggestion(s)} style={{ cursor: 'pointer' }}>
-                      <i className="fa fa-map-marker"></i> {s.formatted_address}
+                      <i className="fa fa-map-marker"></i> {s.description}
                     </li>
                   ))}
                 </ul>
@@ -600,13 +641,11 @@ export default function EditPropertyPage() {
           </Accordion>
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
-            {/* ME ADDED: Bulk Upload Toggle */}
             <div className={styles.checkRow} style={{ marginBottom: '15px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
               <strong>Enable Bulk Document Upload?</strong>
               <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
             </div>
 
-            {/* ME ADDED: Bulk Upload Input (Allows Multiple) */}
             {isBulkUpload && (
               <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
                 <input type="file" multiple id="bulk_upload_input" className={styles.fileInput} />
@@ -617,7 +656,6 @@ export default function EditPropertyPage() {
             )}
 
             <div className={styles.checklist}>
-              {/* ME ADDED: Interest Letter standardized with Yes/No Toggle */}
               <div className={styles.checkItem}>
                 <div className={styles.docItemHeader}>
                   <span>Interest Letter</span>
@@ -645,7 +683,6 @@ export default function EditPropertyPage() {
                 )}
               </div>
 
-              {/* Standard Checklist Documents */}
               {formData.document_checklist.map((item, i) => (
                 <div key={i} className={styles.checkItem}>
                   <div className={styles.docItemHeader}>
@@ -665,7 +702,6 @@ export default function EditPropertyPage() {
                     )}
                   </div>
 
-                  {/* ME FIX: Only show individual upload input if bulk upload is DISABLED */}
                   {item.value === 1 && !item.file_name && !isBulkUpload && (
                     <div className={styles.uploadRow}>
                       <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
@@ -739,14 +775,14 @@ export default function EditPropertyPage() {
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
-              <h2><i className="fa fa-user-plus"></i> Add Field Executive</h2>
+              <h2><i className="fa fa-user-plus"></i> Add CP</h2>
               <button className={styles.closeBtn} onClick={() => setShowExecModal(false)}>
                 <i className="fa fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleCreateExecutive} className={styles.modalBody}>
               <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#6b7280' }}>
-                This creates a new <strong>Field Executive</strong> account. They will be forced to change their password upon first login.
+                This creates a new <strong>CP</strong> account. They will be forced to change their password upon first login.
               </p>
               
               <div className={styles.inputGroup}>
@@ -770,7 +806,7 @@ export default function EditPropertyPage() {
               </div>
 
               <button type="submit" disabled={creatingExec} className={styles.saveBtn} style={{ marginTop: '10px' }}>
-                {creatingExec ? 'Creating...' : 'Create Executive'}
+                {creatingExec ? 'Creating...' : 'Create CP'}
               </button>
             </form>
           </div>

@@ -15,7 +15,7 @@ export default function AddUserPage() {
         email: '',
         phone: '',
         password: '',
-        role: 'Field Executive',
+        role: 'CP', // ME FIX: Default role changed to CP
         department: 'Sales',
         status: 1,
         is_temporary: 1 
@@ -115,7 +115,6 @@ export default function AddUserPage() {
 
                     <div className={styles.formGroup}>
                         <label>Temporary Password *</label>
-                        {/* ME FIX: Updated minLength to 8 to match system security rules */}
                         <input type="password" name="password" required value={formData.password} onChange={handleChange} className={styles.input} placeholder="••••••••" minLength="8" />
                     </div>
 
@@ -124,9 +123,9 @@ export default function AddUserPage() {
                         <select name="role" value={formData.role} onChange={handleChange} className={styles.input}>
                             <option value="Super Admin">Super Admin</option>
                             <option value="Admin">Admin</option>
-                            <option value="Field Executive">Field Executive</option>
+                            {/* ME FIX: Field Executive replaced with CP */}
+                            <option value="CP">CP</option> 
                             <option value="View Only">View Only</option>
-
                             <option value="CRM">CRM</option>
                         </select>
                     </div>

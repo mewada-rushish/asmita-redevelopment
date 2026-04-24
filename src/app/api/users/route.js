@@ -4,87 +4,65 @@ import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-async function verifyAdmin() {
+// Reusable function to grab user data without enforcing Admin
+async function getAuthUser() {
     const cookieStore = await cookies();
     const token = cookieStore.get('asmita_auth')?.value;
-    if (!token) return false;
-
+    if (!token) return null;
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        return decoded.role === 'Super Admin' || decoded.role === 'Admin';
+        return jwt.verify(token, process.env.JWT_SECRET);
     } catch (e) {
-        return false;
+        return null;
     }
 }
 
 export async function GET() {
     try {
-        const isAdmin = await verifyAdmin();
-        if (!isAdmin) {
-            return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
-        }
+        // SECURITY: Any logged-in user can read the list (for dropdowns)
+        const user = await getAuthUser();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const db = await getDbConnection();
         const [users] = await db.query(
             `SELECT id, name, email, phone, role, status, department, is_temporary, created_at 
-             FROM users 
-             ORDER BY created_at DESC`
+             FROM users ORDER BY created_at DESC`
         );
 
         return NextResponse.json({ success: true, users });
     } catch (error) {
-        console.error(error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
 
 export async function POST(req) {
     try {
-        const isAdmin = await verifyAdmin();
-        if (!isAdmin) {
-            return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
+        // SECURITY: Strictly Admins only for user creation
+        const user = await getAuthUser();
+        if (!user || (user.role !== 'Super Admin' && user.role !== 'Admin')) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
         const body = await req.json();
         const { name, email, phone, password, role, department, status, is_temporary } = body;
 
-        // ME FIX: Updated password requirement check (if applicable, though usually handled by minLength)
-        if (!name || !email || !password) {
-            return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
-        }
-
-        // ME FIX: Backend validation for 8 characters
-        if (password.length < 8) {
-            return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
-        }
+        if (!name || !email || !password) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+        if (password.length < 8) return NextResponse.json({ error: 'Password too short' }, { status: 400 });
 
         const db = await getDbConnection();
 
         const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email]);
-        if (existing.length > 0) {
-            return NextResponse.json({ error: 'Email is already in use' }, { status: 409 });
-        }
+        if (existing.length > 0) return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
         await db.query(
             `INSERT INTO users (name, email, phone, password_hash, role, department, status, is_temporary) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                name,
-                email.toLowerCase(),
-                phone || null,
-                hashedPassword,
-                role || 'Field Executive',
-                department || 'Sales',
-                status !== undefined ? status : 1,
-                is_temporary !== undefined ? is_temporary : 1 
-            ]
+            [name, email.toLowerCase(), phone || null, hashedPassword, role || 'Field Executive', department || 'Sales', status !== undefined ? status : 1, is_temporary !== undefined ? is_temporary : 1]
         );
 
         return NextResponse.json({ success: true, message: 'User created successfully' });
     } catch (error) {
-        console.error(error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
