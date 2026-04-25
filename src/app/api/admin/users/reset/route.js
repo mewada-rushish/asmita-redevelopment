@@ -1,10 +1,32 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { cookies } from 'next/headers';
 import { getDbConnection } from '@/lib/db';
+
+// Helper function to verify Admin access
+async function verifyAdmin() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('asmita_auth')?.value;
+  if (!token) return false;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded.role === 'Super Admin' || decoded.role === 'Admin';
+  } catch (e) {
+    return false;
+  }
+}
 
 export async function POST(req) {
   try {
-    // Now accepting the password typed by the Admin
+    // --- 1. SECURITY FIX: Block unauthorized access ---
+    const isAdmin = await verifyAdmin();
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+    // --------------------------------------------------
+
     const { userId, temporaryPassword } = await req.json();
 
     if (!userId || !temporaryPassword) {

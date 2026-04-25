@@ -5,12 +5,18 @@
 }
 
 .header {
+  position: sticky;
+  top: 20px;
+  z-index: 99999;
+  background-color: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 15px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 15px;
 }
 
 .header h1 {
@@ -455,10 +461,21 @@
   }
 
   .header {
+    position: fixed;
+    top: auto; 
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 1rem;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 15px;
   }
+
+  .header h1 {
+    font-size: 16px;
+  }
+
 
   .saveBtn {
     width: 100%;

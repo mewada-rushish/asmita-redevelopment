@@ -7,7 +7,7 @@ import {
   Map,
   AdvancedMarker,
   useMap,
-  useApiIsLoaded // ME ADDED: Import the loading hook
+  useApiIsLoaded
 } from '@vis.gl/react-google-maps';
 import { logoPath } from '@/assets/images';
 
@@ -15,11 +15,10 @@ const MIRA_ROAD_COORDS = { lat: 19.2813, lng: 72.8693 };
 
 function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocationSelect }) {
   const map = useMap();
-  const apiIsLoaded = useApiIsLoaded(); // ME ADDED: Track API loading state
+  const apiIsLoaded = useApiIsLoaded();
 
   // 1. Calculate Bounds (Static size: 1 item [properties])
   const bounds = useMemo(() => {
-    // ME FIX: Added !apiIsLoaded to ensure google.maps.LatLngBounds is ready
     if (!apiIsLoaded || typeof window === 'undefined' || !window.google || properties.length === 0) return null;
 
     const b = new google.maps.LatLngBounds();
@@ -29,7 +28,7 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
       }
     });
     return b;
-  }, [apiIsLoaded, properties]); // ME ADDED: apiIsLoaded to dependencies
+  }, [apiIsLoaded, properties]);
 
   // 2. Auto-fit logic (Static size: 3 items)
   useEffect(() => {
@@ -79,12 +78,9 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
         style={{ width: '100%', height: '100%' }}
         defaultZoom={15}
         defaultCenter={MIRA_ROAD_COORDS}
-        mapTypeId={mapStyle === 'satellite' ? 'satellite' : 'roadmap'}
-
-        /* ME FIX: 'cooperative' stops the map from stealing your scroll! 
-           Requires 2 fingers on mobile or Ctrl+Scroll on Desktop to zoom/pan. */
+        /* ME FIX: Use 'hybrid' instead of 'satellite' so markers and roads appear */
+        mapTypeId={mapStyle === 'satellite' ? 'hybrid' : 'roadmap'}
         gestureHandling={'cooperative'}
-
         disableDefaultUI={true}
         mapId={process.env.NEXT_PUBLIC_GMAP_ID}
         onClick={(e) => {
@@ -173,8 +169,9 @@ export default function GoogleMapsViewer({
 }) {
   const containerHeight = onLocationSelect ? '400px' : '100%';
 
+  // ME FIX: Added the places library so we can use AutocompleteService in forms
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GMAP_KEY}>
+    <APIProvider apiKey={process.env.NEXT_PUBLIC_GMAP_KEY} libraries={['places']}>
       <div style={{
         height: containerHeight, width: '100%',
         borderRadius: '8px', overflow: 'hidden',

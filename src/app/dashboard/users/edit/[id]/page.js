@@ -16,7 +16,6 @@ export default function EditUserPage() {
     
     const [showPassword, setShowPassword] = useState(false);
 
-    // ME ADDED: States for lockout management
     const [isCurrentlyLocked, setIsCurrentlyLocked] = useState(false);
     const [unlockAccount, setUnlockAccount] = useState(false);
 
@@ -25,7 +24,7 @@ export default function EditUserPage() {
         email: '',
         phone: '',
         password: '',
-        role: 'Field Executive',
+        role: 'CP', // ME FIX: Default role changed to CP
         department: 'Sales',
         status: 1,
         is_temporary: 0 
@@ -64,13 +63,12 @@ export default function EditUserPage() {
                     email: u.email || '',
                     phone: u.phone || '',
                     password: '', 
-                    role: u.role || 'Field Executive',
+                    role: u.role || 'CP', // ME FIX: Fallback to CP
                     department: u.department || 'Sales',
                     status: Number(u.status) || 1,
                     is_temporary: Number(u.is_temporary) || 0 
                 });
 
-                // Determine if user is locked (Requires backend to return failed_attempts/locked_until)
                 const locked = u.failed_attempts >= 5 || (u.locked_until && new Date(u.locked_until) > new Date());
                 setIsCurrentlyLocked(locked);
 
@@ -104,7 +102,7 @@ export default function EditUserPage() {
                     ...formData,
                     status: Number(formData.status),
                     is_temporary: Number(formData.is_temporary),
-                    unlock_account: unlockAccount // Send unlock request to backend
+                    unlock_account: unlockAccount 
                 })
             });
 
@@ -144,7 +142,6 @@ export default function EditUserPage() {
             <form className={styles.formCard} onSubmit={handleSubmit}>
                 {error && <div className={styles.error}><i className="fa fa-exclamation-circle"></i> {error}</div>}
 
-                {/* ME ADDED: Locked Account Alert Banner */}
                 {isCurrentlyLocked && (
                     <div className={styles.lockedAlert}>
                         <div className={styles.lockedAlertHeader}>
@@ -207,7 +204,8 @@ export default function EditUserPage() {
                         <select name="role" value={formData.role} onChange={handleChange} className={styles.input}>
                             <option value="Super Admin">Super Admin</option>
                             <option value="Admin">Admin</option>
-                            <option value="Field Executive">Field Executive</option>
+                            {/* ME FIX: Field Executive replaced with CP */}
+                            <option value="CP">CP</option>
                             <option value="View Only">View Only</option>
                             <option value="CRM">CRM</option>
                         </select>

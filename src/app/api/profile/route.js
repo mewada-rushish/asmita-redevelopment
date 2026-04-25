@@ -42,29 +42,32 @@ export async function PUT(req) {
         if (!userToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await req.json();
-        // ME FIX: Removed password fields from destructuring, this API no longer handles passwords
         const { name, phone, email, role, department } = body;
 
         const db = await getDbConnection();
 
-        // Fetch the user's role to securely verify admin privileges on the server side
+        // Fetch the user's role and email to securely verify privileges
         const [users] = await db.execute(
-            'SELECT id, role FROM users WHERE email = ? OR id = ? LIMIT 1',
+            'SELECT id, role, email FROM users WHERE email = ? OR id = ? LIMIT 1',
             [userToken.email || '', userToken.id || 0]
         );
 
         if (users.length === 0) return NextResponse.json({ error: 'User not found' }, { status: 404 });
         const dbUser = users[0];
 
-        // Handle Info Update
+        // Handle Info Update based on strict tier hierarchy
         if (name) {
-            const isSuperAdmin = dbUser.role === 'Super Admin' || dbUser.role === 'Admin';
-
-            if (isSuperAdmin && email) {
-                // Admins get to update everything
+            if (dbUser.role === 'Super Admin') {
+                // Super Admins can update everything, including roles
                 await db.execute(
                     'UPDATE users SET name = ?, phone = ?, email = ?, role = ?, department = ? WHERE id = ?',
-                    [name, phone || null, email, role || dbUser.role, department || null, dbUser.id]
+                    [name, phone || null, email || dbUser.email, role || dbUser.role, department || null, dbUser.id]
+                );
+            } else if (dbUser.role === 'Admin') {
+                // Admins can update their department and email, but CANNOT change their own role
+                await db.execute(
+                    'UPDATE users SET name = ?, phone = ?, email = ?, department = ? WHERE id = ?',
+                    [name, phone || null, email || dbUser.email, department || null, dbUser.id]
                 );
             } else {
                 // Regular users only update name and phone
@@ -78,7 +81,7 @@ export async function PUT(req) {
         return NextResponse.json({ success: true, message: 'Profile updated successfully' });
     } catch (error) {
         console.error('PROFILE_PUT_ERROR:', error);
-        // Added a quick catch for Duplicate Email errors
+        // Catch for Duplicate Email errors
         if (error.code === 'ER_DUP_ENTRY') {
              return NextResponse.json({ error: 'That email is already in use by another account.' }, { status: 400 });
         }

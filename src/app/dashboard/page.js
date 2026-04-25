@@ -39,7 +39,7 @@ export default function DashboardMapPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedStatus, setExpandedStatus] = useState(null);
   const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
-  const [currentStyle, setCurrentStyle] = useState('streets');
+  const [currentStyle, setCurrentStyle] = useState('satellite');
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [userRole, setUserRole] = useState('');
 
@@ -109,6 +109,31 @@ export default function DashboardMapPage() {
     const others = safeJSONParse(selectedProperty.extra_committee_members, []);
     if (Array.isArray(others)) {
       others.forEach((o, i) => addCard(`Member ${i + 1}`, JSON.stringify(o)));
+    }
+
+    return list.length > 0 ? list : null;
+  };
+
+  // ME ADDED: Build a structured array for PMC & CP to leverage the nice card UI
+  const buildPmcCpList = () => {
+    if (!selectedProperty) return null;
+    const list = [];
+
+    if (selectedProperty.pmc_name || selectedProperty.pmc_contact) {
+      list.push({
+        Role: 'PMC / Co-ordinator',
+        Name: selectedProperty.pmc_name || '-',
+        Contact: selectedProperty.pmc_contact ? (canViewContacts ? selectedProperty.pmc_contact : '*** RESTRICTED ***') : '-'
+      });
+    }
+
+    const cpName = selectedProperty.cp_name || (selectedProperty.assigned_cp_id ? `ID: ${selectedProperty.assigned_cp_id}` : '');
+    if (cpName || selectedProperty.cp_phone) {
+      list.push({
+        Role: 'CP', // Renamed from Field Executive
+        Name: cpName || '-',
+        Contact: selectedProperty.cp_phone ? (canViewContacts ? selectedProperty.cp_phone : '*** RESTRICTED ***') : '-'
+      });
     }
 
     return list.length > 0 ? list : null;
@@ -229,13 +254,8 @@ export default function DashboardMapPage() {
               <div className={styles.sideSection}>
                 <h4 className={styles.sectionHeading}><i className="fa fa-building-o"></i> 1. BUILDING & LAND</h4>
 
-                {/* PMC Details */}
-                {renderField('PMC / CO-ORDINATOR', selectedProperty.pmc_name)}
-                {renderField('PMC CONTACT', selectedProperty.pmc_contact ? (canViewContacts ? selectedProperty.pmc_contact : '*** RESTRICTED ***') : null)}
-
-                {/* Field Executive Details */}
-                {renderField('FIELD EXECUTIVE', selectedProperty.cp_name || (selectedProperty.assigned_cp_id ? `ID: ${selectedProperty.assigned_cp_id}` : null))}
-                {renderField('FIELD EXEC CONTACT', selectedProperty.cp_phone ? (canViewContacts ? selectedProperty.cp_phone : '*** RESTRICTED ***') : null)}
+                {/* PMC and CP mapped into identical card structure */}
+                {renderField('', buildPmcCpList())}
 
                 {/* Property Core Details */}
                 {renderField('ADDRESS', selectedProperty.address || 'Address not provided')}
@@ -384,7 +404,7 @@ export default function DashboardMapPage() {
       <div className={styles.styleSwitcher}>
         {['streets', 'satellite'].map(style => (
           <button key={style} className={`${styles.styleBtn} ${currentStyle === style ? styles.activeStyle : ''}`} onClick={() => setCurrentStyle(style)}>
-            {style.toUpperCase()}
+            {style === 'satellite' ? 'SATELLITE' : 'STREETS'}
           </button>
         ))}
       </div>
