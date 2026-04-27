@@ -26,7 +26,17 @@ export default function RootLayout({ children }) {
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
       </head>
       <body style={{ margin: 0, padding: 0 }}>
-        <Toaster position="top-right" />
+        <Toaster 
+          position="top-right" 
+          containerStyle={{
+            zIndex: 100000,
+          }}
+          toastOptions={{
+            style: {
+              zIndex: 100001,
+            },
+          }}
+        />
         {children}
       </body>
     </html>
