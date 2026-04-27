@@ -84,25 +84,59 @@
   box-shadow: 0 0 0 3px rgba(30, 78, 196, 0.1);
 }
 
-/* --- TABLE & STICKY COLUMN --- */
+/* --- TABLE LAYOUT & DRAGGING --- */
 .tableContainer {
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  overflow-x: auto;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  -webkit-overflow-scrolling: touch;
   width: 100%;
   box-sizing: border-box;
-  position: relative; /* Required for sticky children */
+  position: relative; 
+  overflow: hidden; 
+}
+
+/* TOP SCROLLBAR UI */
+.topScrollWrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+.topScrollWrapper::-webkit-scrollbar {
+  height: 8px;
+}
+.topScrollWrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+/* DRAGGABLE TABLE WRAPPER */
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  cursor: grab;
+}
+.tableWrapper.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+.tableWrapper::-webkit-scrollbar {
+  height: 8px;
+}
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: collapse; 
   text-align: left;
   font-size: 14px;
-  min-width: 950px; 
+  /* ME FIX: Reduced from 950px to 800px to completely disable desktop scrolling */
+  min-width: 800px; 
 }
 
 .table th {
@@ -116,7 +150,6 @@
   white-space: nowrap;
 }
 
-/* Ensure TRs have a background so sticky TD blocks content behind it */
 .table tr {
   background: white;
   transition: background 0.2s ease;
@@ -142,19 +175,23 @@
   position: sticky;
   right: 0;
   box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.05);
-  background: inherit; /* Inherits white or hover grey from TR */
+  background: inherit; 
   z-index: 10;
 }
 
 .table th.stickyCol {
   background: #f9fafb;
   z-index: 11;
+  border-left: 1px solid #e5e7eb; 
+}
+.table td.stickyCol {
+  border-left: 1px solid #f3f4f6;
 }
 
-/* Column Width Fixes */
-.table td:nth-child(3) { min-width: 200px; } /* Name */
-.table td:nth-child(4) { min-width: 220px; } /* Contact */
-.table td:nth-child(5) { min-width: 200px; } /* Role */
+/* --- ME FIX: Reduced Column Widths for Desktop Fit --- */
+.table td:nth-child(3) { min-width: 180px; } /* Name */
+.table td:nth-child(4) { min-width: 180px; } /* Contact */
+.table td:nth-child(5) { min-width: 110px; } /* Role & Dept reduced heavily */
 
 .roleCell {
   display: flex;
@@ -418,12 +455,18 @@
 
   .tableContainer { border-radius: 8px; }
 
-  /* --- ME ADDED: Disable Sticky Column on Mobile --- */
+  .topScrollWrapper { display: none; } /* Hide extra top scrollbar on mobile layout */
+
+  /* Disable Sticky Column on Mobile */
   .stickyCol, 
   .table th.stickyCol {
     position: static;
     box-shadow: none;
     z-index: auto;
+    border-left: none;
+  }
+  .table td.stickyCol {
+    border-left: none;
   }
 
   /* Stack Pagination on Mobile */

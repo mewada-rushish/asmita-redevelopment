@@ -38,6 +38,10 @@
   align-items: center;
   gap: 8px;
   font-size: 14px; 
+  transition: background 0.2s;
+}
+.exportBtn:hover {
+  background: #059669;
 }
 .addBtn {
   background: #ef4444;
@@ -50,6 +54,10 @@
   display: flex;
   align-items: center;
   font-size: 14px; 
+  transition: background 0.2s;
+}
+.addBtn:hover {
+  background: #dc2626;
 }
 
 .filterBar {
@@ -79,12 +87,16 @@
   white-space: nowrap;
   flex-shrink: 0;
   word-break: keep-all;
+  transition: all 0.2s;
+}
+.pill:hover {
+  background: #f8fafc;
 }
 
 .activePill {
   border-color: #ef4444;
   color: #ef4444;
-  background: #fef2f2;
+  background: #fef2f2 !important;
 }
 .dot {
   width: 8px; 
@@ -121,13 +133,45 @@
   background: white;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
-  overflow-x: auto;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
+  overflow: hidden; /* Contains the internal scrolls */
+}
+
+/* --- TOP SCROLLBAR UI --- */
+.topScrollWrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+.topScrollWrapper::-webkit-scrollbar {
+  height: 8px;
+}
+.topScrollWrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+/* --- DRAGGABLE TABLE WRAPPER --- */
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  cursor: grab; /* Shows user they can grab it */
+}
+.tableWrapper.dragging {
+  cursor: grabbing; /* Changes cursor while holding */
+  user-select: none; /* Prevents text highlighting while dragging */
+}
+.tableWrapper::-webkit-scrollbar {
+  height: 8px;
+}
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .table {
   width: 100%;
-  /* ME FIX: Changed to separate so the browser actually renders the shadow */
   border-collapse: separate; 
   border-spacing: 0;
   min-width: 1100px; 
@@ -139,7 +183,6 @@
 .table th:nth-child(4), .table td:nth-child(4) { min-width: 200px; } 
 .table th:nth-child(5), .table td:nth-child(5) { min-width: 160px; } 
 .table th:nth-child(6), .table td:nth-child(6) { min-width: fit-content; } 
-
 
 .table th:last-child {
   position: sticky;
@@ -162,7 +205,6 @@
 .table tr:hover td:last-child {
   background: #f8fafc; 
 }
-
 
 .table th {
   background: #f9fafb;
@@ -273,7 +315,6 @@
   font-weight: 600;
 }
 
-
 .viewBtn,
 .editBtn,
 .deleteBtn {
@@ -298,7 +339,6 @@
 
 .editBtn { color: #374151; } 
 .editBtn:hover { border-color: #fcd34d; background: #fffbeb; color: #b45309; }
-
 
 .deleteBtn { color: #dc2626; } 
 .deleteBtn:hover { border-color: #fca5a5; background-color: #fef2f2; color: #b91c1c; }
@@ -349,6 +389,7 @@
   justify-content: center;
   flex-shrink: 0;
   font-size: 14px;
+  transition: background 0.2s;
 }
 .pages button:hover:not(:disabled) {
   background: #f1f5f9;
@@ -365,7 +406,6 @@
   font-size: 15px;
   font-weight: 500;
 }
-
 
 .emptyCell {
   text-align: center;
@@ -402,6 +442,7 @@
   
   .searchWrapper { max-width: 100%; }
   
+  .topScrollWrapper { display: none; } /* Hide extra top scrollbar on mobile layout */
   
   .table th:last-child,
   .table td:last-child {
