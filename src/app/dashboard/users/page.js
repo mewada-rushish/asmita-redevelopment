@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from './users.module.css';
@@ -15,10 +15,19 @@ export default function UsersPage() {
     const [tempPassword, setTempPassword] = useState('');
     const [isResetting, setIsResetting] = useState(false);
 
-    // --- ME ADDED: Search & Pagination States ---
+    // Search & Pagination States
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    // --- ME ADDED: Table Scroll Sync & Drag States ---
+    const topScrollRef = useRef(null);
+    const tableWrapperRef = useRef(null);
+    const tableRef = useRef(null);
+    const [tableScrollWidth, setTableScrollWidth] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeftState, setScrollLeftState] = useState(0);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -125,7 +134,7 @@ export default function UsersPage() {
         }
     };
 
-    // --- ME ADDED: Filter & Pagination Logic ---
+    // Filter & Pagination Logic
     const filteredUsers = users.filter(u => {
         const term = searchTerm.toLowerCase();
         return (u.name || '').toLowerCase().includes(term) ||
@@ -142,6 +151,41 @@ export default function UsersPage() {
 
     const isAdmin = currentUserRole === 'Super Admin' || currentUserRole === 'Admin';
 
+    // --- ME ADDED: Scroll & Drag Handlers ---
+    useEffect(() => {
+        if (tableRef.current) {
+            setTableScrollWidth(tableRef.current.scrollWidth);
+        }
+    }, [currentUsers, loading]);
+
+    const handleTopScroll = () => {
+        if (tableWrapperRef.current && topScrollRef.current) {
+            tableWrapperRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+        }
+    };
+
+    const handleTableScroll = () => {
+        if (topScrollRef.current && tableWrapperRef.current) {
+            topScrollRef.current.scrollLeft = tableWrapperRef.current.scrollLeft;
+        }
+    };
+
+    const handleDragStart = (e) => {
+        setIsDragging(true);
+        setStartX(e.pageX - tableWrapperRef.current.offsetLeft);
+        setScrollLeftState(tableWrapperRef.current.scrollLeft);
+    };
+
+    const handleDragEnd = () => setIsDragging(false);
+
+    const handleDragMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault(); // Prevent text highlighting while dragging
+        const x = e.pageX - tableWrapperRef.current.offsetLeft;
+        const walk = (x - startX) * 1.5; // Multiply for drag speed
+        tableWrapperRef.current.scrollLeft = scrollLeftState - walk;
+    };
+
     return (
         <div className={styles.container}>
             <header className={styles.header}>
@@ -153,7 +197,6 @@ export default function UsersPage() {
                 )}
             </header>
 
-            {/* ME ADDED: Search Bar & Filter Section */}
             <div className={styles.filterBar}>
                 <div className={styles.searchWrapper}>
                     <i className="fa fa-search"></i>
@@ -178,99 +221,121 @@ export default function UsersPage() {
                         <p>No users found matching your search.</p>
                     </div>
                 ) : (
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th style={{ width: '60px', textAlign: 'center' }}>SR #</th>
-                                <th style={{ width: '80px', textAlign: 'center' }}>ID</th>
-                                <th>Name</th>
-                                <th>Contact</th>
-                                <th>Role & Dept</th>
-                                <th>Status</th>
-                                <th className={styles.stickyCol}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {currentUsers.map((user, index) => (
-                                <tr key={user.id}>
-                                    <td style={{ textAlign: 'center', fontWeight: '600', color: '#9ca3af' }}>
-                                        {indexOfFirstItem + index + 1}
-                                    </td>
-                                    <td style={{ textAlign: 'center', fontFamily: 'monospace', color: '#4b5563', fontWeight: '600' }}>
-                                        #{user.id}
-                                    </td>
-                                    <td>
-                                        <div className={styles.nameCell}>
-                                            <div className={styles.avatar}>
-                                                {user.name.charAt(0).toUpperCase()}
-                                            </div>
-                                            <strong>{user.name}</strong>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div>{user.email}</div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280' }}>{user.phone || 'No phone'}</div>
-                                    </td>
-                                    <td>
-                                        <div className={styles.roleCell}>
-                                            <span className={`${styles.badge} ${getRoleBadge(user.role)}`}>
-                                                {user.role}
-                                                {user.role === 'View Only'}
-                                            </span>
-                                            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
-                                                {user.department}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={`${styles.badge} ${user.status === 1 ? styles.statusActive : styles.statusInactive}`}>
-                                            {user.status === 1 ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </td>
-                                    <td className={styles.stickyCol}>
-                                        <div className={styles.actionsCell}>
-                                            <button
-                                                onClick={() => setViewUser(user)}
-                                                className={`${styles.actionBtn} ${styles.viewBtn}`}
-                                                title="View User"
-                                            >
-                                                <i className="fa fa-eye"></i>
-                                            </button>
-                                            
-                                            {isAdmin && (
-                                                <>
-                                                    <Link href={`/dashboard/users/edit/${user.id}`} className={`${styles.actionBtn} ${styles.editBtn}`} title="Edit User">
-                                                        <i className="fa fa-edit"></i>
-                                                    </Link>
+                    <>
+                        {/* --- TOP SCROLLBAR --- */}
+                        <div 
+                            className={styles.topScrollWrapper} 
+                            ref={topScrollRef} 
+                            onScroll={handleTopScroll}
+                        >
+                            <div style={{ width: `${tableScrollWidth}px`, height: '1px' }}></div>
+                        </div>
 
+                        {/* --- MAIN DRAGGABLE TABLE WRAPPER --- */}
+                        <div 
+                            className={`${styles.tableWrapper} ${isDragging ? styles.dragging : ''}`}
+                            ref={tableWrapperRef}
+                            onScroll={handleTableScroll}
+                            onMouseDown={handleDragStart}
+                            onMouseLeave={handleDragEnd}
+                            onMouseUp={handleDragEnd}
+                            onMouseMove={handleDragMove}
+                        >
+                            <table className={styles.table} ref={tableRef}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '60px', textAlign: 'center' }}>SR #</th>
+                                        <th style={{ width: '80px', textAlign: 'center' }}>ID</th>
+                                        <th>Name</th>
+                                        <th>Contact</th>
+                                        <th>Role & Dept</th>
+                                        <th>Status</th>
+                                        <th className={styles.stickyCol}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {currentUsers.map((user, index) => (
+                                        <tr key={user.id}>
+                                            <td style={{ textAlign: 'center', fontWeight: '600', color: '#9ca3af' }}>
+                                                {indexOfFirstItem + index + 1}
+                                            </td>
+                                            <td style={{ textAlign: 'center', fontFamily: 'monospace', color: '#4b5563', fontWeight: '600' }}>
+                                                #{user.id}
+                                            </td>
+                                            <td>
+                                                <div className={styles.nameCell}>
+                                                    <div className={styles.avatar}>
+                                                        {user.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <strong>{user.name}</strong>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div>{user.email}</div>
+                                                <div style={{ fontSize: '12px', color: '#6b7280' }}>{user.phone || 'No phone'}</div>
+                                            </td>
+                                            <td>
+                                                <div className={styles.roleCell}>
+                                                    <span className={`${styles.badge} ${getRoleBadge(user.role)}`}>
+                                                        {user.role}
+                                                        {user.role === 'View Only'}
+                                                    </span>
+                                                    <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
+                                                        {user.department}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={`${styles.badge} ${user.status === 1 ? styles.statusActive : styles.statusInactive}`}>
+                                                    {user.status === 1 ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td className={styles.stickyCol}>
+                                                <div className={styles.actionsCell}>
                                                     <button
-                                                        onClick={() => setResetUser(user)}
-                                                        className={`${styles.actionBtn} ${styles.editBtn}`} 
-                                                        style={{ color: '#d97706', borderColor: '#fcd34d', backgroundColor: '#fffbeb' }}
-                                                        title="Force Password Reset"
+                                                        onClick={() => setViewUser(user)}
+                                                        className={`${styles.actionBtn} ${styles.viewBtn}`}
+                                                        title="View User"
                                                     >
-                                                        <i className="fa fa-key"></i>
+                                                        <i className="fa fa-eye"></i>
                                                     </button>
+                                                    
+                                                    {isAdmin && (
+                                                        <>
+                                                            <Link href={`/dashboard/users/edit/${user.id}`} className={`${styles.actionBtn} ${styles.editBtn}`} title="Edit User" draggable="false">
+                                                                <i className="fa fa-edit"></i>
+                                                            </Link>
 
-                                                    <button
-                                                        onClick={() => handleDelete(user.id, user.name)}
-                                                        className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                                                        title="Delete User"
-                                                    >
-                                                        <i className="fa fa-trash"></i>
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                                            <button
+                                                                onClick={() => setResetUser(user)}
+                                                                className={`${styles.actionBtn} ${styles.editBtn}`} 
+                                                                style={{ color: '#d97706', borderColor: '#fcd34d', backgroundColor: '#fffbeb' }}
+                                                                title="Force Password Reset"
+                                                            >
+                                                                <i className="fa fa-key"></i>
+                                                            </button>
+
+                                                            <button
+                                                                onClick={() => handleDelete(user.id, user.name)}
+                                                                className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                                                                title="Delete User"
+                                                            >
+                                                                <i className="fa fa-trash"></i>
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* ME ADDED: Pagination Controls */}
+            {/* Pagination Controls */}
             {!loading && filteredUsers.length > 0 && (
                 <div className={styles.paginationFooter}>
                     <div className={styles.perPage}>

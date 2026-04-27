@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
 import MapViewer from '@/components/maps/MapViewer';
+import DuplicateAlertModal from '@/components/modals/DuplicateAlertModal';
 import { validatePropertyForm } from '@/utils/propertyForm';
 import { uploadPropertyDocument } from '@/utils/uploadsUtil';
 import toast from 'react-hot-toast';
@@ -40,12 +41,10 @@ export default function AddPropertyPage() {
   const [admins, setAdmins] = useState([]); 
   
   const [checkingAuth, setCheckingAuth] = useState(true);
-  
   const [currentUserRole, setCurrentUserRole] = useState('');
+  
   const [showExecModal, setShowExecModal] = useState(false);
   const [creatingExec, setCreatingExec] = useState(false);
-
-  // ME ADDED: State to control the Bulk Files modal
   const [showBulkModal, setShowBulkModal] = useState(false);
   
   const [newExecForm, setNewExecForm] = useState({
@@ -53,6 +52,14 @@ export default function AddPropertyPage() {
   });
 
   const [isBulkUpload, setIsBulkUpload] = useState(false);
+
+  // --- Duplicate Check & Clubbing States ---
+  const [duplicateMatch, setDuplicateMatch] = useState(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
+  const [clubbingSearch, setClubbingSearch] = useState('');
+  const [clubbingSuggestions, setClubbingSuggestions] = useState([]);
+  const [clubbedProperties, setClubbedProperties] = useState([]);
 
   useEffect(() => {
     const verifyAccess = async () => {
@@ -115,7 +122,6 @@ export default function AddPropertyPage() {
       if (data.success && data.users) {
         const cps = data.users.filter(u => u.role === 'CP' || u.role === 'Channel Partner' || u.role === 'Field Executive');
         setExecutives(cps);
-        
         const adminList = data.users.filter(u => u.role === 'Admin');
         setAdmins(adminList);
       }
@@ -127,6 +133,62 @@ export default function AddPropertyPage() {
   useEffect(() => {
     fetchUsersData();
   }, []);
+
+  // --- Duplicate Check Logic ---
+  const checkDuplicates = async () => {
+    if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
+
+    try {
+      const res = await fetch('/api/properties/check-duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          property_name: formData.property_name, 
+          address: formData.address 
+        })
+      });
+      const data = await res.json();
+      if (data.isDuplicate) {
+        setDuplicateMatch(data.matchedProperty);
+        setShowDuplicateModal(true);
+      }
+    } catch (err) {
+      console.error("Duplicate check failed", err);
+    }
+  };
+
+  // --- Clubbing (Search & Assign) Logic ---
+  const handleClubbingSearch = async (query) => {
+    setClubbingSearch(query);
+    if (query.length < 2) {
+      setClubbingSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/properties/search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+          const filtered = data.filter(p => !clubbedProperties.find(cp => cp.id === p.id));
+          setClubbingSuggestions(filtered);
+      } else {
+          setClubbingSuggestions([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setClubbingSuggestions([]);
+    }
+  };
+
+  const addClubbedProperty = (prop) => {
+    setClubbedProperties([...clubbedProperties, prop]);
+    setClubbingSearch('');
+    setClubbingSuggestions([]);
+  };
+
+  const removeClubbedProperty = (id) => {
+    setClubbedProperties(clubbedProperties.filter(p => p.id !== id));
+  };
+
 
   const handleAddressSearch = (query) => {
     setFormData(prev => ({ ...prev, address: query }));
@@ -158,16 +220,12 @@ export default function AddPropertyPage() {
         setSearching(false);
       });
     } else {
-      console.warn("Google Maps Places API not loaded yet.");
       setSearching(false);
     }
   };
 
   const selectSuggestion = (suggestion) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      address: suggestion.description
-    }));
+    setFormData(prev => ({ ...prev, address: suggestion.description }));
     setShowSuggestions(false);
 
     if (typeof window !== 'undefined' && window.google && window.google.maps) {
@@ -184,7 +242,12 @@ export default function AddPropertyPage() {
     }
   };
 
-  const handleBlur = () => setTimeout(() => setShowSuggestions(false), 300);
+  const handleBlur = () => {
+    setTimeout(() => {
+      setShowSuggestions(false);
+      checkDuplicates(); // Run duplicate check when user finishes address
+    }, 300);
+  };
 
   const updateField = (key, val) => setFormData(p => ({ ...p, [key]: val }));
   const updateContact = (role, key, val) => setFormData(p => ({ ...p, [role]: { ...p[role], [key]: val } }));
@@ -324,10 +387,15 @@ export default function AddPropertyPage() {
 
     setLoading(true);
     try {
+      const payload = {
+        ...formData,
+        clubbed_properties: clubbedProperties.map(p => p.id)
+      };
+
       const res = await fetch('/api/properties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -393,7 +461,15 @@ export default function AddPropertyPage() {
 
         <main className={styles.content}>
           <Accordion title="1. Building & Lead Details" icon="fa-building" defaultOpen={true}>
-            <div className={styles.inputGroup}><label className={styles.label}>Building / Society Name</label><input className={styles.input} value={formData.property_name} onChange={e => updateField('property_name', e.target.value)} /></div>
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Building / Society Name</label>
+              <input 
+                className={styles.input} 
+                value={formData.property_name} 
+                onChange={e => updateField('property_name', e.target.value)} 
+                onBlur={checkDuplicates} 
+              />
+            </div>
 
             <div className={styles.grid2}>
               <div className={styles.inputGroup}><label className={styles.label}>PMC / Co-ordinator Name</label><input className={styles.input} placeholder="Name of PMC" value={formData.pmc_name} onChange={e => updateField('pmc_name', e.target.value)} /></div>
@@ -427,6 +503,52 @@ export default function AddPropertyPage() {
                   ))}
                 </ul>
               )}
+            </div>
+
+            {/* ME MOVED: Clubbing Repeater Interface integrated into Section 1 */}
+            <div style={{ marginTop: '25px', borderTop: '1px dashed #e5e7eb', paddingTop: '20px' }}>
+              <h3 style={{ fontSize: '15px', color: '#1f2937', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa fa-link" style={{ color: '#64748b' }}></i> Property Grouping (Clubbed Redevelopment)
+              </h3>
+              <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 98 }}>
+                <label className={styles.label}>Link Nearby Properties</label>
+                <div className={styles.searchWrapper}>
+                    <i className="fa fa-search" style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }}></i>
+                    <input 
+                        type="text" 
+                        className={styles.input} 
+                        style={{ paddingLeft: '35px' }}
+                        placeholder="Search by building name or address..." 
+                        value={clubbingSearch}
+                        onChange={(e) => handleClubbingSearch(e.target.value)}
+                    />
+                    {clubbingSuggestions.length > 0 && (
+                        <ul className={styles.suggestions}>
+                            {clubbingSuggestions.map(p => (
+                                <li key={p.id} onMouseDown={() => addClubbedProperty(p)}>
+                                    <i className="fa fa-building"></i> <strong>{p.property_name}</strong> 
+                                    <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '10px' }}>({p.address.substring(0, 35)}...)</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                {clubbedProperties.length > 0 && (
+                    <div className={styles.chipContainer}>
+                        {clubbedProperties.map(p => (
+                            <div key={p.id} className={styles.propertyChip}>
+                                <i className="fa fa-building"></i>
+                                <strong>{p.property_name}</strong>
+                                <i 
+                                    className="fa fa-times-circle" 
+                                    onClick={() => removeClubbedProperty(p.id)}
+                                ></i>
+                            </div>
+                        ))}
+                    </div>
+                )}
+              </div>
             </div>
           </Accordion>
 
@@ -539,7 +661,6 @@ export default function AddPropertyPage() {
           </Accordion>
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
-            {/* ME FIX: Bulk Action Row with view button */}
             <div className={styles.bulkActionRow}>
               <div>
                 <strong>Enable Bulk Document Upload?</strong>
@@ -601,7 +722,6 @@ export default function AddPropertyPage() {
                 )}
               </div>
 
-              {/* ME FIX: Filtered to only show standard 19 items */}
               {formData.document_checklist.map((item, i) => {
                 if (item.label.startsWith('Bulk:')) return null;
                 return (
@@ -698,7 +818,6 @@ export default function AddPropertyPage() {
         </main>
       </div>
 
-      {/* ME ADDED: Bulk Files Modal */}
       {showBulkModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent} style={{ maxWidth: '600px' }}>
@@ -774,6 +893,13 @@ export default function AddPropertyPage() {
           </div>
         </div>
       )}
+
+      {/* ME ADDED: Modularized Duplicate Warning Modal */}
+      <DuplicateAlertModal 
+        isOpen={showDuplicateModal} 
+        matchedProperty={duplicateMatch} 
+        onContinue={() => setShowDuplicateModal(false)} 
+      />
 
     </div>
   );

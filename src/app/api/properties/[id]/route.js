@@ -5,7 +5,6 @@ import jwt from 'jsonwebtoken';
 import { validatePropertyForm } from '@/utils/propertyForm';
 import { promoteDraftFiles } from '@/utils/bucketManager';
 
-// --- Improved Auth Helper ---
 async function verifyAuth() {
   const cookieStore = await cookies();
   const token = cookieStore.get('asmita_auth')?.value;
@@ -13,7 +12,6 @@ async function verifyAuth() {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const db = await getDbConnection();
     const [rows] = await db.execute('SELECT role, name, email FROM users WHERE id = ? LIMIT 1', [decoded.id]);
 
@@ -23,7 +21,6 @@ async function verifyAuth() {
     decoded.name = rows[0].name;
     decoded.email = rows[0].email;
     return decoded;
-
   } catch (e) {
     return false;
   }
@@ -34,9 +31,6 @@ const sanitizeDate = (dateStr) => {
   return dateStr;
 };
 
-// ==========================================
-// GET: Fetch Single Property for Editing
-// ==========================================
 export async function GET(req, { params }) {
   try {
     const auth = await verifyAuth();
@@ -47,7 +41,6 @@ export async function GET(req, { params }) {
 
     const db = await getDbConnection();
 
-    // ME FIX: LEFT JOIN with users table here as well
     const query = `
       SELECT p.*, u.name AS cp_name, u.phone AS cp_phone 
       FROM properties p 
@@ -58,16 +51,25 @@ export async function GET(req, { params }) {
 
     if (rows.length === 0) return NextResponse.json({ error: "Property not found" }, { status: 404 });
 
-    return NextResponse.json(rows[0]);
+    const property = rows[0];
+    let clubbed_properties = [];
+
+    // Fetch sibling properties if part of a club
+    if (property.club_id) {
+        const [siblings] = await db.execute(
+            `SELECT id, property_name, address FROM properties WHERE club_id = ? AND id != ?`,
+            [property.club_id, id]
+        );
+        clubbed_properties = siblings;
+    }
+
+    return NextResponse.json({ ...property, clubbed_properties });
   } catch (error) {
     console.error('SERVER-SIDE API ERROR:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-// ==========================================
-// PUT: Update Entire Property Record
-// ==========================================
 export async function PUT(req, { params }) {
   try {
     const auth = await verifyAuth();
@@ -159,11 +161,37 @@ export async function PUT(req, { params }) {
       data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started',
 
       auth.email || 'Unknown User',
-
       id
     ];
 
     await db.execute(query, values);
+
+    // Grouping / Clubbing Synchronization
+    if (Array.isArray(data.clubbed_properties)) {
+      if (data.clubbed_properties.length === 0) {
+        await db.execute(`UPDATE properties SET club_id = NULL WHERE id = ?`, [id]);
+      } else {
+        const allIdsToSync = [id, ...data.clubbed_properties];
+        const placeholders = allIdsToSync.map(() => '?').join(',');
+
+        const [clubCheck] = await db.execute(
+          `SELECT club_id FROM properties WHERE id IN (${placeholders}) AND club_id IS NOT NULL LIMIT 1`,
+          allIdsToSync
+        );
+
+        const finalClubId = clubCheck.length > 0 ? clubCheck[0].club_id : `club_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+        await db.execute(
+          `UPDATE properties SET club_id = NULL WHERE club_id = ? AND id NOT IN (${placeholders})`,
+          [finalClubId, ...allIdsToSync]
+        );
+
+        await db.execute(
+          `UPDATE properties SET club_id = ? WHERE id IN (${placeholders})`,
+          [finalClubId, ...allIdsToSync]
+        );
+      }
+    }
 
     return NextResponse.json({ success: true, message: "Property updated successfully" });
 
@@ -173,9 +201,6 @@ export async function PUT(req, { params }) {
   }
 }
 
-// ==========================================
-// DELETE: Remove Property Record
-// ==========================================
 export async function DELETE(req, { params }) {
   try {
     const auth = await verifyAuth();

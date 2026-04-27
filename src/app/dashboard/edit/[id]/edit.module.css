@@ -178,8 +178,13 @@ textarea.input {
 }
 
 /* ===============================
-   ADDRESS AUTOCOMPLETE (FIXED VISIBILITY)
+   ADDRESS AUTOCOMPLETE & SEARCH WRAPPER
 =============================== */
+.searchWrapper {
+  position: relative;
+  width: 100%;
+}
+
 .suggestions {
   position: absolute;
   top: 100%;
@@ -218,6 +223,39 @@ textarea.input {
 .suggestions li i {
   color: #94a3b8;
   font-size: 14px;
+}
+
+/* ===============================
+   CLUBBING CHIP STYLES (NEW)
+=============================== */
+.chipContainer {
+  margin-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.propertyChip {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.propertyChip i.fa-times-circle {
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 16px;
+  transition: color 0.2s;
+}
+
+.propertyChip i.fa-times-circle:hover {
+  color: #ef4444;
 }
 
 /* ===============================
