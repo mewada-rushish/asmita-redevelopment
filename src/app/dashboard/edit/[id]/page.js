@@ -72,6 +72,9 @@ export default function EditPropertyPage() {
   const [showExecModal, setShowExecModal] = useState(false);
   const [creatingExec, setCreatingExec] = useState(false);
   
+  // ME ADDED: State for Bulk Files Modal
+  const [showBulkModal, setShowBulkModal] = useState(false);
+
   const [newExecForm, setNewExecForm] = useState({
     name: '', email: '', phone: '', password: ''
   });
@@ -439,6 +442,7 @@ export default function EditPropertyPage() {
   if (checkingAuth || loading) return <div className={styles.loader || ''} style={{ padding: '40px', textAlign: 'center' }}>Synchronizing with Database...</div>;
 
   const isAdmin = currentUserRole === 'super admin' || currentUserRole === 'admin';
+  const bulkFiles = formData.document_checklist.filter(item => item.label.startsWith('Bulk:'));
 
   return (
     <div className={styles.container}>
@@ -456,13 +460,7 @@ export default function EditPropertyPage() {
         <aside className={styles.sidebar}>
           <div className={styles.card}>
             <label className={styles.label}>📍 Map Location</label>
-            {/* ME FIX: Added mapStyle="satellite" here to default to the hybrid view */}
-            <MapViewer 
-              initialLat={formData.lat} 
-              initialLng={formData.lng} 
-              onLocationSelect={handleLocationSelect} 
-              mapStyle="satellite" 
-            />
+            <MapViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={handleLocationSelect} mapStyle="satellite" />
             <div className={styles.coords}>Current Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
           </div>
 
@@ -505,14 +503,14 @@ export default function EditPropertyPage() {
             <div className={styles.inputGroup}>
               <label className={styles.label}>Reporting Manager *</label>
               <select className={styles.input} value={formData.assigned_admin_id} onChange={e => updateField('assigned_admin_id', e.target.value)} required>
-                <option value="">-- Select Admin --</option>
+                <option value="">-- Select Reporting Manager --</option>
                 {admins.map(admin => (
                   <option key={admin.id} value={admin.id}>{admin.name}</option>
                 ))}
               </select>
             </div>
 
-            <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 1000 }}>
+            <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 99 }}>
               <label className={styles.label}>Address {searching && <i className="fa fa-spinner fa-spin" style={{ marginLeft: '10px' }}></i>}</label>
               <textarea
                 className={styles.input} value={formData.address}
@@ -641,9 +639,24 @@ export default function EditPropertyPage() {
           </Accordion>
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
-            <div className={styles.checkRow} style={{ marginBottom: '15px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <strong>Enable Bulk Document Upload?</strong>
-              <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
+            {/* ME FIX: Filtered Bulk Action Row */}
+            <div className={styles.bulkActionRow}>
+              <div>
+                <strong>Enable Bulk Document Upload?</strong>
+                <div style={{ marginTop: '5px' }}>
+                  <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
+                </div>
+              </div>
+              
+              {bulkFiles.length > 0 && (
+                <button 
+                  type="button" 
+                  className={styles.libraryBtn}
+                  onClick={() => setShowBulkModal(true)}
+                >
+                  <i className="fa fa-folder-open"></i> View Bulk Files ({bulkFiles.length})
+                </button>
+              )}
             </div>
 
             {isBulkUpload && (
@@ -663,11 +676,16 @@ export default function EditPropertyPage() {
                     <YesNoToggle value={formData.has_interest_letter} onChange={(v) => updateField('has_interest_letter', v)} />
                   ) : (
                     <div className={styles.submittedWrapper}>
-                      <span className={styles.submittedChip}>
-                        <i className="fa fa-check-circle"></i> Submitted
-                      </span>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(formData.interest_letter_file)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
                       <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
-                        Re-upload
+                        <i className="fa fa-refresh"></i> Re-upload
                       </button>
                     </div>
                   )}
@@ -683,39 +701,48 @@ export default function EditPropertyPage() {
                 )}
               </div>
 
-              {formData.document_checklist.map((item, i) => (
-                <div key={i} className={styles.checkItem}>
-                  <div className={styles.docItemHeader}>
-                    <span>{item.label.startsWith('Bulk:') ? item.label : `${i + 1}. ${item.label}`}</span>
+              {/* ME FIX: Filtered Checklist Map */}
+              {formData.document_checklist.map((item, i) => {
+                if (item.label.startsWith('Bulk:')) return null;
+                return (
+                  <div key={i} className={styles.checkItem}>
+                    <div className={styles.docItemHeader}>
+                      <span>{i + 1}. {item.label}</span>
 
-                    {!item.file_name ? (
-                      <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
-                    ) : (
-                      <div className={styles.submittedWrapper}>
-                        <span className={styles.submittedChip}>
-                          <i className="fa fa-check-circle"></i> Submitted
-                        </span>
-                        <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
-                          Re-upload
+                      {!item.file_name ? (
+                        <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
+                      ) : (
+                        <div className={styles.submittedWrapper}>
+                          <a 
+                            href={`/api/viewDoc?key=${encodeURIComponent(item.file_name)}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={styles.viewFileBtn}
+                          >
+                            <i className="fa fa-external-link"></i> View
+                          </a>
+                          <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
+                            <i className="fa fa-refresh"></i> Re-upload
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {item.value === 1 && !item.file_name && !isBulkUpload && (
+                      <div className={styles.uploadRow}>
+                        <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
+                        <button
+                          type="button"
+                          className={styles.uploadBtn}
+                          onClick={() => executeDocUpload(i, `doc_upload_${i}`, item)}
+                        >
+                          <i className="fa fa-upload"></i> Upload
                         </button>
                       </div>
                     )}
                   </div>
-
-                  {item.value === 1 && !item.file_name && !isBulkUpload && (
-                    <div className={styles.uploadRow}>
-                      <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
-                      <button
-                        type="button"
-                        className={styles.uploadBtn}
-                        onClick={() => executeDocUpload(i, `doc_upload_${i}`, item)}
-                      >
-                        <i className="fa fa-upload"></i> Upload
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className={styles.checkRow} style={{ margin: '20px 0' }}>
@@ -770,6 +797,41 @@ export default function EditPropertyPage() {
           </Accordion>
         </main>
       </div>
+
+      {/* ME ADDED: Bulk Files Modal */}
+      {showBulkModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent} style={{ maxWidth: '600px' }}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fa fa-files-o"></i> Bulk Uploaded Documents</h2>
+              <button className={styles.closeBtn} onClick={() => setShowBulkModal(false)}>
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.bulkList}>
+                {bulkFiles.map((file, index) => (
+                  <div key={index} className={styles.bulkFileRow}>
+                    <span className={styles.fileName} title={file.label.replace('Bulk: ', '')}>
+                      <i className="fa fa-file-text-o"></i> {file.label.replace('Bulk: ', '')}
+                    </span>
+                    <div className={styles.fileActions}>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(file.file_name)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showExecModal && (
         <div className={styles.modalOverlay}>

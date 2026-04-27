@@ -363,16 +363,25 @@
   gap: 12px;
 }
 
-.submittedChip {
-  background-color: #dcfce7;
-  color: #166534;
+.viewFileBtn {
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
   padding: 4px 10px;
-  border-radius: 50px;
-  font-size: 12px;
-  font-weight: 700;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
   display: inline-flex;
-  gap: 5px;
   align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
+}
+
+.viewFileBtn:hover {
+  background-color: #e0f2fe;
+  border-color: #7dd3fc;
 }
 
 .reuploadBtn {
@@ -385,6 +394,9 @@
   padding: 4px 10px;
   border-radius: 6px;
   transition: 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .reuploadBtn:hover {
@@ -455,9 +467,83 @@
   transform: translateY(-1px);
 }
 
+/* --- BULK LIBRARY STYLES --- */
+.bulkActionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 12px 15px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 15px;
+}
+
+.libraryBtn {
+  background-color: #6366f1;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+}
+
+.libraryBtn:hover {
+  background-color: #4f46e5;
+}
+
+.bulkList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.bulkFileRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+
+.fileName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fileName i {
+  color: #94a3b8;
+  font-size: 16px;
+}
+
+.fileActions {
+  display: flex;
+  gap: 8px;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 15px;
+    padding-bottom: 120px;
   }
 
   .header {
@@ -467,6 +553,9 @@
     left: 0;
     right: 0;
     margin: 1rem;
+    border-radius: 15px;
+    border-bottom: none;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
     flex-direction: column;
     align-items: stretch;
     gap: 15px;
@@ -475,7 +564,6 @@
   .header h1 {
     font-size: 16px;
   }
-
 
   .saveBtn {
     width: 100%;
@@ -514,7 +602,7 @@
     text-transform: uppercase;
   }
 
-  .checkRow {
+  .checkRow, .bulkActionRow {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;
