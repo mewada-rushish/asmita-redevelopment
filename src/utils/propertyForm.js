@@ -1,15 +1,7 @@
-/**
- * Utility to validate property form data before DB insertion.
- * Returns an object: { isValid: boolean, errors: Object }
- */
-
-// Regex Helpers
-const PHONE_REGEX = /^[\d\s\-\+\(\)]{10,15}$/; // Allows 10-15 chars (digits, spaces, +)
+const PHONE_REGEX = /^[\d\s\-\+\(\)]{10,15}$/;
 
 export const validatePropertyForm = (data) => {
     const errors = {};
-
-    // 1. MANDATORY DB FIELDS (Cannot be blank)
 
     if (!data.property_name || data.property_name.trim().length < 3) {
         errors.property_name = "Property Name is required and must be at least 3 characters.";
@@ -23,8 +15,6 @@ export const validatePropertyForm = (data) => {
         errors.location = "Valid map coordinates (Latitude & Longitude) are required.";
     }
 
-    // --- ME FIX: New Mandatory Fields Added Below ---
-
     if (!data.address || data.address.trim().length < 5) {
         errors.address = "Full Property Address is required.";
     }
@@ -33,14 +23,10 @@ export const validatePropertyForm = (data) => {
         errors.pmc_name = "PMC / Co-ordinator Name is required.";
     }
 
-    // PMC Contact is now strictly mandatory AND must pass format validation
     if (!data.pmc_contact || !PHONE_REGEX.test(data.pmc_contact)) {
         errors.pmc_contact = "A valid PMC Contact Number (10-15 digits) is strictly required.";
     }
 
-    // 2. DATA TYPE & FORMAT RESTRICTIONS (If provided)
-
-    // Numbers (Total Flats & Shops)
     if (data.total_flats && (isNaN(data.total_flats) || Number(data.total_flats) < 0)) {
         errors.total_flats = "Total Flats must be a positive number.";
     }
@@ -49,12 +35,8 @@ export const validatePropertyForm = (data) => {
         errors.total_shops = "Total Shops must be a positive number.";
     }
 
-    // 3. COMMITTEE CONTACT VALIDATIONS 
-
-    // These are optional, but IF entered, they must be valid phone numbers
     const validateContact = (contactObj, fieldName) => {
         if (contactObj?.contact && !PHONE_REGEX.test(contactObj.contact)) {
-            // Clean up the field name for the error message (e.g., 'chairman_details' -> 'chairman')
             const cleanName = fieldName.replace('_details', '').charAt(0).toUpperCase() + fieldName.replace('_details', '').slice(1);
             errors[fieldName] = `Valid phone number required for ${cleanName}.`;
         }
@@ -65,7 +47,6 @@ export const validatePropertyForm = (data) => {
     validateContact(data.treasurer_details, 'treasurer_details');
     validateContact(data.responsible_person_details, 'responsible_person_details');
 
-    // Extra Committee Members Validation
     if (Array.isArray(data.extra_committee_members)) {
         data.extra_committee_members.forEach((member, index) => {
             if (member.contact && !PHONE_REGEX.test(member.contact)) {
@@ -74,9 +55,21 @@ export const validatePropertyForm = (data) => {
         });
     }
 
-    // 4. DATE LOGIC VALIDATIONS
     if (data.offer_acceptance_date && data.offer_letter_status !== 'Accepted') {
         errors.offer_acceptance_date = "Acceptance date can only be logged if status is 'Accepted'.";
+    }
+
+    if (data.has_interest_letter === 1 && !data.interest_letter_file) {
+        errors.interest_letter = "Interest Letter is marked as 'YES' but no file was uploaded.";
+    }
+
+    if (Array.isArray(data.document_checklist)) {
+        data.document_checklist.forEach((item, index) => {
+            if (item.value === 1 && !item.file_name) {
+                const docName = item.label ? item.label.replace('Bulk: ', '') : `Document #${index + 1}`;
+                errors[`document_${index}`] = `'${docName}' is marked as 'YES' but no file was uploaded.`;
+            }
+        });
     }
 
     return {

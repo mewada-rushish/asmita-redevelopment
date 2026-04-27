@@ -178,8 +178,13 @@ textarea.input {
 }
 
 /* ===============================
-   ADDRESS AUTOCOMPLETE (FIXED VISIBILITY)
+   ADDRESS AUTOCOMPLETE & SEARCH WRAPPER
 =============================== */
+.searchWrapper {
+  position: relative;
+  width: 100%;
+}
+
 .suggestions {
   position: absolute;
   top: 100%;
@@ -189,7 +194,7 @@ textarea.input {
   border: 1px solid #d1d5db;
   border-radius: 8px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-  z-index: 99999 !important; /* FLOAT ABOVE EVERYTHING */
+  z-index: 99999 !important;
   list-style: none;
   padding: 0;
   margin-top: 5px;
@@ -218,6 +223,39 @@ textarea.input {
 .suggestions li i {
   color: #94a3b8;
   font-size: 14px;
+}
+
+/* ===============================
+   CLUBBING CHIP STYLES (NEW)
+=============================== */
+.chipContainer {
+  margin-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.propertyChip {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.propertyChip i.fa-times-circle {
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 16px;
+  transition: color 0.2s;
+}
+
+.propertyChip i.fa-times-circle:hover {
+  color: #ef4444;
 }
 
 /* ===============================
@@ -260,7 +298,7 @@ textarea.input {
 
 .checkItem {
   display: flex;
-  flex-direction: column; /* ME FIX: Enables vertical stacking of upload box */
+  flex-direction: column;
   padding: 12px 5px;
   border-bottom: 1px solid #f3f4f6;
   font-size: 12px;
@@ -296,7 +334,7 @@ textarea.input {
 }
 
 /* ===============================
-   DOCUMENT UPLOAD UI (NEW)
+   DOCUMENT UPLOAD UI
 =============================== */
 .docItemHeader {
   display: flex;
@@ -332,6 +370,27 @@ textarea.input {
   align-items: center;
 }
 
+.viewFileBtn {
+  background-color: #f0f9ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s;
+}
+
+.viewFileBtn:hover {
+  background-color: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
 .reuploadBtn {
   background: #fef2f2;
   border: 1px solid #fca5a5;
@@ -342,6 +401,9 @@ textarea.input {
   padding: 4px 10px;
   border-radius: 6px;
   transition: 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .reuploadBtn:hover {
@@ -410,6 +472,81 @@ textarea.input {
 .uploadBtn:hover {
   background-color: #059669;
   transform: translateY(-1px);
+}
+
+/* ===============================
+   BULK LIBRARY STYLES (NEW)
+=============================== */
+.bulkActionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 12px 15px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 15px;
+}
+
+.libraryBtn {
+  background-color: #6366f1;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+}
+
+.libraryBtn:hover {
+  background-color: #4f46e5;
+}
+
+.bulkList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.bulkFileRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+
+.fileName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fileName i {
+  color: #94a3b8;
+  font-size: 16px;
+}
+
+.fileActions {
+  display: flex;
+  gap: 8px;
 }
 
 /* ===============================
@@ -558,6 +695,7 @@ textarea.input {
 @media (max-width: 768px) {
   .container {
     padding: 15px;
+    padding-bottom: 120px;
   }
 
   .header {
@@ -567,9 +705,13 @@ textarea.input {
     left: 0;
     right: 0;
     margin: 1rem;
+    border-radius: 15px;
+    border-bottom: none;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
     flex-direction: column;
     align-items: stretch;
     gap: 15px;
+    z-index: 999;
   }
 
   .header h1 {
@@ -618,7 +760,7 @@ textarea.input {
     gap: 10px;
   }
 
-  .checkRow {
+  .checkRow, .bulkActionRow {
     flex-direction: column;
     align-items: flex-start;
     gap: 10px;

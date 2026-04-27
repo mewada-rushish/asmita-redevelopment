@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import Image from 'next/image';
 import {
   APIProvider,
@@ -10,14 +10,15 @@ import {
   useApiIsLoaded
 } from '@vis.gl/react-google-maps';
 import { logoPath } from '@/assets/images';
+import { getClubBoundary } from '@/utils/geoUtils';
 
 const MIRA_ROAD_COORDS = { lat: 19.2813, lng: 72.8693 };
 
-function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocationSelect }) {
+function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocationSelect, selectedProperty }) {
   const map = useMap();
   const apiIsLoaded = useApiIsLoaded();
+  const [activeOverlay, setActiveOverlay] = useState(null);
 
-  // 1. Calculate Bounds (Static size: 1 item [properties])
   const bounds = useMemo(() => {
     if (!apiIsLoaded || typeof window === 'undefined' || !window.google || properties.length === 0) return null;
 
@@ -30,7 +31,6 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
     return b;
   }, [apiIsLoaded, properties]);
 
-  // 2. Auto-fit logic (Static size: 3 items)
   useEffect(() => {
     if (map && bounds && !bounds.isEmpty() && !onLocationSelect) {
       map.fitBounds(bounds, { padding: 70 });
@@ -44,7 +44,6 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
     }
   }, [map, bounds, onLocationSelect]);
 
-  // 3. Recenter Logic (Static size: 3 items)
   const handleRecenter = useCallback(() => {
     if (!map) return;
     if (bounds && !bounds.isEmpty() && !onLocationSelect) {
@@ -55,12 +54,54 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
     }
   }, [map, bounds, onLocationSelect]);
 
-  // 4. Manual Pan logic (Static size: 3 items)
   useEffect(() => {
-    if (map) {
+    if (map && onLocationSelect) {
       map.panTo({ lat, lng });
     }
-  }, [lat, lng, map]);
+  }, [lat, lng, map, onLocationSelect]);
+
+  // Spatial highlighting using Overpass API (OSM) / GeoUtils
+  useEffect(() => {
+    let polygonInstance = null;
+    let isMounted = true;
+
+    // Clean up previous overlay immediately
+    if (activeOverlay) {
+      activeOverlay.setMap(null);
+      setActiveOverlay(null);
+    }
+
+    const drawHighlight = async () => {
+      if (!selectedProperty || !selectedProperty.club_id || !map || properties.length === 0) return;
+
+      const clubProps = properties.filter(p => p.club_id === selectedProperty.club_id && p.lat && p.lng);
+      if (clubProps.length === 0) return;
+
+      const boundaryCoords = await getClubBoundary(clubProps);
+
+      if (boundaryCoords && boundaryCoords.length > 0 && isMounted) {
+        polygonInstance = new window.google.maps.Polygon({
+          paths: boundaryCoords,
+          strokeColor: '#ef4444', // Red border to match visual preference
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          fillColor: '#ef4444',   // Red fill
+          fillOpacity: 0.15,
+          map: map
+        });
+        setActiveOverlay(polygonInstance);
+      }
+    };
+
+    drawHighlight();
+
+    return () => {
+      isMounted = false;
+      if (polygonInstance) polygonInstance.setMap(null);
+      if (activeOverlay) activeOverlay.setMap(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProperty, properties, map]);
 
   const getStatusColor = (status) => {
     const colors = {
@@ -78,7 +119,6 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
         style={{ width: '100%', height: '100%' }}
         defaultZoom={15}
         defaultCenter={MIRA_ROAD_COORDS}
-        /* ME FIX: Use 'hybrid' instead of 'satellite' so markers and roads appear */
         mapTypeId={mapStyle === 'satellite' ? 'hybrid' : 'roadmap'}
         gestureHandling={'cooperative'}
         disableDefaultUI={true}
@@ -92,7 +132,6 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
           }
         }}
       >
-        {/* GLOBAL MODE: Render all properties */}
         {!onLocationSelect && properties.length > 0 && properties.map((p) => (
           <AdvancedMarker
             key={p.id}
@@ -118,7 +157,6 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
           </AdvancedMarker>
         ))}
 
-        {/* ADD/EDIT MODE: Render a single draggable pin */}
         {onLocationSelect && (
           <AdvancedMarker
             position={{ lat, lng }}
@@ -165,11 +203,11 @@ export default function GoogleMapsViewer({
   onMarkerClick,
   initialLat = 19.2813,
   initialLng = 72.8693,
-  onLocationSelect
+  onLocationSelect,
+  selectedProperty
 }) {
   const containerHeight = onLocationSelect ? '400px' : '100%';
 
-  // ME FIX: Added the places library so we can use AutocompleteService in forms
   return (
     <APIProvider apiKey={process.env.NEXT_PUBLIC_GMAP_KEY} libraries={['places']}>
       <div style={{
@@ -184,6 +222,7 @@ export default function GoogleMapsViewer({
           lat={Number(initialLat)}
           lng={Number(initialLng)}
           onLocationSelect={onLocationSelect}
+          selectedProperty={selectedProperty}
         />
       </div>
     </APIProvider>
