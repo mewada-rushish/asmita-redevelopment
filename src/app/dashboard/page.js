@@ -76,6 +76,12 @@ export default function DashboardMapPage() {
     );
   };
 
+  // Find linked properties for the currently selected one
+  const linkedProperties = useMemo(() => {
+    if (!selectedProperty || !selectedProperty.club_id || !Array.isArray(properties)) return [];
+    return properties.filter(p => p.club_id === selectedProperty.club_id && p.id !== selectedProperty.id);
+  }, [selectedProperty, properties]);
+
   // --- RBAC PERMISSIONS ---
   const roleStr = (userRole || '').trim().toLowerCase();
 
@@ -114,7 +120,6 @@ export default function DashboardMapPage() {
     return list.length > 0 ? list : null;
   };
 
-  // ME ADDED: Build a structured array for PMC & CP to leverage the nice card UI
   const buildPmcCpList = () => {
     if (!selectedProperty) return null;
     const list = [];
@@ -130,7 +135,7 @@ export default function DashboardMapPage() {
     const cpName = selectedProperty.cp_name || (selectedProperty.assigned_cp_id ? `ID: ${selectedProperty.assigned_cp_id}` : '');
     if (cpName || selectedProperty.cp_phone) {
       list.push({
-        Role: 'CP', // Renamed from Field Executive
+        Role: 'CP', 
         Name: cpName || '-',
         Contact: selectedProperty.cp_phone ? (canViewContacts ? selectedProperty.cp_phone : '*** RESTRICTED ***') : '-'
       });
@@ -226,7 +231,12 @@ export default function DashboardMapPage() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.mapContainer}>
-        <MapViewer properties={properties} mapStyle={currentStyle} onMarkerClick={setSelectedProperty} />
+        <MapViewer 
+          properties={properties} 
+          mapStyle={currentStyle} 
+          onMarkerClick={setSelectedProperty} 
+          selectedProperty={selectedProperty} 
+        />
       </div>
 
       <div className={`${styles.detailSidebar} ${selectedProperty ? styles.showSidebar : ''}`}>
@@ -251,13 +261,35 @@ export default function DashboardMapPage() {
                 {selectedProperty.status}
               </div>
 
+              {/* NEW: Linked Properties Section */}
+              {selectedProperty.club_id && (
+                <div className={styles.sideSection} style={{ borderLeft: '4px solid #3b82f6', background: '#eff6ff' }}>
+                  <h4 className={styles.sectionHeading} style={{ color: '#1e40af', borderBottomColor: '#bfdbfe' }}>
+                    <i className="fa fa-link"></i> Linked Redevelopment Club
+                  </h4>
+                  <p style={{ fontSize: '11px', color: '#60a5fa', marginBottom: '10px', fontWeight: '700' }}>
+                    These properties are clubbed for joint redevelopment.
+                  </p>
+                  <div className={styles.linkedList}>
+                    {linkedProperties.length > 0 ? linkedProperties.map(lp => (
+                      <div key={lp.id} className={styles.linkedItem} onClick={() => setSelectedProperty(lp)}>
+                        <i className="fa fa-building"></i>
+                        <div className={styles.linkedItemInfo}>
+                          <strong>{lp.property_name}</strong>
+                          <span>{lp.locality}</span>
+                        </div>
+                        <i className="fa fa-chevron-right"></i>
+                      </div>
+                    )) : (
+                      <p className={styles.emptyVal}>No other properties in this club.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className={styles.sideSection}>
                 <h4 className={styles.sectionHeading}><i className="fa fa-building-o"></i> 1. BUILDING & LAND</h4>
-
-                {/* PMC and CP mapped into identical card structure */}
                 {renderField('', buildPmcCpList())}
-
-                {/* Property Core Details */}
                 {renderField('ADDRESS', selectedProperty.address || 'Address not provided')}
                 {renderField('LOCALITY', selectedProperty.locality)}
                 {renderField('LAND OWNER / SOCIETY', selectedProperty.land_owner_name)}

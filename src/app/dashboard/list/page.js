@@ -1,8 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import styles from './list.module.css';
+import { exportPropertiesToExcel } from '@/utils/propertyExport';
 
 const safeParse = (data) => {
   if (!data) return {};
@@ -23,6 +24,15 @@ export default function PropertiesList() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
+
+  // Table Scroll Sync & Drag States
+  const topScrollRef = useRef(null);
+  const tableWrapperRef = useRef(null);
+  const tableRef = useRef(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftState, setScrollLeftState] = useState(0);
 
   const filterOptions = ['All', 'Not Approached', 'Interested Letter Sent', 'Meeting Finalized', 'Approved'];
 
@@ -111,37 +121,18 @@ export default function PropertiesList() {
     setSelectedProperty(null);
   };
 
-  const exportToExcel = () => {
-    try {
-      const headers = ["ID", "Building Name", "Locality", "Address", "Status", "Created At"];
-      const rows = filteredData.map(p => [
-        p.id, p.property_name, p.locality, p.address.replace(/,/g, ' '), p.status, p.created_at
-      ]);
-
-      let csvContent = "data:text/csv;charset=utf-8,"
-        + headers.join(",") + "\n"
-        + rows.map(e => e.join(",")).join("\n");
-
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `AsmitA_Properties_${new Date().toLocaleDateString()}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success("Exported to Excel successfully!");
-    } catch (error) {
-      toast.error("Failed to export data.");
-    }
-  };
-
   const filteredData = Array.isArray(properties) ? properties.filter(p => {
     const matchesSearch = (p.property_name || '').toLowerCase().includes(search.toLowerCase()) ||
       (p.locality || '').toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === 'All' || p.status === filter;
     return matchesSearch && matchesFilter;
   }) : [];
+
+  const handleExport = () => {
+    const success = exportPropertiesToExcel(filteredData);
+    if (success) toast.success("Exported to Excel successfully!");
+    else toast.error("No data available to export.");
+  };
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -154,6 +145,41 @@ export default function PropertiesList() {
   const canDelete = ['super admin', 'admin'].includes(roleStr);
   const canExport = roleStr && roleStr !== 'view only';
 
+  // --- Scroll & Drag Handlers ---
+  useEffect(() => {
+    if (tableRef.current) {
+      setTableScrollWidth(tableRef.current.scrollWidth);
+    }
+  }, [currentItems, loading]);
+
+  const handleTopScroll = () => {
+    if (tableWrapperRef.current && topScrollRef.current) {
+      tableWrapperRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+
+  const handleTableScroll = () => {
+    if (topScrollRef.current && tableWrapperRef.current) {
+      topScrollRef.current.scrollLeft = tableWrapperRef.current.scrollLeft;
+    }
+  };
+
+  const handleDragStart = (e) => {
+    setIsDragging(true);
+    setStartX(e.pageX - tableWrapperRef.current.offsetLeft);
+    setScrollLeftState(tableWrapperRef.current.scrollLeft);
+  };
+
+  const handleDragEnd = () => setIsDragging(false);
+
+  const handleDragMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault(); // Prevent text highlighting while dragging
+    const x = e.pageX - tableWrapperRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Multiply for drag speed
+    tableWrapperRef.current.scrollLeft = scrollLeftState - walk;
+  };
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -163,7 +189,7 @@ export default function PropertiesList() {
         </div>
         <div className={styles.actionBtns}>
           {canExport && (
-            <button onClick={exportToExcel} className={styles.exportBtn}>
+            <button onClick={handleExport} className={styles.exportBtn}>
               <i className="fa fa-file-excel-o"></i> Export Excel
             </button>
           )}
@@ -198,94 +224,114 @@ export default function PropertiesList() {
       </div>
 
       <div className={styles.tableCard}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>BUILDING NAME</th>
-              <th>LOCATION / AREA</th>
-              <th>STATUS</th>
-              <th>LAST EDITED BY</th>
-              <th>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="6" className={styles.loadingCell}>Loading...</td></tr>
-            ) : currentItems.length === 0 ? (
+        {/* --- TOP SCROLLBAR --- */}
+        <div 
+          className={styles.topScrollWrapper} 
+          ref={topScrollRef} 
+          onScroll={handleTopScroll}
+        >
+          <div style={{ width: `${tableScrollWidth}px`, height: '1px' }}></div>
+        </div>
+
+        {/* --- MAIN DRAGGABLE TABLE WRAPPER --- */}
+        <div 
+          className={`${styles.tableWrapper} ${isDragging ? styles.dragging : ''}`}
+          ref={tableWrapperRef}
+          onScroll={handleTableScroll}
+          onMouseDown={handleDragStart}
+          onMouseLeave={handleDragEnd}
+          onMouseUp={handleDragEnd}
+          onMouseMove={handleDragMove}
+        >
+          <table className={styles.table} ref={tableRef}>
+            <thead>
               <tr>
-                <td colSpan="6" className={styles.emptyCell}>
-                  <div className={styles.emptyState}>
-                    <i className="fa fa-folder-open-o"></i>
-                    <p>No properties found matching your search or filter.</p>
-                  </div>
-                </td>
+                <th>ID</th>
+                <th>BUILDING NAME</th>
+                <th>LOCATION / AREA</th>
+                <th>STATUS</th>
+                <th>LAST EDITED BY</th>
+                <th>ACTIONS</th>
               </tr>
-            ) : currentItems.map(p => (
-              <tr key={p.id}>
-                <td>
-                  <span className={styles.idBadge}>#{p.id}</span>
-                </td>
-                <td>
-                  <div className={styles.buildingCell}>
-                    <div className={styles.logoPlaceholder}><i className="fa fa-building"></i></div>
-                    <strong>{p.property_name}</strong>
-                  </div>
-                </td>
-                <td><span className={styles.areaText}>{p.locality || p.address}</span></td>
-                <td>
-                  <div className={styles.statusWrapper}>
-                    <select
-                      className={styles.statusDropdown}
-                      value={p.status}
-                      onChange={(e) => handleStatusChange(p.id, e.target.value)}
-                      disabled={!canEdit || updatingId === p.id}
-                      style={{
-                        borderColor: getStatusColor(p.status),
-                        backgroundColor: getStatusBgColor(p.status),
-                        opacity: !canEdit ? 0.7 : 1,
-                        cursor: !canEdit ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      {filterOptions.filter(o => o !== 'All').map(o => (
-                        <option key={o} value={o}>{o}</option>
-                      ))}
-                    </select>
-                    {updatingId === p.id && <i className="fa fa-spinner fa-spin"></i>}
-                  </div>
-                </td>
-                <td>
-                  <span className={styles.emailBadge}>
-                    {p.updated_by_name || p.updated_by_email || 'Unknown'}
-                  </span>
-                </td>
-                <td>
-                  <div className={styles.actionGroup}>
-                    <button onClick={() => handleViewClick(p)} className={styles.viewBtn}>
-                      <i className="fa fa-eye"></i>
-                    </button>
-                    {canEdit ? (
-                      <Link href={`/dashboard/edit/${p.id}`} className={styles.editBtn}>
-                        <i className="fa fa-pencil"></i>
-                      </Link>
-                    ) : (
-                      <span className={styles.viewOnlyText}>View Only</span>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        className={styles.deleteBtn}
-                        title="Delete Property"
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan="6" className={styles.loadingCell}>Loading...</td></tr>
+              ) : currentItems.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className={styles.emptyCell}>
+                    <div className={styles.emptyState}>
+                      <i className="fa fa-folder-open-o"></i>
+                      <p>No properties found matching your search or filter.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : currentItems.map(p => (
+                <tr key={p.id}>
+                  <td>
+                    <span className={styles.idBadge}>#{p.id}</span>
+                  </td>
+                  <td>
+                    <div className={styles.buildingCell}>
+                      <div className={styles.logoPlaceholder}><i className="fa fa-building"></i></div>
+                      <strong>{p.property_name}</strong>
+                    </div>
+                  </td>
+                  <td><span className={styles.areaText}>{p.locality || p.address}</span></td>
+                  <td>
+                    <div className={styles.statusWrapper}>
+                      <select
+                        className={styles.statusDropdown}
+                        value={p.status}
+                        onChange={(e) => handleStatusChange(p.id, e.target.value)}
+                        disabled={!canEdit || updatingId === p.id}
+                        style={{
+                          borderColor: getStatusColor(p.status),
+                          backgroundColor: getStatusBgColor(p.status),
+                          opacity: !canEdit ? 0.7 : 1,
+                          cursor: !canEdit ? 'not-allowed' : 'pointer'
+                        }}
                       >
-                        <i className="fa fa-trash"></i>
+                        {filterOptions.filter(o => o !== 'All').map(o => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                      {updatingId === p.id && <i className="fa fa-spinner fa-spin"></i>}
+                    </div>
+                  </td>
+                  <td>
+                    <span className={styles.emailBadge}>
+                      {p.updated_by_name || p.updated_by_email || 'Unknown'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.actionGroup}>
+                      <button onClick={() => handleViewClick(p)} className={styles.viewBtn}>
+                        <i className="fa fa-eye"></i>
                       </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      {canEdit ? (
+                        <Link href={`/dashboard/edit/${p.id}`} className={styles.editBtn} draggable="false">
+                          <i className="fa fa-pencil"></i>
+                        </Link>
+                      ) : (
+                        <span className={styles.viewOnlyText}>View Only</span>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className={styles.deleteBtn}
+                          title="Delete Property"
+                        >
+                          <i className="fa fa-trash"></i>
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <div className={styles.paginationFooter}>
           <div className={styles.perPage}>

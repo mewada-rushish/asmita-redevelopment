@@ -5,7 +5,6 @@ import jwt from 'jsonwebtoken';
 import { validatePropertyForm } from '@/utils/propertyForm';
 import { promoteDraftFiles } from '@/utils/bucketManager';
 
-// --- Improved Auth Helper ---
 async function verifyAuth() {
   const cookieStore = await cookies();
   const token = cookieStore.get('asmita_auth')?.value;
@@ -13,7 +12,6 @@ async function verifyAuth() {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const db = await getDbConnection();
     const [rows] = await db.execute('SELECT role, name, email FROM users WHERE id = ? LIMIT 1', [decoded.id]);
 
@@ -40,7 +38,6 @@ export async function GET() {
 
     const db = await getDbConnection();
 
-    // ME FIX: LEFT JOIN with users table to fetch the assigned Field Executive's name and phone
     const query = `
       SELECT p.*, u.name AS cp_name, u.phone AS cp_phone 
       FROM properties p 
@@ -76,7 +73,6 @@ export async function POST(req) {
       );
     }
 
-    // Isolate the draft ID
     let draftFolderId = null;
     if (data.interest_letter_file && data.interest_letter_file.includes('draft-')) {
       draftFolderId = data.interest_letter_file.split('/')[1];
@@ -142,6 +138,24 @@ export async function POST(req) {
 
     const [result] = await db.execute(query, values);
     const newPropertyId = result.insertId.toString();
+
+    // Grouping / Clubbing Synchronization
+    if (data.clubbed_properties && Array.isArray(data.clubbed_properties) && data.clubbed_properties.length > 0) {
+      const placeholders = data.clubbed_properties.map(() => '?').join(',');
+      const [clubCheck] = await db.execute(
+        `SELECT club_id FROM properties WHERE id IN (${placeholders}) AND club_id IS NOT NULL LIMIT 1`,
+        data.clubbed_properties
+      );
+
+      const finalClubId = clubCheck.length > 0 ? clubCheck[0].club_id : `club_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const allIdsToSync = [...data.clubbed_properties, newPropertyId];
+      const syncPlaceholders = allIdsToSync.map(() => '?').join(',');
+      
+      await db.execute(
+        `UPDATE properties SET club_id = ? WHERE id IN (${syncPlaceholders})`,
+        [finalClubId, ...allIdsToSync]
+      );
+    }
 
     const finalPropertyName = data.property_name && data.property_name.trim() !== ''
       ? data.property_name.trim()

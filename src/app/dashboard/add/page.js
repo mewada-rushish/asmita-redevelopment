@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
 import MapViewer from '@/components/maps/MapViewer';
+import DuplicateAlertModal from '@/components/modals/DuplicateAlertModal';
 import { validatePropertyForm } from '@/utils/propertyForm';
 import { uploadPropertyDocument } from '@/utils/uploadsUtil';
 import toast from 'react-hot-toast';
@@ -40,16 +41,25 @@ export default function AddPropertyPage() {
   const [admins, setAdmins] = useState([]); 
   
   const [checkingAuth, setCheckingAuth] = useState(true);
-  
   const [currentUserRole, setCurrentUserRole] = useState('');
+  
   const [showExecModal, setShowExecModal] = useState(false);
   const [creatingExec, setCreatingExec] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   
   const [newExecForm, setNewExecForm] = useState({
     name: '', email: '', phone: '', password: ''
   });
 
   const [isBulkUpload, setIsBulkUpload] = useState(false);
+
+  // --- Duplicate Check & Clubbing States ---
+  const [duplicateMatch, setDuplicateMatch] = useState(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
+  const [clubbingSearch, setClubbingSearch] = useState('');
+  const [clubbingSuggestions, setClubbingSuggestions] = useState([]);
+  const [clubbedProperties, setClubbedProperties] = useState([]);
 
   useEffect(() => {
     const verifyAccess = async () => {
@@ -112,7 +122,6 @@ export default function AddPropertyPage() {
       if (data.success && data.users) {
         const cps = data.users.filter(u => u.role === 'CP' || u.role === 'Channel Partner' || u.role === 'Field Executive');
         setExecutives(cps);
-        
         const adminList = data.users.filter(u => u.role === 'Admin');
         setAdmins(adminList);
       }
@@ -124,6 +133,62 @@ export default function AddPropertyPage() {
   useEffect(() => {
     fetchUsersData();
   }, []);
+
+  // --- Duplicate Check Logic ---
+  const checkDuplicates = async () => {
+    if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
+
+    try {
+      const res = await fetch('/api/properties/check-duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          property_name: formData.property_name, 
+          address: formData.address 
+        })
+      });
+      const data = await res.json();
+      if (data.isDuplicate) {
+        setDuplicateMatch(data.matchedProperty);
+        setShowDuplicateModal(true);
+      }
+    } catch (err) {
+      console.error("Duplicate check failed", err);
+    }
+  };
+
+  // --- Clubbing (Search & Assign) Logic ---
+  const handleClubbingSearch = async (query) => {
+    setClubbingSearch(query);
+    if (query.length < 2) {
+      setClubbingSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/properties/search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+          const filtered = data.filter(p => !clubbedProperties.find(cp => cp.id === p.id));
+          setClubbingSuggestions(filtered);
+      } else {
+          setClubbingSuggestions([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setClubbingSuggestions([]);
+    }
+  };
+
+  const addClubbedProperty = (prop) => {
+    setClubbedProperties([...clubbedProperties, prop]);
+    setClubbingSearch('');
+    setClubbingSuggestions([]);
+  };
+
+  const removeClubbedProperty = (id) => {
+    setClubbedProperties(clubbedProperties.filter(p => p.id !== id));
+  };
+
 
   const handleAddressSearch = (query) => {
     setFormData(prev => ({ ...prev, address: query }));
@@ -155,16 +220,12 @@ export default function AddPropertyPage() {
         setSearching(false);
       });
     } else {
-      console.warn("Google Maps Places API not loaded yet.");
       setSearching(false);
     }
   };
 
   const selectSuggestion = (suggestion) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      address: suggestion.description
-    }));
+    setFormData(prev => ({ ...prev, address: suggestion.description }));
     setShowSuggestions(false);
 
     if (typeof window !== 'undefined' && window.google && window.google.maps) {
@@ -181,7 +242,12 @@ export default function AddPropertyPage() {
     }
   };
 
-  const handleBlur = () => setTimeout(() => setShowSuggestions(false), 300);
+  const handleBlur = () => {
+    setTimeout(() => {
+      setShowSuggestions(false);
+      checkDuplicates(); // Run duplicate check when user finishes address
+    }, 300);
+  };
 
   const updateField = (key, val) => setFormData(p => ({ ...p, [key]: val }));
   const updateContact = (role, key, val) => setFormData(p => ({ ...p, [role]: { ...p[role], [key]: val } }));
@@ -321,10 +387,15 @@ export default function AddPropertyPage() {
 
     setLoading(true);
     try {
+      const payload = {
+        ...formData,
+        clubbed_properties: clubbedProperties.map(p => p.id)
+      };
+
       const res = await fetch('/api/properties', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -342,6 +413,7 @@ export default function AddPropertyPage() {
   };
 
   const isAdmin = currentUserRole === 'super admin' || currentUserRole === 'admin';
+  const bulkFiles = formData.document_checklist.filter(item => item.label.startsWith('Bulk:'));
 
   return (
     <div className={styles.container}>
@@ -389,14 +461,21 @@ export default function AddPropertyPage() {
 
         <main className={styles.content}>
           <Accordion title="1. Building & Lead Details" icon="fa-building" defaultOpen={true}>
-            <div className={styles.inputGroup}><label className={styles.label}>Building / Society Name</label><input className={styles.input} value={formData.property_name} onChange={e => updateField('property_name', e.target.value)} /></div>
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Building / Society Name</label>
+              <input 
+                className={styles.input} 
+                value={formData.property_name} 
+                onChange={e => updateField('property_name', e.target.value)} 
+                onBlur={checkDuplicates} 
+              />
+            </div>
 
             <div className={styles.grid2}>
               <div className={styles.inputGroup}><label className={styles.label}>PMC / Co-ordinator Name</label><input className={styles.input} placeholder="Name of PMC" value={formData.pmc_name} onChange={e => updateField('pmc_name', e.target.value)} /></div>
               <div className={styles.inputGroup}><label className={styles.label}>PMC Contact No.</label><input className={styles.input} placeholder="Phone Number" value={formData.pmc_contact} onChange={e => updateField('pmc_contact', e.target.value)} /></div>
             </div>
 
-            {/* ME FIX: Reporting Manager Dropdown moved here */}
             <div className={styles.inputGroup}>
               <label className={styles.label}>Reporting Manager *</label>
               <select className={styles.input} value={formData.assigned_admin_id} onChange={e => updateField('assigned_admin_id', e.target.value)} required>
@@ -407,7 +486,7 @@ export default function AddPropertyPage() {
               </select>
             </div>
 
-            <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 1000 }}>
+            <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 99 }}>
               <label className={styles.label}>Address {searching && <i className="fa fa-spinner fa-spin" style={{ marginLeft: '10px' }}></i>}</label>
               <textarea
                 className={styles.input} value={formData.address}
@@ -424,6 +503,52 @@ export default function AddPropertyPage() {
                   ))}
                 </ul>
               )}
+            </div>
+
+            {/* ME MOVED: Clubbing Repeater Interface integrated into Section 1 */}
+            <div style={{ marginTop: '25px', borderTop: '1px dashed #e5e7eb', paddingTop: '20px' }}>
+              <h3 style={{ fontSize: '15px', color: '#1f2937', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa fa-link" style={{ color: '#64748b' }}></i> Property Grouping (Clubbed Redevelopment)
+              </h3>
+              <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 98 }}>
+                <label className={styles.label}>Link Nearby Properties</label>
+                <div className={styles.searchWrapper}>
+                    <i className="fa fa-search" style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }}></i>
+                    <input 
+                        type="text" 
+                        className={styles.input} 
+                        style={{ paddingLeft: '35px' }}
+                        placeholder="Search by building name or address..." 
+                        value={clubbingSearch}
+                        onChange={(e) => handleClubbingSearch(e.target.value)}
+                    />
+                    {clubbingSuggestions.length > 0 && (
+                        <ul className={styles.suggestions}>
+                            {clubbingSuggestions.map(p => (
+                                <li key={p.id} onMouseDown={() => addClubbedProperty(p)}>
+                                    <i className="fa fa-building"></i> <strong>{p.property_name}</strong> 
+                                    <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '10px' }}>({p.address.substring(0, 35)}...)</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                {clubbedProperties.length > 0 && (
+                    <div className={styles.chipContainer}>
+                        {clubbedProperties.map(p => (
+                            <div key={p.id} className={styles.propertyChip}>
+                                <i className="fa fa-building"></i>
+                                <strong>{p.property_name}</strong>
+                                <i 
+                                    className="fa fa-times-circle" 
+                                    onClick={() => removeClubbedProperty(p.id)}
+                                ></i>
+                            </div>
+                        ))}
+                    </div>
+                )}
+              </div>
             </div>
           </Accordion>
 
@@ -536,9 +661,23 @@ export default function AddPropertyPage() {
           </Accordion>
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
-            <div className={styles.checkRow} style={{ marginBottom: '15px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <strong>Enable Bulk Document Upload?</strong>
-              <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
+            <div className={styles.bulkActionRow}>
+              <div>
+                <strong>Enable Bulk Document Upload?</strong>
+                <div style={{ marginTop: '5px' }}>
+                  <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
+                </div>
+              </div>
+              
+              {bulkFiles.length > 0 && (
+                <button 
+                  type="button" 
+                  className={styles.libraryBtn}
+                  onClick={() => setShowBulkModal(true)}
+                >
+                  <i className="fa fa-folder-open"></i> View Bulk Files ({bulkFiles.length})
+                </button>
+              )}
             </div>
 
             {isBulkUpload && (
@@ -558,11 +697,16 @@ export default function AddPropertyPage() {
                     <YesNoToggle value={formData.has_interest_letter} onChange={(v) => updateField('has_interest_letter', v)} />
                   ) : (
                     <div className={styles.submittedWrapper}>
-                      <span className={styles.submittedChip}>
-                        <i className="fa fa-check-circle"></i> Submitted
-                      </span>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(formData.interest_letter_file)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
                       <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
-                        Re-upload
+                        <i className="fa fa-refresh"></i> Re-upload
                       </button>
                     </div>
                   )}
@@ -578,39 +722,47 @@ export default function AddPropertyPage() {
                 )}
               </div>
 
-              {formData.document_checklist.map((item, i) => (
-                <div key={i} className={styles.checkItem}>
-                  <div className={styles.docItemHeader}>
-                    <span>{item.label.startsWith('Bulk:') ? item.label : `${i + 1}. ${item.label}`}</span>
+              {formData.document_checklist.map((item, i) => {
+                if (item.label.startsWith('Bulk:')) return null;
+                return (
+                  <div key={i} className={styles.checkItem}>
+                    <div className={styles.docItemHeader}>
+                      <span>{i + 1}. {item.label}</span>
 
-                    {!item.file_name ? (
-                      <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
-                    ) : (
-                      <div className={styles.submittedWrapper}>
-                        <span className={styles.submittedChip}>
-                          <i className="fa fa-check-circle"></i> Submitted
-                        </span>
-                        <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
-                          Re-upload
+                      {!item.file_name ? (
+                        <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
+                      ) : (
+                        <div className={styles.submittedWrapper}>
+                          <a 
+                            href={`/api/viewDoc?key=${encodeURIComponent(item.file_name)}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={styles.viewFileBtn}
+                          >
+                            <i className="fa fa-external-link"></i> View
+                          </a>
+                          <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
+                            <i className="fa fa-refresh"></i> Re-upload
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {item.value === 1 && !item.file_name && !isBulkUpload && (
+                      <div className={styles.uploadRow}>
+                        <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
+                        <button
+                          type="button"
+                          className={styles.uploadBtn}
+                          onClick={() => executeDocUpload(i, `doc_upload_${i}`, item)}
+                        >
+                          <i className="fa fa-upload"></i> Upload
                         </button>
                       </div>
                     )}
                   </div>
-
-                  {item.value === 1 && !item.file_name && !isBulkUpload && (
-                    <div className={styles.uploadRow}>
-                      <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
-                      <button
-                        type="button"
-                        className={styles.uploadBtn}
-                        onClick={() => executeDocUpload(i, `doc_upload_${i}`, item)}
-                      >
-                        <i className="fa fa-upload"></i> Upload
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className={styles.checkRow} style={{ margin: '20px 0' }}>
@@ -666,6 +818,40 @@ export default function AddPropertyPage() {
         </main>
       </div>
 
+      {showBulkModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent} style={{ maxWidth: '600px' }}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fa fa-files-o"></i> Bulk Uploaded Documents</h2>
+              <button className={styles.closeBtn} onClick={() => setShowBulkModal(false)}>
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.bulkList}>
+                {bulkFiles.map((file, index) => (
+                  <div key={index} className={styles.bulkFileRow}>
+                    <span className={styles.fileName} title={file.label.replace('Bulk: ', '')}>
+                      <i className="fa fa-file-text-o"></i> {file.label.replace('Bulk: ', '')}
+                    </span>
+                    <div className={styles.fileActions}>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(file.file_name)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showExecModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -707,6 +893,13 @@ export default function AddPropertyPage() {
           </div>
         </div>
       )}
+
+      {/* ME ADDED: Modularized Duplicate Warning Modal */}
+      <DuplicateAlertModal 
+        isOpen={showDuplicateModal} 
+        matchedProperty={duplicateMatch} 
+        onContinue={() => setShowDuplicateModal(false)} 
+      />
 
     </div>
   );

@@ -11,6 +11,9 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1032.0",
     "@aws-sdk/s3-request-presigner": "^3.1032.0",
+    "@turf/buffer": "^7.3.5",
+    "@turf/convex": "^7.3.5",
+    "@turf/helpers": "^7.3.5",
     "@vis.gl/react-google-maps": "^1.8.3",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.2",

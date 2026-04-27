@@ -1,12 +1,19 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useCallback, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
 import MapViewer from '@/components/maps/MapViewer';
+import DuplicateAlertModal from '@/components/modals/DuplicateAlertModal';
 import { validatePropertyForm } from '@/utils/propertyForm';
 import { uploadPropertyDocument } from '@/utils/uploadsUtil';
 import toast from 'react-hot-toast';
 import styles from './edit.module.css';
+
+const safeParse = (str) => {
+  if (!str) return {};
+  if (typeof str === 'object') return str;
+  try { return JSON.parse(str); } catch { return {}; }
+};
 
 const YesNoToggle = ({ value, onChange }) => (
   <div className={styles.toggle} style={{ display: 'flex', gap: '5px' }}>
@@ -29,48 +36,26 @@ const YesNoToggle = ({ value, onChange }) => (
   </div>
 );
 
-const safeJSONParse = (data, fallback = {}) => {
-  if (!data) return fallback;
-  if (typeof data === 'object') return data;
-  try {
-    let parsed = JSON.parse(data);
-    while (typeof parsed === 'string') {
-      parsed = JSON.parse(parsed);
-    }
-    return parsed || fallback;
-  } catch (e) {
-    return fallback;
-  }
-};
-
-const formatDateForInput = (dateStr) => {
-  if (!dateStr) return '';
-  return new Date(dateStr).toISOString().split('T')[0];
-};
-
-const checklistNames = [
-  "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
-  "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
-  "Property Tax Bill", "Conveyance Deed", "Society Bye-laws", "Electricity Bill", "Water Bill", "Encumbrance Cert",
-  "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
-];
-
 export default function EditPropertyPage() {
-  const { id } = useParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const params = useParams();
+  const { id } = params;
+
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   
   const [executives, setExecutives] = useState([]);
-  const [admins, setAdmins] = useState([]);
+  const [admins, setAdmins] = useState([]); 
   
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState('');
+  
   const [showExecModal, setShowExecModal] = useState(false);
   const [creatingExec, setCreatingExec] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   
   const [newExecForm, setNewExecForm] = useState({
     name: '', email: '', phone: '', password: ''
@@ -78,11 +63,26 @@ export default function EditPropertyPage() {
 
   const [isBulkUpload, setIsBulkUpload] = useState(false);
 
+  // --- Duplicate Check & Clubbing States ---
+  const [duplicateMatch, setDuplicateMatch] = useState(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
+  const [clubbingSearch, setClubbingSearch] = useState('');
+  const [clubbingSuggestions, setClubbingSuggestions] = useState([]);
+  const [clubbedProperties, setClubbedProperties] = useState([]);
+
+  const checklistNames = [
+    "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
+    "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
+    "Property Tax Bill", "Conveyance Deed", "Society Bye-laws", "Electricity Bill", "Water Bill", "Encumbrance Cert",
+    "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
+  ];
+
   const [formData, setFormData] = useState({
     category: 'Redevelopment', status: 'Not Approached',
     pmc_name: '', pmc_contact: '', 
-    assigned_cp_id: '', assigned_admin_id: '', 
-    property_name: '', locality: '', address: '',
+    assigned_cp_id: '', assigned_admin_id: '',
+    property_name: '', locality: 'Mira Road East', address: '',
     lat: 19.2813, lng: 72.8693,
     land_owner_name: '', land_type: 'Freehold', cts_survey_no: '',
     is_society_registered: 0, registration_no: '',
@@ -111,11 +111,10 @@ export default function EditPropertyPage() {
         const res = await fetch('/api/auth/me');
         const data = await res.json();
         const role = (data.user?.role || data.role || '').toLowerCase();
-        setCurrentUserRole(role);
-        const allowed = ['super admin', 'admin', 'crm', 'crm team'];
+        setCurrentUserRole(role); 
+        const allowed = ['super admin', 'admin', 'crm', 'crm team', 'sales', 'field executive', 'channel partner', 'cp'];
         if (!allowed.includes(role)) {
           router.push('/dashboard');
-          return;
         }
       } catch (err) {
         router.push('/dashboard');
@@ -133,7 +132,6 @@ export default function EditPropertyPage() {
       if (data.success && data.users) {
         const cps = data.users.filter(u => u.role === 'CP' || u.role === 'Channel Partner' || u.role === 'Field Executive');
         setExecutives(cps);
-        
         const adminList = data.users.filter(u => u.role === 'Admin');
         setAdmins(adminList);
       }
@@ -142,91 +140,117 @@ export default function EditPropertyPage() {
     }
   };
 
+  const fetchPropertyData = async () => {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/properties/${id}`);
+      if (!res.ok) throw new Error("Failed to load property");
+      const data = await res.json();
+      
+      const parsedChecklist = safeParse(data.document_checklist);
+      const mergedChecklist = checklistNames.map(name => {
+        const existing = Array.isArray(parsedChecklist) ? parsedChecklist.find(item => item.label === name) : null;
+        return existing || { label: name, value: 0, file_name: '' };
+      });
+      if (Array.isArray(parsedChecklist)) {
+        parsedChecklist.forEach(item => {
+          if (!mergedChecklist.find(i => i.label === item.label)) mergedChecklist.push(item);
+        });
+      }
+
+      setFormData({
+        ...data,
+        assigned_cp_id: data.assigned_cp_id || '',
+        assigned_admin_id: data.assigned_admin_id || '',
+        chairman_details: safeParse(data.chairman_details) || { name: '', contact: '' },
+        secretary_details: safeParse(data.secretary_details) || { name: '', contact: '' },
+        treasurer_details: safeParse(data.treasurer_details) || { name: '', contact: '' },
+        responsible_person_details: safeParse(data.responsible_person_details) || { name: '', contact: '' },
+        extra_committee_members: Array.isArray(safeParse(data.extra_committee_members)) && safeParse(data.extra_committee_members).length > 0 
+          ? safeParse(data.extra_committee_members) 
+          : [{ name: '', contact: '' }],
+        document_checklist: mergedChecklist,
+        lat: Number(data.lat) || 19.2813,
+        lng: Number(data.lng) || 72.8693,
+        hoarding_date: data.hoarding_date ? data.hoarding_date.split('T')[0] : '',
+        offer_acceptance_date: data.offer_acceptance_date ? data.offer_acceptance_date.split('T')[0] : ''
+      });
+
+      // Load existing clubbed properties if backend returns them
+      if (data.clubbed_properties && Array.isArray(data.clubbed_properties)) {
+        setClubbedProperties(data.clubbed_properties);
+      }
+
+    } catch (err) {
+      toast.error(err.message);
+      router.push('/dashboard/list');
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsersData();
-  }, []);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const res = await fetch(`/api/properties/${id}`);
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data = await res.json();
-
-        if (data) {
-          let incomingCheck = safeJSONParse(data.document_checklist, []);
-          const standardizedCheck = checklistNames.map((name, i) => {
-            const existing = incomingCheck[i] || {};
-            return {
-              label: name,
-              value: existing.value || 0,
-              file_name: existing.file_name || ''
-            };
-          });
-
-          setFormData({
-            category: data.category || 'Redevelopment',
-            status: data.status || 'Not Approached',
-            pmc_name: data.pmc_name || '',
-            pmc_contact: data.pmc_contact || '',
-            assigned_cp_id: data.assigned_cp_id || '',
-            assigned_admin_id: data.assigned_admin_id || '', 
-            property_name: data.property_name || '',
-            locality: data.locality || '',
-            address: data.address || '',
-            lat: parseFloat(data.lat) || 19.2813,
-            lng: parseFloat(data.lng) || 72.8693,
-            land_owner_name: data.land_owner_name || '',
-            land_type: data.land_type || 'Freehold',
-            cts_survey_no: data.cts_survey_no || '',
-            is_society_registered: data.is_society_registered || 0,
-            registration_no: data.registration_no || '',
-            total_plot_area: data.total_plot_area || '',
-            total_flats: data.total_flats || '',
-            total_shops: data.total_shops || '',
-            total_flat_area_combined: data.total_flat_area_combined || '',
-
-            chairman_details: safeJSONParse(data.chairman_details, { name: '', contact: '' }),
-            secretary_details: safeJSONParse(data.secretary_details, { name: '', contact: '' }),
-            treasurer_details: safeJSONParse(data.treasurer_details, { name: '', contact: '' }),
-            responsible_person_details: safeJSONParse(data.responsible_person_details, { name: '', contact: '' }),
-            extra_committee_members: safeJSONParse(data.extra_committee_members, [{ name: '', contact: '' }]),
-
-            has_approved_plan: data.has_approved_plan || 0,
-            has_oc: data.has_oc || 0,
-            has_cc: data.has_cc || 0,
-            has_legal_dispute: data.has_legal_dispute || 0,
-            is_mortgaged: data.is_mortgaged || 0,
-            has_redevelopment_interest: data.has_redevelopment_interest || 0,
-            flat_measure_allowed: data.flat_measure_allowed || 0,
-
-            physical_survey: data.physical_survey || 'Not Started',
-            physical_survey_records: data.physical_survey_records || '',
-            banner_permission_allowed: data.banner_permission_allowed || 0,
-            hoarding_date: formatDateForInput(data.hoarding_date),
-
-            document_checklist: standardizedCheck,
-            document_remarks: data.document_remarks || '',
-            interest_letter_file: data.interest_letter_file || '',
-            has_interest_letter: data.has_interest_letter !== undefined ? data.has_interest_letter : (data.interest_letter_file ? 1 : 0),
-            architect_submitted: data.architect_submitted || 0,
-
-            interaction_history: data.interaction_history || '',
-            offer_letter_status: data.offer_letter_status || 'Not Sent',
-            offer_meeting_track: data.offer_meeting_track || '',
-            offer_acceptance_date: formatDateForInput(data.offer_acceptance_date),
-            sgm_completed: data.sgm_completed || 0,
-            da_agreement_status: data.da_agreement_status || 'Not Started'
-          });
-        }
-      } catch (err) {
-        console.error("Load Error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (id) loadData();
+    fetchPropertyData();
   }, [id]);
+
+  // --- Duplicate Check Logic ---
+  const checkDuplicates = async () => {
+    if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
+
+    try {
+      const res = await fetch('/api/properties/check-duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          property_name: formData.property_name, 
+          address: formData.address,
+          excludeId: id // ME FIX: Don't check against itself
+        })
+      });
+      const data = await res.json();
+      if (data.isDuplicate) {
+        setDuplicateMatch(data.matchedProperty);
+        setShowDuplicateModal(true);
+      }
+    } catch (err) {
+      console.error("Duplicate check failed", err);
+    }
+  };
+
+  // --- Clubbing (Search & Assign) Logic ---
+  const handleClubbingSearch = async (query) => {
+    setClubbingSearch(query);
+    if (query.length < 2) {
+      setClubbingSuggestions([]);
+      return;
+    }
+    try {
+      // ME FIX: Exclude current property ID from search results
+      const res = await fetch(`/api/properties/search?q=${encodeURIComponent(query)}&exclude=${id}`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+          const filtered = data.filter(p => !clubbedProperties.find(cp => cp.id === p.id));
+          setClubbingSuggestions(filtered);
+      } else {
+          setClubbingSuggestions([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setClubbingSuggestions([]);
+    }
+  };
+
+  const addClubbedProperty = (prop) => {
+    setClubbedProperties([...clubbedProperties, prop]);
+    setClubbingSearch('');
+    setClubbingSuggestions([]);
+  };
+
+  const removeClubbedProperty = (propId) => {
+    setClubbedProperties(clubbedProperties.filter(p => p.id !== propId));
+  };
+
 
   const handleAddressSearch = (query) => {
     setFormData(prev => ({ ...prev, address: query }));
@@ -244,7 +268,7 @@ export default function EditPropertyPage() {
       const autocompleteService = new window.google.maps.places.AutocompleteService();
       
       autocompleteService.getPlacePredictions({
-        input: `${query}, Mira Bhayandar`,
+        input: `${query}, Mira Bhayandar`, 
         componentRestrictions: { country: 'in' },
       }, (predictions, status) => {
         if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
@@ -258,16 +282,12 @@ export default function EditPropertyPage() {
         setSearching(false);
       });
     } else {
-      console.warn("Google Maps Places API not loaded yet.");
       setSearching(false);
     }
   };
 
   const selectSuggestion = (suggestion) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      address: suggestion.description
-    }));
+    setFormData(prev => ({ ...prev, address: suggestion.description }));
     setShowSuggestions(false);
 
     if (typeof window !== 'undefined' && window.google && window.google.maps) {
@@ -284,7 +304,12 @@ export default function EditPropertyPage() {
     }
   };
 
-  const handleBlur = () => setTimeout(() => setShowSuggestions(false), 300);
+  const handleBlur = () => {
+    setTimeout(() => {
+      setShowSuggestions(false);
+      checkDuplicates(); 
+    }, 300);
+  };
 
   const updateField = (key, val) => setFormData(p => ({ ...p, [key]: val }));
   const updateContact = (role, key, val) => setFormData(p => ({ ...p, [role]: { ...p[role], [key]: val } }));
@@ -406,7 +431,7 @@ export default function EditPropertyPage() {
     }
   };
 
-  const handleUpdate = async () => {
+  const handleSave = async () => {
     const validation = validatePropertyForm(formData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
@@ -414,16 +439,21 @@ export default function EditPropertyPage() {
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
     try {
+      const payload = {
+        ...formData,
+        clubbed_properties: clubbedProperties.map(p => p.id)
+      };
+
       const res = await fetch(`/api/properties/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (res.ok) {
-        toast.success("Property successfully updated in AsmitA ERP!");
+      if (res.ok && data.success) {
+        toast.success("Property pipeline successfully updated!");
         setTimeout(() => {
           router.push('/dashboard/list');
         }, 1500);
@@ -431,38 +461,37 @@ export default function EditPropertyPage() {
         toast.error("Update failed: " + (data.error || "Unknown error"));
       }
     } catch (e) {
-      toast.error("Update failed. Check console.");
+      toast.error("Update failed");
     }
-    setSaving(false);
+    setLoading(false);
   };
 
-  if (checkingAuth || loading) return <div className={styles.loader || ''} style={{ padding: '40px', textAlign: 'center' }}>Synchronizing with Database...</div>;
+  if (checkingAuth || initialLoading) {
+    return (
+      <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '250px' }}>
+        <div><i className="fa fa-spinner fa-spin fa-2x"></i> Loading property data...</div>
+      </div>
+    );
+  }
 
   const isAdmin = currentUserRole === 'super admin' || currentUserRole === 'admin';
+  const bulkFiles = formData.document_checklist.filter(item => item.label.startsWith('Bulk:'));
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div className={styles.titleGroup}>
-          <h1><i className="fa fa-edit"></i> Editing: {formData.property_name}</h1>
-          <p style={{ fontSize: '12px', color: '#64748b' }}>Property ID: {id} | Last Sync: {new Date().toLocaleTimeString()}</p>
-        </div>
-        <button onClick={handleUpdate} className={styles.saveBtn} disabled={saving}>
-          {saving ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>} Update Changes
+        <h1>
+          <i className="fa fa-edit"></i> Edit Property : {formData.property_name ? `${formData.property_name}` : `(#${id})`}
+        </h1>
+        <button onClick={handleSave} className={styles.saveBtn} disabled={loading}>
+          {loading ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>} Update Property
         </button>
       </header>
-
       <div className={styles.mainGrid}>
         <aside className={styles.sidebar}>
           <div className={styles.card}>
             <label className={styles.label}>📍 Map Location</label>
-            {/* ME FIX: Added mapStyle="satellite" here to default to the hybrid view */}
-            <MapViewer 
-              initialLat={formData.lat} 
-              initialLng={formData.lng} 
-              onLocationSelect={handleLocationSelect} 
-              mapStyle="satellite" 
-            />
+            <MapViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={handleLocationSelect} mapStyle="satellite" />
             <div className={styles.coords}>Current Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
           </div>
 
@@ -495,7 +524,15 @@ export default function EditPropertyPage() {
 
         <main className={styles.content}>
           <Accordion title="1. Building & Lead Details" icon="fa-building" defaultOpen={true}>
-            <div className={styles.inputGroup}><label className={styles.label}>Building / Society Name</label><input className={styles.input} value={formData.property_name} onChange={e => updateField('property_name', e.target.value)} /></div>
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Building / Society Name</label>
+              <input 
+                className={styles.input} 
+                value={formData.property_name} 
+                onChange={e => updateField('property_name', e.target.value)} 
+                onBlur={checkDuplicates} 
+              />
+            </div>
 
             <div className={styles.grid2}>
               <div className={styles.inputGroup}><label className={styles.label}>PMC / Co-ordinator Name</label><input className={styles.input} placeholder="Name of PMC" value={formData.pmc_name} onChange={e => updateField('pmc_name', e.target.value)} /></div>
@@ -505,14 +542,14 @@ export default function EditPropertyPage() {
             <div className={styles.inputGroup}>
               <label className={styles.label}>Reporting Manager *</label>
               <select className={styles.input} value={formData.assigned_admin_id} onChange={e => updateField('assigned_admin_id', e.target.value)} required>
-                <option value="">-- Select Admin --</option>
+                <option value="">-- Select Reporting Manager --</option>
                 {admins.map(admin => (
                   <option key={admin.id} value={admin.id}>{admin.name}</option>
                 ))}
               </select>
             </div>
 
-            <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 1000 }}>
+            <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 99 }}>
               <label className={styles.label}>Address {searching && <i className="fa fa-spinner fa-spin" style={{ marginLeft: '10px' }}></i>}</label>
               <textarea
                 className={styles.input} value={formData.address}
@@ -529,6 +566,51 @@ export default function EditPropertyPage() {
                   ))}
                 </ul>
               )}
+            </div>
+
+            <div style={{ marginTop: '25px', borderTop: '1px dashed #e5e7eb', paddingTop: '20px' }}>
+              <h3 style={{ fontSize: '15px', color: '#1f2937', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa fa-link" style={{ color: '#64748b' }}></i> Property Grouping (Clubbed Redevelopment)
+              </h3>
+              <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 98 }}>
+                <label className={styles.label}>Link Nearby Properties</label>
+                <div className={styles.searchWrapper}>
+                    <i className="fa fa-search" style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }}></i>
+                    <input 
+                        type="text" 
+                        className={styles.input} 
+                        style={{ paddingLeft: '35px' }}
+                        placeholder="Search by building name or address..." 
+                        value={clubbingSearch}
+                        onChange={(e) => handleClubbingSearch(e.target.value)}
+                    />
+                    {clubbingSuggestions.length > 0 && (
+                        <ul className={styles.suggestions}>
+                            {clubbingSuggestions.map(p => (
+                                <li key={p.id} onMouseDown={() => addClubbedProperty(p)}>
+                                    <i className="fa fa-building"></i> <strong>{p.property_name}</strong> 
+                                    <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '10px' }}>({p.address.substring(0, 35)}...)</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                {clubbedProperties.length > 0 && (
+                    <div className={styles.chipContainer}>
+                        {clubbedProperties.map(p => (
+                            <div key={p.id} className={styles.propertyChip}>
+                                <i className="fa fa-building"></i>
+                                <strong>{p.property_name}</strong>
+                                <i 
+                                    className="fa fa-times-circle" 
+                                    onClick={() => removeClubbedProperty(p.id)}
+                                ></i>
+                            </div>
+                        ))}
+                    </div>
+                )}
+              </div>
             </div>
           </Accordion>
 
@@ -641,9 +723,23 @@ export default function EditPropertyPage() {
           </Accordion>
 
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
-            <div className={styles.checkRow} style={{ marginBottom: '15px', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <strong>Enable Bulk Document Upload?</strong>
-              <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
+            <div className={styles.bulkActionRow}>
+              <div>
+                <strong>Enable Bulk Document Upload?</strong>
+                <div style={{ marginTop: '5px' }}>
+                  <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
+                </div>
+              </div>
+              
+              {bulkFiles.length > 0 && (
+                <button 
+                  type="button" 
+                  className={styles.libraryBtn}
+                  onClick={() => setShowBulkModal(true)}
+                >
+                  <i className="fa fa-folder-open"></i> View Bulk Files ({bulkFiles.length})
+                </button>
+              )}
             </div>
 
             {isBulkUpload && (
@@ -663,11 +759,16 @@ export default function EditPropertyPage() {
                     <YesNoToggle value={formData.has_interest_letter} onChange={(v) => updateField('has_interest_letter', v)} />
                   ) : (
                     <div className={styles.submittedWrapper}>
-                      <span className={styles.submittedChip}>
-                        <i className="fa fa-check-circle"></i> Submitted
-                      </span>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(formData.interest_letter_file)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
                       <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
-                        Re-upload
+                        <i className="fa fa-refresh"></i> Re-upload
                       </button>
                     </div>
                   )}
@@ -683,39 +784,47 @@ export default function EditPropertyPage() {
                 )}
               </div>
 
-              {formData.document_checklist.map((item, i) => (
-                <div key={i} className={styles.checkItem}>
-                  <div className={styles.docItemHeader}>
-                    <span>{item.label.startsWith('Bulk:') ? item.label : `${i + 1}. ${item.label}`}</span>
+              {formData.document_checklist.map((item, i) => {
+                if (item.label.startsWith('Bulk:')) return null;
+                return (
+                  <div key={i} className={styles.checkItem}>
+                    <div className={styles.docItemHeader}>
+                      <span>{i + 1}. {item.label}</span>
 
-                    {!item.file_name ? (
-                      <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
-                    ) : (
-                      <div className={styles.submittedWrapper}>
-                        <span className={styles.submittedChip}>
-                          <i className="fa fa-check-circle"></i> Submitted
-                        </span>
-                        <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
-                          Re-upload
+                      {!item.file_name ? (
+                        <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
+                      ) : (
+                        <div className={styles.submittedWrapper}>
+                          <a 
+                            href={`/api/viewDoc?key=${encodeURIComponent(item.file_name)}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={styles.viewFileBtn}
+                          >
+                            <i className="fa fa-external-link"></i> View
+                          </a>
+                          <button type="button" onClick={() => handleDocReupload(i)} className={styles.reuploadBtn}>
+                            <i className="fa fa-refresh"></i> Re-upload
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {item.value === 1 && !item.file_name && !isBulkUpload && (
+                      <div className={styles.uploadRow}>
+                        <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
+                        <button
+                          type="button"
+                          className={styles.uploadBtn}
+                          onClick={() => executeDocUpload(i, `doc_upload_${i}`, item)}
+                        >
+                          <i className="fa fa-upload"></i> Upload
                         </button>
                       </div>
                     )}
                   </div>
-
-                  {item.value === 1 && !item.file_name && !isBulkUpload && (
-                    <div className={styles.uploadRow}>
-                      <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
-                      <button
-                        type="button"
-                        className={styles.uploadBtn}
-                        onClick={() => executeDocUpload(i, `doc_upload_${i}`, item)}
-                      >
-                        <i className="fa fa-upload"></i> Upload
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className={styles.checkRow} style={{ margin: '20px 0' }}>
@@ -771,6 +880,40 @@ export default function EditPropertyPage() {
         </main>
       </div>
 
+      {showBulkModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent} style={{ maxWidth: '600px' }}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fa fa-files-o"></i> Bulk Uploaded Documents</h2>
+              <button className={styles.closeBtn} onClick={() => setShowBulkModal(false)}>
+                <i className="fa fa-times"></i>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.bulkList}>
+                {bulkFiles.map((file, index) => (
+                  <div key={index} className={styles.bulkFileRow}>
+                    <span className={styles.fileName} title={file.label.replace('Bulk: ', '')}>
+                      <i className="fa fa-file-text-o"></i> {file.label.replace('Bulk: ', '')}
+                    </span>
+                    <div className={styles.fileActions}>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(file.file_name)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showExecModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
@@ -812,6 +955,12 @@ export default function EditPropertyPage() {
           </div>
         </div>
       )}
+
+      <DuplicateAlertModal 
+        isOpen={showDuplicateModal} 
+        matchedProperty={duplicateMatch} 
+        onContinue={() => setShowDuplicateModal(false)} 
+      />
 
     </div>
   );
