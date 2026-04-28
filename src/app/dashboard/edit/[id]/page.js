@@ -63,7 +63,6 @@ export default function EditPropertyPage() {
 
   const [isBulkUpload, setIsBulkUpload] = useState(false);
 
-  // --- Duplicate Check & Clubbing States ---
   const [duplicateMatch, setDuplicateMatch] = useState(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
@@ -176,7 +175,6 @@ export default function EditPropertyPage() {
         offer_acceptance_date: data.offer_acceptance_date ? data.offer_acceptance_date.split('T')[0] : ''
       });
 
-      // Load existing clubbed properties if backend returns them
       if (data.clubbed_properties && Array.isArray(data.clubbed_properties)) {
         setClubbedProperties(data.clubbed_properties);
       }
@@ -194,7 +192,6 @@ export default function EditPropertyPage() {
     fetchPropertyData();
   }, [id]);
 
-  // --- Duplicate Check Logic ---
   const checkDuplicates = async () => {
     if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
 
@@ -205,7 +202,7 @@ export default function EditPropertyPage() {
         body: JSON.stringify({ 
           property_name: formData.property_name, 
           address: formData.address,
-          excludeId: id // ME FIX: Don't check against itself
+          excludeId: id
         })
       });
       const data = await res.json();
@@ -218,7 +215,6 @@ export default function EditPropertyPage() {
     }
   };
 
-  // --- Clubbing (Search & Assign) Logic ---
   const handleClubbingSearch = async (query) => {
     setClubbingSearch(query);
     if (query.length < 2) {
@@ -226,7 +222,6 @@ export default function EditPropertyPage() {
       return;
     }
     try {
-      // ME FIX: Exclude current property ID from search results
       const res = await fetch(`/api/properties/search?q=${encodeURIComponent(query)}&exclude=${id}`);
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
@@ -250,7 +245,6 @@ export default function EditPropertyPage() {
   const removeClubbedProperty = (propId) => {
     setClubbedProperties(clubbedProperties.filter(p => p.id !== propId));
   };
-
 
   const handleAddressSearch = (query) => {
     setFormData(prev => ({ ...prev, address: query }));
@@ -391,6 +385,13 @@ export default function EditPropertyPage() {
       success: () => {
         updateField('document_checklist', [...formData.document_checklist, ...newBulkItems]);
         fileInput.value = '';
+        
+        const btn = document.getElementById('bulk_submit_btn');
+        if (btn) {
+          btn.style.opacity = '0.5';
+          btn.style.pointerEvents = 'none';
+        }
+        
         return "Bulk upload completed!";
       },
       error: "Some files failed to upload."
@@ -475,18 +476,22 @@ export default function EditPropertyPage() {
   }
 
   const isAdmin = currentUserRole === 'super admin' || currentUserRole === 'admin';
-  const bulkFiles = formData.document_checklist.filter(item => item.label.startsWith('Bulk:'));
+
+  // Aggregate all files for the modal
+  const allUploadedFiles = [
+    ...(formData.interest_letter_file ? [{ label: 'Interest Letter', file_name: formData.interest_letter_file }] : []),
+    ...formData.document_checklist.filter(item => item.file_name)
+  ];
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>
-          <i className="fa fa-edit"></i> Edit Property : {formData.property_name ? `${formData.property_name}` : `(#${id})`}
-        </h1>
+        <h1><i className="fa fa-edit"></i> Edit Property {formData.property_name ? `(${formData.property_name})` : `(#${id})`}</h1>
         <button onClick={handleSave} className={styles.saveBtn} disabled={loading}>
           {loading ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>} Update Property
         </button>
       </header>
+
       <div className={styles.mainGrid}>
         <aside className={styles.sidebar}>
           <div className={styles.card}>
@@ -731,22 +736,46 @@ export default function EditPropertyPage() {
                 </div>
               </div>
               
-              {bulkFiles.length > 0 && (
+              {allUploadedFiles.length > 0 && (
                 <button 
                   type="button" 
                   className={styles.libraryBtn}
                   onClick={() => setShowBulkModal(true)}
                 >
-                  <i className="fa fa-folder-open"></i> View Bulk Files ({bulkFiles.length})
+                  <i className="fa fa-folder-open"></i> View All Files ({allUploadedFiles.length})
                 </button>
               )}
             </div>
 
             {isBulkUpload && (
               <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
-                <input type="file" multiple id="bulk_upload_input" className={styles.fileInput} />
-                <button type="button" className={styles.uploadBtn} onClick={executeBulkUpload}>
-                  <i className="fa fa-upload"></i> Upload All
+                <input 
+                  type="file" 
+                  multiple 
+                  id="bulk_upload_input" 
+                  className={styles.fileInput} 
+                  onChange={() => { 
+                    const input = document.getElementById('bulk_upload_input'); 
+                    const btn = document.getElementById('bulk_submit_btn'); 
+                    if (input && btn) {
+                      if (input.files.length > 0) { 
+                        btn.style.opacity = '1'; 
+                        btn.style.pointerEvents = 'auto'; 
+                      } else {
+                        btn.style.opacity = '0.5'; 
+                        btn.style.pointerEvents = 'none';
+                      }
+                    } 
+                  }} 
+                />
+                <button 
+                  type="button" 
+                  id="bulk_submit_btn" 
+                  className={styles.uploadBtn} 
+                  onClick={executeBulkUpload} 
+                  style={{ opacity: '0.5', pointerEvents: 'none', transition: '0.3s' }}
+                >
+                  <i className="fa fa-upload"></i> Upload Selected
                 </button>
               </div>
             )}
@@ -774,6 +803,7 @@ export default function EditPropertyPage() {
                   )}
                 </div>
 
+                {/* MASTER OVERRIDE: Hide if Bulk is YES */}
                 {formData.has_interest_letter === 1 && !formData.interest_letter_file && !isBulkUpload && (
                   <div className={styles.uploadRow}>
                     <input type="file" id="interest_letter_upload" className={styles.fileInput} />
@@ -810,6 +840,7 @@ export default function EditPropertyPage() {
                       )}
                     </div>
 
+                    {/* MASTER OVERRIDE: Hide if Bulk is YES */}
                     {item.value === 1 && !item.file_name && !isBulkUpload && (
                       <div className={styles.uploadRow}>
                         <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
@@ -884,16 +915,16 @@ export default function EditPropertyPage() {
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent} style={{ maxWidth: '600px' }}>
             <div className={styles.modalHeader}>
-              <h2><i className="fa fa-files-o"></i> Bulk Uploaded Documents</h2>
+              <h2><i className="fa fa-files-o"></i> Document Library</h2>
               <button className={styles.closeBtn} onClick={() => setShowBulkModal(false)}>
                 <i className="fa fa-times"></i>
               </button>
             </div>
             <div className={styles.modalBody}>
               <div className={styles.bulkList}>
-                {bulkFiles.map((file, index) => (
+                {allUploadedFiles.map((file, index) => (
                   <div key={index} className={styles.bulkFileRow}>
-                    <span className={styles.fileName} title={file.label.replace('Bulk: ', '')}>
+                    <span className={styles.fileName} title={file.label}>
                       <i className="fa fa-file-text-o"></i> {file.label.replace('Bulk: ', '')}
                     </span>
                     <div className={styles.fileActions}>
