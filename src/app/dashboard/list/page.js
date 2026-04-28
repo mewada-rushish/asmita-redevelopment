@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import Accordion from '@/components/accordion/Accordion';
 import styles from './list.module.css';
 import { exportPropertiesToExcel } from '@/utils/propertyExport';
 
@@ -174,11 +175,26 @@ export default function PropertiesList() {
 
   const handleDragMove = (e) => {
     if (!isDragging) return;
-    e.preventDefault(); // Prevent text highlighting while dragging
+    e.preventDefault(); 
     const x = e.pageX - tableWrapperRef.current.offsetLeft;
-    const walk = (x - startX) * 1.5; // Multiply for drag speed
+    const walk = (x - startX) * 1.5; 
     tableWrapperRef.current.scrollLeft = scrollLeftState - walk;
   };
+
+  // Helper for rendering boolean values in the modal
+  const renderBool = (val) => (
+    <span className={val === 1 || val === true || val === '1' ? styles.badgeYes : styles.badgeNo}>
+      {val === 1 || val === true || val === '1' ? 'YES' : 'NO'}
+    </span>
+  );
+
+  // Helper for rendering a single field
+  const Field = ({ label, value }) => (
+    <div className={styles.detailItem}>
+      <span className={styles.detailLabel}>{label}</span>
+      <span className={styles.detailValue}>{value || '-'}</span>
+    </div>
+  );
 
   return (
     <div className={styles.container}>
@@ -225,11 +241,7 @@ export default function PropertiesList() {
 
       <div className={styles.tableCard}>
         {/* --- TOP SCROLLBAR --- */}
-        <div 
-          className={styles.topScrollWrapper} 
-          ref={topScrollRef} 
-          onScroll={handleTopScroll}
-        >
+        <div className={styles.topScrollWrapper} ref={topScrollRef} onScroll={handleTopScroll}>
           <div style={{ width: `${tableScrollWidth}px`, height: '1px' }}></div>
         </div>
 
@@ -306,22 +318,18 @@ export default function PropertiesList() {
                   </td>
                   <td>
                     <div className={styles.actionGroup}>
-                      <button onClick={() => handleViewClick(p)} className={styles.viewBtn}>
+                      <button onClick={() => handleViewClick(p)} className={styles.viewBtn} title="View Details">
                         <i className="fa fa-eye"></i>
                       </button>
                       {canEdit ? (
-                        <Link href={`/dashboard/edit/${p.id}`} className={styles.editBtn} draggable="false">
+                        <Link href={`/dashboard/edit/${p.id}`} className={styles.editBtn} draggable="false" title="Edit Property">
                           <i className="fa fa-pencil"></i>
                         </Link>
                       ) : (
                         <span className={styles.viewOnlyText}>View Only</span>
                       )}
                       {canDelete && (
-                        <button
-                          onClick={() => handleDelete(p.id)}
-                          className={styles.deleteBtn}
-                          title="Delete Property"
-                        >
+                        <button onClick={() => handleDelete(p.id)} className={styles.deleteBtn} title="Delete Property">
                           <i className="fa fa-trash"></i>
                         </button>
                       )}
@@ -352,55 +360,140 @@ export default function PropertiesList() {
         </div>
       </div>
 
+      {/* --- VIEW PROPERTY MODAL --- */}
       {isModalOpen && selectedProperty && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px' }}>
-              <h2 style={{ margin: 0, fontSize: '20px', color: '#1f2937' }}>{selectedProperty.property_name}</h2>
-              <button onClick={closeModal} style={{ background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#6b7280' }}>&times;</button>
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitleBox}>
+                <span className={styles.idBadge}>#{selectedProperty.id}</span>
+                <h2>{selectedProperty.property_name}</h2>
+              </div>
+              <button onClick={closeModal} className={styles.closeBtn}>&times;</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Address</strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937' }}>{selectedProperty.address || 'N/A'}</p>
-              </div>
+            <div className={styles.modalBody}>
+              <Accordion title="1. Basic & Area Information" icon="fa-building" defaultOpen={true}>
+                <div className={styles.detailGrid}>
+                  <Field label="Address" value={selectedProperty.address} />
+                  <Field label="Locality" value={selectedProperty.locality} />
+                  <Field label="PMC Name" value={selectedProperty.pmc_name} />
+                  <Field label="PMC Contact" value={selectedProperty.pmc_contact} />
+                  <Field label="CP Name" value={selectedProperty.cp_name || selectedProperty.assigned_cp_id} />
+                  <Field label="CP Contact" value={selectedProperty.cp_phone} />
+                </div>
+                <hr className={styles.divider} />
+                <div className={styles.detailGrid}>
+                  <Field label="Total Plot Area" value={selectedProperty.total_plot_area} />
+                  <Field label="Total Flats" value={selectedProperty.total_flats} />
+                  <Field label="Total Shops" value={selectedProperty.total_shops} />
+                  <Field label="Combined Area" value={selectedProperty.total_flat_area_combined} />
+                </div>
+              </Accordion>
 
-              <div>
-                <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>PMC Details</strong>
-                <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937' }}>{selectedProperty.pmc_name || 'N/A'} {selectedProperty.pmc_contact ? `(${selectedProperty.pmc_contact})` : ''}</p>
-              </div>
+              <Accordion title="2. Land & Society Registration" icon="fa-balance-scale">
+                <div className={styles.detailGrid}>
+                  <Field label="Land Owner / Society" value={selectedProperty.land_owner_name} />
+                  <Field label="Land Type" value={selectedProperty.land_type} />
+                  <Field label="CTS / Survey No" value={selectedProperty.cts_survey_no} />
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Society Registered?</span>
+                    {renderBool(selectedProperty.is_society_registered)}
+                  </div>
+                  <Field label="Registration No." value={selectedProperty.registration_no} />
+                </div>
+              </Accordion>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
-                <div>
-                  <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Chairman</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937', fontWeight: 600 }}>{safeParse(selectedProperty.chairman_details).name || 'N/A'}</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>{safeParse(selectedProperty.chairman_details).contact || ''}</p>
+              <Accordion title="3. Committee & Contacts" icon="fa-users">
+                <div className={styles.detailGrid}>
+                  <Field label="Chairman" value={`${safeParse(selectedProperty.chairman_details).name || '-'} (${safeParse(selectedProperty.chairman_details).contact || '-'})`} />
+                  <Field label="Secretary" value={`${safeParse(selectedProperty.secretary_details).name || '-'} (${safeParse(selectedProperty.secretary_details).contact || '-'})`} />
+                  <Field label="Treasurer" value={`${safeParse(selectedProperty.treasurer_details).name || '-'} (${safeParse(selectedProperty.treasurer_details).contact || '-'})`} />
+                  <Field label="Responsible Person" value={`${safeParse(selectedProperty.responsible_person_details).name || '-'} (${safeParse(selectedProperty.responsible_person_details).contact || '-'})`} />
                 </div>
-                <div>
-                  <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Secretary</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937', fontWeight: 600 }}>{safeParse(selectedProperty.secretary_details).name || 'N/A'}</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>{safeParse(selectedProperty.secretary_details).contact || ''}</p>
-                </div>
-                <div>
-                  <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Treasurer</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937', fontWeight: 600 }}>{safeParse(selectedProperty.treasurer_details).name || 'N/A'}</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>{safeParse(selectedProperty.treasurer_details).contact || ''}</p>
-                </div>
-                <div>
-                  <strong style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase' }}>Responsible Person</strong>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#1f2937', fontWeight: 600 }}>{safeParse(selectedProperty.responsible_person_details).name || 'N/A'}</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#4b5563' }}>{safeParse(selectedProperty.responsible_person_details).contact || ''}</p>
-                </div>
-              </div>
-            </div>
+                
+                {Array.isArray(safeParse(selectedProperty.extra_committee_members)) && safeParse(selectedProperty.extra_committee_members).length > 0 && (
+                  <div style={{ marginTop: '15px' }}>
+                    <span className={styles.detailLabel} style={{ marginBottom: '8px', display: 'block' }}>Extra Members</span>
+                    {safeParse(selectedProperty.extra_committee_members).map((m, i) => {
+                      if(!m.name && !m.contact) return null;
+                      return <div key={i} className={styles.detailValue}>- {m.name || 'Unnamed'} ({m.contact || 'No contact'})</div>;
+                    })}
+                  </div>
+                )}
+              </Accordion>
 
-            <div style={{ marginTop: '30px', textAlign: 'right' }}>
-              <button onClick={closeModal} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '14px', color: '#374151' }}>Close</button>
+              <Accordion title="4. Permissions, Survey & Legal" icon="fa-gavel">
+                <div className={styles.detailGrid}>
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>Approved Plan</span>{renderBool(selectedProperty.has_approved_plan)}</div>
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>Has OC</span>{renderBool(selectedProperty.has_oc)}</div>
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>Has CC</span>{renderBool(selectedProperty.has_cc)}</div>
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>Legal Dispute</span>{renderBool(selectedProperty.has_legal_dispute)}</div>
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>Mortgaged</span>{renderBool(selectedProperty.is_mortgaged)}</div>
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>Redevelopment Interest</span>{renderBool(selectedProperty.has_redevelopment_interest)}</div>
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>Flat Measure Allowed</span>{renderBool(selectedProperty.flat_measure_allowed)}</div>
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>Banner Permission</span>{renderBool(selectedProperty.banner_permission_allowed)}</div>
+                </div>
+                <hr className={styles.divider} />
+                <div className={styles.detailGrid}>
+                  <Field label="Physical Survey Status" value={selectedProperty.physical_survey} />
+                  <Field label="Survey Records" value={selectedProperty.physical_survey_records} />
+                  <Field label="Hoarding Date" value={selectedProperty.hoarding_date ? selectedProperty.hoarding_date.split('T')[0] : '-'} />
+                </div>
+              </Accordion>
+
+              <Accordion title="5. Documents & Journey" icon="fa-folder-open">
+                <div className={styles.detailGrid}>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Interest Letter</span>
+                    {selectedProperty.interest_letter_file ? (
+                      <a href={`/api/viewDoc?key=${encodeURIComponent(selectedProperty.interest_letter_file)}`} target="_blank" className={styles.docLink}>
+                        <i className="fa fa-external-link"></i> View Document
+                      </a>
+                    ) : renderBool(selectedProperty.has_interest_letter)}
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Architect Submitted</span>
+                    {renderBool(selectedProperty.architect_submitted)}
+                  </div>
+                </div>
+                
+                <div style={{ marginTop: '15px' }}>
+                  <span className={styles.detailLabel} style={{ display: 'block', marginBottom: '8px' }}>Document Checklist</span>
+                  <div className={styles.checklistGrid}>
+                    {Array.isArray(safeParse(selectedProperty.document_checklist)) && safeParse(selectedProperty.document_checklist).map((doc, idx) => (
+                       <div key={idx} className={styles.checkItemPill}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%'}}>
+                           <span style={{ fontWeight: 600 }}>{doc.label.replace('Bulk: ', '')}</span>
+                           {renderBool(doc.value)}
+                         </div>
+                         {doc.file_name && (
+                           <a href={`/api/viewDoc?key=${encodeURIComponent(doc.file_name)}`} target="_blank" className={styles.docLinkSmall}>
+                             View File
+                           </a>
+                         )}
+                       </div>
+                    ))}
+                  </div>
+                </div>
+
+                <hr className={styles.divider} />
+                
+                <div className={styles.detailGrid}>
+                  <Field label="Interaction History" value={selectedProperty.interaction_history} />
+                  <Field label="Offer Status" value={selectedProperty.offer_letter_status} />
+                  <Field label="Offer Meeting Track" value={selectedProperty.offer_meeting_track} />
+                  <Field label="Acceptance Date" value={selectedProperty.offer_acceptance_date ? selectedProperty.offer_acceptance_date.split('T')[0] : '-'} />
+                  <div className={styles.detailItem}><span className={styles.detailLabel}>SGM Completed</span>{renderBool(selectedProperty.sgm_completed)}</div>
+                  <Field label="DA Agreement Status" value={selectedProperty.da_agreement_status} />
+                </div>
+              </Accordion>
+
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }
