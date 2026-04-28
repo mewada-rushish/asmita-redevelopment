@@ -186,7 +186,6 @@ export default function AddPropertyPage() {
     setClubbedProperties(clubbedProperties.filter(p => p.id !== id));
   };
 
-
   const handleAddressSearch = (query) => {
     setFormData(prev => ({ ...prev, address: query }));
     
@@ -382,7 +381,22 @@ export default function AddPropertyPage() {
   }
 
   const handleSave = async () => {
-    const validation = validatePropertyForm(formData);
+    // INTERCEPT VALIDATION: If bulk upload is active, suppress individual document missing toasts
+    let dataToValidate = { ...formData };
+    if (isBulkUpload) {
+      dataToValidate.document_checklist = dataToValidate.document_checklist.map(item => {
+        if (item.value === 1 && !item.file_name && !item.label.startsWith('Bulk:')) {
+          return { ...item, file_name: 'bulk_override_placeholder' };
+        }
+        return item;
+      });
+      
+      if (dataToValidate.has_interest_letter === 1 && !dataToValidate.interest_letter_file) {
+        dataToValidate.interest_letter_file = 'bulk_override_placeholder';
+      }
+    }
+
+    const validation = validatePropertyForm(dataToValidate);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
       toast.error(firstError);
@@ -744,6 +758,7 @@ export default function AddPropertyPage() {
                   )}
                 </div>
 
+                {/* MASTER OVERRIDE: Hide if Bulk is YES */}
                 {formData.has_interest_letter === 1 && !formData.interest_letter_file && !isBulkUpload && (
                   <div className={styles.uploadRow}>
                     <input type="file" id="interest_letter_upload" className={styles.fileInput} />
@@ -780,6 +795,7 @@ export default function AddPropertyPage() {
                       )}
                     </div>
 
+                    {/* MASTER OVERRIDE: Hide if Bulk is YES */}
                     {item.value === 1 && !item.file_name && !isBulkUpload && (
                       <div className={styles.uploadRow}>
                         <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
