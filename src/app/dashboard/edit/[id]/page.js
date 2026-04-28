@@ -147,6 +147,14 @@ export default function EditPropertyPage() {
       const data = await res.json();
       
       const parsedChecklist = safeParse(data.document_checklist);
+      
+      // AUTO-DETECT BULK UPLOAD STATE
+      let hasBulkFiles = false;
+      if (Array.isArray(parsedChecklist)) {
+        hasBulkFiles = parsedChecklist.some(item => item.label && item.label.startsWith('Bulk:'));
+      }
+      setIsBulkUpload(hasBulkFiles); // Set initial toggle based on db record
+
       const mergedChecklist = checklistNames.map(name => {
         const existing = Array.isArray(parsedChecklist) ? parsedChecklist.find(item => item.label === name) : null;
         return existing || { label: name, value: 0, file_name: '' };
@@ -172,7 +180,9 @@ export default function EditPropertyPage() {
         lat: Number(data.lat) || 19.2813,
         lng: Number(data.lng) || 72.8693,
         hoarding_date: data.hoarding_date ? data.hoarding_date.split('T')[0] : '',
-        offer_acceptance_date: data.offer_acceptance_date ? data.offer_acceptance_date.split('T')[0] : ''
+        offer_acceptance_date: data.offer_acceptance_date ? data.offer_acceptance_date.split('T')[0] : '',
+        // THIS FIXES THE TOGGLE
+        has_interest_letter: data.has_interest_letter === 1 ? 1 : 0
       });
 
       if (data.clubbed_properties && Array.isArray(data.clubbed_properties)) {
@@ -433,7 +443,23 @@ export default function EditPropertyPage() {
   };
 
   const handleSave = async () => {
-    const validation = validatePropertyForm(formData);
+    // INTERCEPT VALIDATION: If bulk upload is active, suppress individual document missing toasts
+    let dataToValidate = { ...formData };
+    if (isBulkUpload) {
+      dataToValidate.document_checklist = dataToValidate.document_checklist.map(item => {
+        // If a doc is toggled YES but missing a file, simulate a file so validation passes
+        if (item.value === 1 && !item.file_name && !item.label.startsWith('Bulk:')) {
+          return { ...item, file_name: 'bulk_override_placeholder' };
+        }
+        return item;
+      });
+      
+      if (dataToValidate.has_interest_letter === 1 && !dataToValidate.interest_letter_file) {
+        dataToValidate.interest_letter_file = 'bulk_override_placeholder';
+      }
+    }
+
+    const validation = validatePropertyForm(dataToValidate);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
       toast.error(firstError);
@@ -486,12 +512,13 @@ export default function EditPropertyPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1><i className="fa fa-edit"></i> Edit Property {formData.property_name ? `(${formData.property_name})` : `(#${id})`}</h1>
+        <h1>
+          <i className="fa fa-edit"></i> Edit Property : {formData.property_name ? `${formData.property_name}` : `(#${id})`}
+        </h1>
         <button onClick={handleSave} className={styles.saveBtn} disabled={loading}>
           {loading ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>} Update Property
         </button>
       </header>
-
       <div className={styles.mainGrid}>
         <aside className={styles.sidebar}>
           <div className={styles.card}>
