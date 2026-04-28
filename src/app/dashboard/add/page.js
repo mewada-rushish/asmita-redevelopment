@@ -53,7 +53,6 @@ export default function AddPropertyPage() {
 
   const [isBulkUpload, setIsBulkUpload] = useState(false);
 
-  // --- Duplicate Check & Clubbing States ---
   const [duplicateMatch, setDuplicateMatch] = useState(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
@@ -134,7 +133,6 @@ export default function AddPropertyPage() {
     fetchUsersData();
   }, []);
 
-  // --- Duplicate Check Logic ---
   const checkDuplicates = async () => {
     if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
 
@@ -157,7 +155,6 @@ export default function AddPropertyPage() {
     }
   };
 
-  // --- Clubbing (Search & Assign) Logic ---
   const handleClubbingSearch = async (query) => {
     setClubbingSearch(query);
     if (query.length < 2) {
@@ -245,7 +242,7 @@ export default function AddPropertyPage() {
   const handleBlur = () => {
     setTimeout(() => {
       setShowSuggestions(false);
-      checkDuplicates(); // Run duplicate check when user finishes address
+      checkDuplicates();
     }, 300);
   };
 
@@ -329,6 +326,13 @@ export default function AddPropertyPage() {
       success: () => {
         updateField('document_checklist', [...formData.document_checklist, ...newBulkItems]);
         fileInput.value = '';
+        
+        const btn = document.getElementById('bulk_submit_btn');
+        if (btn) {
+          btn.style.opacity = '0.5';
+          btn.style.pointerEvents = 'none';
+        }
+        
         return "Bulk upload completed!";
       },
       error: "Some files failed to upload."
@@ -413,7 +417,12 @@ export default function AddPropertyPage() {
   };
 
   const isAdmin = currentUserRole === 'super admin' || currentUserRole === 'admin';
-  const bulkFiles = formData.document_checklist.filter(item => item.label.startsWith('Bulk:'));
+  
+  // Aggregate all files for the modal (Checklist files + Interest Letter)
+  const allUploadedFiles = [
+    ...(formData.interest_letter_file ? [{ label: 'Interest Letter', file_name: formData.interest_letter_file }] : []),
+    ...formData.document_checklist.filter(item => item.file_name)
+  ];
 
   return (
     <div className={styles.container}>
@@ -505,7 +514,6 @@ export default function AddPropertyPage() {
               )}
             </div>
 
-            {/* ME MOVED: Clubbing Repeater Interface integrated into Section 1 */}
             <div style={{ marginTop: '25px', borderTop: '1px dashed #e5e7eb', paddingTop: '20px' }}>
               <h3 style={{ fontSize: '15px', color: '#1f2937', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <i className="fa fa-link" style={{ color: '#64748b' }}></i> Property Grouping (Clubbed Redevelopment)
@@ -669,22 +677,46 @@ export default function AddPropertyPage() {
                 </div>
               </div>
               
-              {bulkFiles.length > 0 && (
+              {allUploadedFiles.length > 0 && (
                 <button 
                   type="button" 
                   className={styles.libraryBtn}
                   onClick={() => setShowBulkModal(true)}
                 >
-                  <i className="fa fa-folder-open"></i> View Bulk Files ({bulkFiles.length})
+                  <i className="fa fa-folder-open"></i> View All Files ({allUploadedFiles.length})
                 </button>
               )}
             </div>
 
             {isBulkUpload && (
               <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
-                <input type="file" multiple id="bulk_upload_input" className={styles.fileInput} />
-                <button type="button" className={styles.uploadBtn} onClick={executeBulkUpload}>
-                  <i className="fa fa-upload"></i> Upload All
+                <input 
+                  type="file" 
+                  multiple 
+                  id="bulk_upload_input" 
+                  className={styles.fileInput} 
+                  onChange={() => { 
+                    const input = document.getElementById('bulk_upload_input'); 
+                    const btn = document.getElementById('bulk_submit_btn'); 
+                    if (input && btn) {
+                      if (input.files.length > 0) { 
+                        btn.style.opacity = '1'; 
+                        btn.style.pointerEvents = 'auto'; 
+                      } else {
+                        btn.style.opacity = '0.5'; 
+                        btn.style.pointerEvents = 'none';
+                      }
+                    } 
+                  }} 
+                />
+                <button 
+                  type="button" 
+                  id="bulk_submit_btn" 
+                  className={styles.uploadBtn} 
+                  onClick={executeBulkUpload} 
+                  style={{ opacity: '0.5', pointerEvents: 'none', transition: '0.3s' }}
+                >
+                  <i className="fa fa-upload"></i> Upload Selected
                 </button>
               </div>
             )}
@@ -822,16 +854,16 @@ export default function AddPropertyPage() {
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent} style={{ maxWidth: '600px' }}>
             <div className={styles.modalHeader}>
-              <h2><i className="fa fa-files-o"></i> Bulk Uploaded Documents</h2>
+              <h2><i className="fa fa-files-o"></i> Document Library</h2>
               <button className={styles.closeBtn} onClick={() => setShowBulkModal(false)}>
                 <i className="fa fa-times"></i>
               </button>
             </div>
             <div className={styles.modalBody}>
               <div className={styles.bulkList}>
-                {bulkFiles.map((file, index) => (
+                {allUploadedFiles.map((file, index) => (
                   <div key={index} className={styles.bulkFileRow}>
-                    <span className={styles.fileName} title={file.label.replace('Bulk: ', '')}>
+                    <span className={styles.fileName} title={file.label}>
                       <i className="fa fa-file-text-o"></i> {file.label.replace('Bulk: ', '')}
                     </span>
                     <div className={styles.fileActions}>
@@ -894,7 +926,6 @@ export default function AddPropertyPage() {
         </div>
       )}
 
-      {/* ME ADDED: Modularized Duplicate Warning Modal */}
       <DuplicateAlertModal 
         isOpen={showDuplicateModal} 
         matchedProperty={duplicateMatch} 

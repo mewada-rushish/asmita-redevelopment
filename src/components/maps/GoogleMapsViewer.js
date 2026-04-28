@@ -60,14 +60,17 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
     }
   }, [lat, lng, map, onLocationSelect]);
 
-  // Spatial highlighting using Overpass API (OSM) / GeoUtils
+  // Spatial highlighting using GeoUtils
   useEffect(() => {
-    let polygonInstance = null;
+    let polygonInstances = [];
     let isMounted = true;
 
-    // Clean up previous overlay immediately
     if (activeOverlay) {
-      activeOverlay.setMap(null);
+      if (Array.isArray(activeOverlay)) {
+        activeOverlay.forEach(overlay => overlay.setMap(null));
+      } else {
+        activeOverlay.setMap(null);
+      }
       setActiveOverlay(null);
     }
 
@@ -77,19 +80,24 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
       const clubProps = properties.filter(p => p.club_id === selectedProperty.club_id && p.lat && p.lng);
       if (clubProps.length === 0) return;
 
-      const boundaryCoords = await getClubBoundary(clubProps);
+      const boundaryPaths = await getClubBoundary(clubProps);
 
-      if (boundaryCoords && boundaryCoords.length > 0 && isMounted) {
-        polygonInstance = new window.google.maps.Polygon({
-          paths: boundaryCoords,
-          strokeColor: '#ef4444', // Red border to match visual preference
-          strokeOpacity: 0.9,
-          strokeWeight: 2,
-          fillColor: '#ef4444',   // Red fill
-          fillOpacity: 0.15,
-          map: map
+      if (boundaryPaths && boundaryPaths.length > 0 && isMounted) {
+        // Handle multiple disjointed polygons (e.g., separate building footprints)
+        boundaryPaths.forEach(pathCoords => {
+          const polygon = new window.google.maps.Polygon({
+            paths: pathCoords,
+            strokeColor: '#ef4444',
+            strokeOpacity: 0.9,
+            strokeWeight: 2,
+            fillColor: '#ef4444',
+            fillOpacity: 0.15,
+            map: map
+          });
+          polygonInstances.push(polygon);
         });
-        setActiveOverlay(polygonInstance);
+
+        setActiveOverlay(polygonInstances);
       }
     };
 
@@ -97,8 +105,14 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
 
     return () => {
       isMounted = false;
-      if (polygonInstance) polygonInstance.setMap(null);
-      if (activeOverlay) activeOverlay.setMap(null);
+      polygonInstances.forEach(polygon => polygon.setMap(null));
+      if (activeOverlay) {
+        if (Array.isArray(activeOverlay)) {
+          activeOverlay.forEach(overlay => overlay.setMap(null));
+        } else {
+          activeOverlay.setMap(null);
+        }
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProperty, properties, map]);
@@ -138,7 +152,7 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
             position={{ lat: parseFloat(p.lat), lng: parseFloat(p.lng) }}
             onClick={() => onMarkerClick?.(p)}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateY(-100%)', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
               <div style={{
                 display: 'flex', alignItems: 'center', backgroundColor: 'white',
                 padding: '4px 12px 4px 8px', borderRadius: '50px',
@@ -165,7 +179,7 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
               onLocationSelect({ lat: e.latLng.lat(), lng: e.latLng.lng() });
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', transform: 'translateY(-50%)', cursor: 'grab' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'grab' }}>
               <div style={{
                 width: '38px', height: '38px', backgroundColor: '#1e4ec4',
                 border: '2px solid white', borderRadius: '50% 50% 50% 0',

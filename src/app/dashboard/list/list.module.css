@@ -134,7 +134,7 @@
   border-radius: 12px;
   border: 1px solid #e5e7eb;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
-  overflow: hidden; /* Contains the internal scrolls */
+  overflow: hidden; 
 }
 
 /* --- TOP SCROLLBAR UI --- */
@@ -156,11 +156,11 @@
 .tableWrapper {
   width: 100%;
   overflow-x: auto;
-  cursor: grab; /* Shows user they can grab it */
+  cursor: grab; 
 }
 .tableWrapper.dragging {
-  cursor: grabbing; /* Changes cursor while holding */
-  user-select: none; /* Prevents text highlighting while dragging */
+  cursor: grabbing; 
+  user-select: none; 
 }
 .tableWrapper::-webkit-scrollbar {
   height: 8px;
@@ -430,6 +430,197 @@
   margin: 0;
 }
 
+/* ===============================
+   MODAL STYLES (VIEW PROPERTY)
+=============================== */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.modalContent {
+  background: #f8fafc; /* slightly off-white background to contrast with accordions */
+  border-radius: 12px;
+  width: 100%;
+  max-width: 850px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #ffffff;
+  padding: 20px 25px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modalTitleBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modalTitleBox h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #0f172a;
+  font-family: var(--font-montserrat);
+}
+
+.closeBtn {
+  background: #f1f5f9;
+  border: none;
+  font-size: 24px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.closeBtn:hover {
+  background: #e2e8f0;
+  color: #ef4444;
+}
+
+.modalBody {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Modal Internal Grid System */
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 5px;
+}
+
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailLabel {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detailValue {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+  word-wrap: break-word;
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background: #e2e8f0;
+  margin: 20px 0;
+}
+
+/* Badges for YES/NO */
+.badgeYes {
+  background: #dcfce7;
+  color: #166534;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-block;
+  width: fit-content;
+  border: 1px solid #bbf7d0;
+}
+
+.badgeNo {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-block;
+  width: fit-content;
+  border: 1px solid #fecaca;
+}
+
+.docLink {
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eff6ff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  width: fit-content;
+  border: 1px solid #bfdbfe;
+  transition: background 0.2s;
+}
+
+.docLink:hover {
+  background: #dbeafe;
+}
+
+.checklistGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.checkItemPill {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.docLinkSmall {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0369a1;
+  text-decoration: none;
+  background: #f0f9ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #bae6fd;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .container { padding: 15px; }
   .header { flex-direction: column; align-items: flex-start; gap: 15px; }
@@ -442,7 +633,7 @@
   
   .searchWrapper { max-width: 100%; }
   
-  .topScrollWrapper { display: none; } /* Hide extra top scrollbar on mobile layout */
+  .topScrollWrapper { display: none; } 
   
   .table th:last-child,
   .table td:last-child {
@@ -452,4 +643,15 @@
   }
 
   .paginationFooter { flex-direction: column; gap: 20px; }
+
+  /* Modal Mobile fixes */
+  .modalContent {
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  .detailGrid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
 }
