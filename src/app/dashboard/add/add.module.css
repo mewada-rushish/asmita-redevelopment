@@ -1,5 +1,8 @@
+/* ===============================
+   BASE LAYOUT
+=============================== */
 .container {
-  font-family: var(--font-poppins);
+  font-family: var(--font-poppins), sans-serif;
   color: #1f2937;
   padding: 20px;
 }
@@ -20,9 +23,16 @@
 }
 
 .header h1 {
-  font-family: var(--font-montserrat);
+  font-family: var(--font-montserrat), sans-serif;
   font-size: 24px;
   margin: 0;
+}
+
+.titleGroup p {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 5px 0 0 0;
+  font-weight: 600;
 }
 
 .saveBtn {
@@ -52,6 +62,9 @@
   gap: 30px;
 }
 
+/* ===============================
+   SIDEBAR & CARDS
+=============================== */
 .sidebar {
   position: sticky;
   top: 20px;
@@ -75,6 +88,9 @@
   margin: 8px auto !important;
 }
 
+/* ===============================
+   INPUTS & GROUPS
+=============================== */
 .input {
   width: 100%;
   padding: 10px 14px;
@@ -96,7 +112,64 @@
   position: relative;
 }
 
-/* --- QUICK ADD EXECUTIVE BTN --- */
+textarea.input {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.grid3 {
+  display: grid;
+  grid-template-columns: 100px 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.radioGroup {
+  display: flex;
+  gap: 20px;
+  font-weight: 600;
+  font-size: 13px;
+  padding-top: 5px;
+}
+
+.radioGroup label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.radioGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.checkRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+}
+
+.checkGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* ===============================
+   QUICK ADD EXECUTIVE BTN & MODAL
+=============================== */
 .quickAddBtn {
   background: none;
   border: none;
@@ -183,6 +256,9 @@
   margin-bottom: 12px;
 }
 
+/* ===============================
+   ADDRESS AUTOCOMPLETE & SEARCH WRAPPER
+=============================== */
 .searchWrapper {
   position: relative;
   width: 100%;
@@ -214,6 +290,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  transition: background 0.2s;
+  color: #1f2937;
 }
 
 .suggestions li:hover {
@@ -225,7 +303,9 @@
   color: #94a3b8;
 }
 
-/* --- CLUBBING CHIP STYLES --- */
+/* ===============================
+   CLUBBING CHIP STYLES (NEW)
+=============================== */
 .chipContainer {
   margin-top: 15px;
   display: flex;
@@ -256,6 +336,9 @@
   color: #ef4444;
 }
 
+/* ===============================
+   COORDINATE INPUTS
+=============================== */
 .coordInputs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -292,41 +375,16 @@
   border-radius: 4px;
 }
 
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-.grid3 {
-  display: grid;
-  grid-template-columns: 100px 1fr 1fr;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.radioGroup {
-  display: flex;
-  gap: 20px;
-  font-weight: 600;
-  font-size: 13px;
-  padding-top: 5px;
-}
-.checkRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f3f4f6;
-  font-size: 13px;
-}
-
+/* ===============================
+   CHECKLIST TOGGLE
+=============================== */
 .checklist {
   border: 1px solid #f3f4f6;
   border-radius: 8px;
   padding: 10px;
   background: white;
 }
+
 .checkItem {
   display: flex;
   flex-direction: column;
@@ -342,6 +400,7 @@
   border-radius: 6px;
   overflow: hidden;
 }
+
 .toggle button {
   border: none;
   background: white;
@@ -377,6 +436,9 @@
   border-color: #1e4ec4;
 }
 
+/* ===============================
+   DOCUMENT UPLOAD UI
+=============================== */
 .uploadArea {
   border: 2px dashed #d1d5db;
   border-radius: 12px;
@@ -503,7 +565,9 @@
   transform: translateY(-1px);
 }
 
-/* --- BULK LIBRARY STYLES --- */
+/* ===============================
+   BULK LIBRARY STYLES (NEW)
+=============================== */
 .bulkActionRow {
   display: flex;
   justify-content: space-between;
@@ -576,6 +640,46 @@
   gap: 8px;
 }
 
+/* ===============================
+   BULK MAPPER STYLES
+=============================== */
+.mappingContainer {
+  margin-top: 15px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 15px;
+  width: 100%;
+}
+
+.mappingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 10px;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.mappingSelect {
+  flex: 1;
+  max-width: 250px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 12px;
+  outline: none;
+  background: white;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+/* ===============================
+   MOBILE OPTIMIZATIONS
+=============================== */
 @media (max-width: 768px) {
   .container {
     padding: 15px;
