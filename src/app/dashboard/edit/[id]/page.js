@@ -36,6 +36,14 @@ const YesNoToggle = ({ value, onChange }) => (
   </div>
 );
 
+// Moved outside component to prevent unnecessary re-renders and dependency triggers
+const checklistNames = [
+  "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
+  "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
+  "Property Tax Bill", "Conveyance Deed", "Society Bye-laws", "Electricity Bill", "Water Bill", "Encumbrance Cert",
+  "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
+];
+
 export default function EditPropertyPage() {
   const router = useRouter();
   const params = useParams();
@@ -62,6 +70,7 @@ export default function EditPropertyPage() {
   });
 
   const [isBulkUpload, setIsBulkUpload] = useState(false);
+  const [bulkPendingFiles, setBulkPendingFiles] = useState([]); 
 
   const [duplicateMatch, setDuplicateMatch] = useState(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
@@ -69,13 +78,6 @@ export default function EditPropertyPage() {
   const [clubbingSearch, setClubbingSearch] = useState('');
   const [clubbingSuggestions, setClubbingSuggestions] = useState([]);
   const [clubbedProperties, setClubbedProperties] = useState([]);
-
-  const checklistNames = [
-    "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
-    "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
-    "Property Tax Bill", "Conveyance Deed", "Society Bye-laws", "Electricity Bill", "Water Bill", "Encumbrance Cert",
-    "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
-  ];
 
   const [formData, setFormData] = useState({
     category: 'Redevelopment', status: 'Not Approached',
@@ -124,7 +126,8 @@ export default function EditPropertyPage() {
     verifyAccess();
   }, [router]);
 
-  const fetchUsersData = async () => {
+  // Wrapped in useCallback to satisfy dependency rules
+  const fetchUsersData = useCallback(async () => {
     try {
       const res = await fetch('/api/users');
       const data = await res.json();
@@ -137,9 +140,10 @@ export default function EditPropertyPage() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
-  const fetchPropertyData = async () => {
+  // Wrapped in useCallback to satisfy dependency rules
+  const fetchPropertyData = useCallback(async () => {
     if (!id) return;
     try {
       const res = await fetch(`/api/properties/${id}`);
@@ -148,12 +152,11 @@ export default function EditPropertyPage() {
       
       const parsedChecklist = safeParse(data.document_checklist);
       
-      // AUTO-DETECT BULK UPLOAD STATE
       let hasBulkFiles = false;
       if (Array.isArray(parsedChecklist)) {
         hasBulkFiles = parsedChecklist.some(item => item.label && item.label.startsWith('Bulk:'));
       }
-      setIsBulkUpload(hasBulkFiles); // Set initial toggle based on db record
+      setIsBulkUpload(hasBulkFiles); 
 
       const mergedChecklist = checklistNames.map(name => {
         const existing = Array.isArray(parsedChecklist) ? parsedChecklist.find(item => item.label === name) : null;
@@ -181,7 +184,6 @@ export default function EditPropertyPage() {
         lng: Number(data.lng) || 72.8693,
         hoarding_date: data.hoarding_date ? data.hoarding_date.split('T')[0] : '',
         offer_acceptance_date: data.offer_acceptance_date ? data.offer_acceptance_date.split('T')[0] : '',
-        // THIS FIXES THE TOGGLE
         has_interest_letter: data.has_interest_letter === 1 ? 1 : 0
       });
 
@@ -195,12 +197,13 @@ export default function EditPropertyPage() {
     } finally {
       setInitialLoading(false);
     }
-  };
+  }, [id, router]);
 
+  // Hook now perfectly conforms to React exhaustive-deps
   useEffect(() => {
     fetchUsersData();
     fetchPropertyData();
-  }, [id]);
+  }, [fetchUsersData, fetchPropertyData]);
 
   const checkDuplicates = async () => {
     if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
@@ -372,41 +375,69 @@ export default function EditPropertyPage() {
     });
   };
 
-  const executeBulkUpload = async () => {
-    const fileInput = document.getElementById('bulk_upload_input');
-    const files = fileInput?.files;
+  const handleBulkFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if(files.length === 0) return setBulkPendingFiles([]);
     
-    if (!files || files.length === 0) {
-      return toast.error("Please select files to upload.");
-    }
+    const pending = files.map((f, i) => ({
+      id: Date.now() + i,
+      file: f,
+      label: '' 
+    }));
+    setBulkPendingFiles(pending);
+  };
+
+  const executeBulkUpload = async () => {
+    if (bulkPendingFiles.length === 0) return toast.error("Please select files to upload.");
 
     const newBulkItems = [];
-    const uploadPromises = Array.from(files).map(async (file) => {
-      const res = await uploadPropertyDocument(file, id, formData.property_name, `Bulk: ${file.name}`, null);
+    const nextChecklist = [...formData.document_checklist];
+    let nextInterestLetter = formData.interest_letter_file;
+    let nextHasInterest = formData.has_interest_letter;
+
+    const uploadPromises = bulkPendingFiles.map(async (pf) => {
+      const actualLabel = pf.label || `Bulk: ${pf.file.name}`;
+      const res = await uploadPropertyDocument(pf.file, id, formData.property_name, actualLabel, null);
+      
       if (res.success) {
-        newBulkItems.push({ label: `Bulk: ${file.name}`, value: 1, file_name: res.fileKey });
+        if (pf.label === 'Interest Letter') {
+          nextInterestLetter = res.fileKey;
+          nextHasInterest = 1;
+        } else if (pf.label) {
+          const itemIndex = nextChecklist.findIndex(item => item.label === pf.label);
+          if (itemIndex > -1) {
+            nextChecklist[itemIndex].file_name = res.fileKey;
+            nextChecklist[itemIndex].value = 1; 
+          }
+        } else {
+          newBulkItems.push({ label: actualLabel, value: 1, file_name: res.fileKey });
+        }
       } else {
-        throw new Error(`Failed to upload ${file.name}`);
+        throw new Error(`Failed to upload ${pf.file.name}`);
       }
     });
 
     toast.promise(Promise.all(uploadPromises), {
-      loading: `Uploading ${files.length} files...`,
+      loading: `Uploading & Mapping ${bulkPendingFiles.length} files...`,
       success: () => {
-        updateField('document_checklist', [...formData.document_checklist, ...newBulkItems]);
-        fileInput.value = '';
-        
-        const btn = document.getElementById('bulk_submit_btn');
-        if (btn) {
-          btn.style.opacity = '0.5';
-          btn.style.pointerEvents = 'none';
+        updateField('document_checklist', [...nextChecklist, ...newBulkItems]);
+        if (nextInterestLetter !== formData.interest_letter_file) {
+          setFormData(prev => ({...prev, interest_letter_file: nextInterestLetter, has_interest_letter: nextHasInterest}));
         }
-        
-        return "Bulk upload completed!";
+        setBulkPendingFiles([]);
+        document.getElementById('bulk_upload_input').value = '';
+        return "Bulk upload mapped and completed!";
       },
       error: "Some files failed to upload."
     });
   };
+
+  const availableLabelsForMapping = [
+    ...(!formData.interest_letter_file ? ["Interest Letter"] : []),
+    ...formData.document_checklist.filter(item => !item.file_name && !item.label.startsWith('Bulk:')).map(item => item.label)
+  ];
+
+  const currentlySelectedLabels = bulkPendingFiles.map(pf => pf.label).filter(Boolean);
 
   const handleCreateExecutive = async (e) => {
     e.preventDefault();
@@ -443,23 +474,7 @@ export default function EditPropertyPage() {
   };
 
   const handleSave = async () => {
-    // INTERCEPT VALIDATION: If bulk upload is active, suppress individual document missing toasts
-    let dataToValidate = { ...formData };
-    if (isBulkUpload) {
-      dataToValidate.document_checklist = dataToValidate.document_checklist.map(item => {
-        // If a doc is toggled YES but missing a file, simulate a file so validation passes
-        if (item.value === 1 && !item.file_name && !item.label.startsWith('Bulk:')) {
-          return { ...item, file_name: 'bulk_override_placeholder' };
-        }
-        return item;
-      });
-      
-      if (dataToValidate.has_interest_letter === 1 && !dataToValidate.interest_letter_file) {
-        dataToValidate.interest_letter_file = 'bulk_override_placeholder';
-      }
-    }
-
-    const validation = validatePropertyForm(dataToValidate);
+    const validation = validatePropertyForm(formData);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
       toast.error(firstError);
@@ -503,7 +518,6 @@ export default function EditPropertyPage() {
 
   const isAdmin = currentUserRole === 'super admin' || currentUserRole === 'admin';
 
-  // Aggregate all files for the modal
   const allUploadedFiles = [
     ...(formData.interest_letter_file ? [{ label: 'Interest Letter', file_name: formData.interest_letter_file }] : []),
     ...formData.document_checklist.filter(item => item.file_name)
@@ -757,7 +771,7 @@ export default function EditPropertyPage() {
           <Accordion title="13. Document Checklist" icon="fa-list-ol">
             <div className={styles.bulkActionRow}>
               <div>
-                <strong>Enable Bulk Document Upload?</strong>
+                <strong>Enable Bulk Upload & Mapping?</strong>
                 <div style={{ marginTop: '5px' }}>
                   <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
                 </div>
@@ -775,35 +789,57 @@ export default function EditPropertyPage() {
             </div>
 
             {isBulkUpload && (
-              <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0' }}>
-                <input 
-                  type="file" 
-                  multiple 
-                  id="bulk_upload_input" 
-                  className={styles.fileInput} 
-                  onChange={() => { 
-                    const input = document.getElementById('bulk_upload_input'); 
-                    const btn = document.getElementById('bulk_submit_btn'); 
-                    if (input && btn) {
-                      if (input.files.length > 0) { 
-                        btn.style.opacity = '1'; 
-                        btn.style.pointerEvents = 'auto'; 
-                      } else {
-                        btn.style.opacity = '0.5'; 
-                        btn.style.pointerEvents = 'none';
-                      }
-                    } 
-                  }} 
-                />
-                <button 
-                  type="button" 
-                  id="bulk_submit_btn" 
-                  className={styles.uploadBtn} 
-                  onClick={executeBulkUpload} 
-                  style={{ opacity: '0.5', pointerEvents: 'none', transition: '0.3s' }}
-                >
-                  <i className="fa fa-upload"></i> Upload Selected
-                </button>
+              <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: '15px', width: '100%', alignItems: 'center' }}>
+                  <input 
+                    type="file" 
+                    multiple 
+                    id="bulk_upload_input" 
+                    className={styles.fileInput} 
+                    onChange={handleBulkFileSelect} 
+                  />
+                </div>
+                
+                {bulkPendingFiles.length > 0 && (
+                  <div className={styles.mappingContainer}>
+                    <h4 style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#166534' }}>Map Selected Files</h4>
+                    <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#64748b' }}>Each label can only be assigned once. Unassigned files will be saved as &quot;Bulk&quot;.</p>
+                    {bulkPendingFiles.map((pf, index) => {
+                      const optionsForThisFile = availableLabelsForMapping.filter(
+                        label => !currentlySelectedLabels.includes(label) || label === pf.label
+                      );
+
+                      return (
+                        <div key={pf.id} className={styles.mappingRow}>
+                          <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', fontWeight: '600'}}>
+                            {pf.file.name}
+                          </span>
+                          <select 
+                            className={styles.mappingSelect}
+                            value={pf.label} 
+                            onChange={(e) => {
+                              const newFiles = [...bulkPendingFiles];
+                              newFiles[index].label = e.target.value;
+                              setBulkPendingFiles(newFiles);
+                            }}
+                          >
+                            <option value="">-- Unassigned (Bulk) --</option>
+                            {optionsForThisFile.map(l => <option key={l} value={l}>{l}</option>)}
+                          </select>
+                        </div>
+                      );
+                    })}
+                    <hr style={{color: "#ddd"}} />
+                    <button 
+                      type="button" 
+                      className={styles.uploadBtn} 
+                      onClick={executeBulkUpload} 
+                      style={{ marginTop: '10px', width: 'fit-content' }}
+                    >
+                      <i className="fa fa-upload"></i> Upload & Map Files
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -830,7 +866,7 @@ export default function EditPropertyPage() {
                   )}
                 </div>
 
-                {/* MASTER OVERRIDE: Hide if Bulk is YES */}
+                {/* Individual upload logic: hidden if mapped in bulk mode */}
                 {formData.has_interest_letter === 1 && !formData.interest_letter_file && !isBulkUpload && (
                   <div className={styles.uploadRow}>
                     <input type="file" id="interest_letter_upload" className={styles.fileInput} />
@@ -867,7 +903,7 @@ export default function EditPropertyPage() {
                       )}
                     </div>
 
-                    {/* MASTER OVERRIDE: Hide if Bulk is YES */}
+                    {/* Individual upload logic: hidden if mapped in bulk mode */}
                     {item.value === 1 && !item.file_name && !isBulkUpload && (
                       <div className={styles.uploadRow}>
                         <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
