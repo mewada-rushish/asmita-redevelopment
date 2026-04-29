@@ -690,6 +690,43 @@ textarea.input {
 }
 
 /* ===============================
+   BULK MAPPER STYLES
+=============================== */
+.mappingContainer {
+  margin-top: 15px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 15px;
+  width: 100%;
+}
+
+.mappingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 10px;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.mappingSelect {
+  flex: 1;
+  max-width: 250px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font-size: 12px;
+  outline: none;
+  background: white;
+  color: #1e293b;
+  font-weight: 500;
+}
+
+/* ===============================
    MOBILE OPTIMIZATIONS
 =============================== */
 @media (max-width: 768px) {
