@@ -36,11 +36,31 @@ const YesNoToggle = ({ value, onChange }) => (
   </div>
 );
 
-// Moved outside component to prevent unnecessary re-renders and dependency triggers
+const ConsentToggle = ({ value, onChange }) => (
+  <div className={styles.toggle} style={{ display: 'flex', gap: '5px' }}>
+    <button
+      type="button"
+      onClick={() => onChange('100%')}
+      style={value === '100%' ? { backgroundColor: '#3b82f6', color: 'white', border: '1px solid #3b82f6', padding: '4px 12px', borderRadius: '4px' } : { padding: '4px 12px', border: '1px solid #ccc', borderRadius: '4px', background: 'white', color: '#4b5563' }}
+    >
+      100%
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange('79/A')}
+      style={value === '79/A' ? { backgroundColor: '#f59e0b', color: 'white', border: '1px solid #f59e0b', padding: '4px 12px', borderRadius: '4px' } : { padding: '4px 12px', border: '1px solid #ccc', borderRadius: '4px', background: 'white', color: '#4b5563' }}
+    >
+      79/A
+    </button>
+  </div>
+);
+
+// Updated Checklist with MBMC Approved plan with OC before Any NOC
 const checklistNames = [
   "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
   "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
   "Property Tax Bill", "Conveyance Deed", "Society Bye-laws", "Electricity Bill", "Water Bill", "Encumbrance Cert",
+  "MBMC Approved plan with OC", 
   "Any NOC", "C-1 Notice (MBMC)", "Latest Assessment Receipt"
 ];
 
@@ -67,7 +87,7 @@ export default function AddPropertyPage() {
   });
 
   const [isBulkUpload, setIsBulkUpload] = useState(false);
-  const [bulkPendingFiles, setBulkPendingFiles] = useState([]); // NEW: Holds files for mapping
+  const [bulkPendingFiles, setBulkPendingFiles] = useState([]); 
 
   const [duplicateMatch, setDuplicateMatch] = useState(null);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
@@ -90,15 +110,28 @@ export default function AddPropertyPage() {
     treasurer_details: { name: '', contact: '' },
     responsible_person_details: { name: '', contact: '' },
     extra_committee_members: [{ name: '', contact: '' }],
-    has_approved_plan: 0, has_oc: 0, has_cc: 0, has_legal_dispute: 0,
-    is_mortgaged: 0, has_redevelopment_interest: 0, flat_measure_allowed: 0,
-    physical_survey: 'Not Started', physical_survey_records: '',
+    has_oc: 0, has_legal_dispute: 0,
+    is_mortgaged: 0, has_redevelopment_interest: 0, 
+    physical_survey_allowed: 0, flat_measure_allowed: 0,
+    consent_type: '', 
+    consent_79a_file: '', 
     banner_permission_allowed: 0, hoarding_date: '',
     document_checklist: checklistNames.map(name => ({ label: name, value: 0, file_name: '' })),
     document_remarks: '', 
     interest_letter_file: '', 
     has_interest_letter: 0,
-    architect_submitted: 0,
+    society_acknowledgement: 0,
+    offer_letter_sent: 0,
+    offer_letter_files: [],
+    offer_acceptance_letter: 0,
+    offer_acceptance_letter_file: '',
+    has_approved_plan: 0,
+    approved_plan_file: '',
+    has_cc: 0,
+    cc_file: '',
+    architect_survey_status: 'Not Started',
+    sent_to_architect: 0,
+    physical_survey: 'Not Started', physical_survey_records: '',
     interaction_history: '', offer_letter_status: 'Not Sent', offer_meeting_track: '',
     offer_acceptance_date: '', sgm_completed: 0, da_agreement_status: 'Not Started'
   });
@@ -123,7 +156,6 @@ export default function AddPropertyPage() {
     verifyAccess();
   }, [router]);
 
-  // Wrapped in useCallback to satisfy dependency rules
   const fetchUsersData = useCallback(async () => {
     try {
       const res = await fetch('/api/users');
@@ -294,6 +326,24 @@ export default function AddPropertyPage() {
     });
   };
 
+  const executeSpecificUpload = async (inputId, stateKey, label) => {
+    const fileInput = document.getElementById(inputId);
+    const file = fileInput?.files[0];
+    if (!file) return toast.error("Please select a file to upload.");
+
+    const uploadPromise = uploadPropertyDocument(file, null, formData.property_name, label, formData[stateKey] || null);
+
+    toast.promise(uploadPromise, {
+      loading: `Uploading ${label}...`,
+      success: (res) => {
+        if (!res.success) throw new Error(res.error);
+        updateField(stateKey, res.fileKey);
+        return `${label} uploaded successfully!`;
+      },
+      error: (err) => `Upload failed: ${err.message}`
+    });
+  };
+
   const executeInterestLetterUpload = async () => {
     const fileInput = document.getElementById('interest_letter_upload');
     const file = fileInput?.files[0];
@@ -312,7 +362,43 @@ export default function AddPropertyPage() {
     });
   };
 
-  // --- NEW BULK UPLOAD MAPPING LOGIC ---
+  const executeOfferLetterUpload = async () => {
+    const fileInput = document.getElementById('offer_letter_upload');
+    const file = fileInput?.files[0];
+    if (!file) return toast.error("Please select a file to upload.");
+
+    const uploadPromise = uploadPropertyDocument(file, null, formData.property_name, "Offer Letter", null);
+
+    toast.promise(uploadPromise, {
+      loading: `Uploading Offer Letter...`,
+      success: (res) => {
+        if (!res.success) throw new Error(res.error);
+        updateField('offer_letter_files', [...(formData.offer_letter_files || []), res.fileKey]);
+        fileInput.value = ''; 
+        return `Offer Letter uploaded successfully!`;
+      },
+      error: (err) => `Upload failed: ${err.message}`
+    });
+  };
+
+  const executeConsent79aUpload = async () => {
+    const fileInput = document.getElementById('consent_79a_upload');
+    const file = fileInput?.files[0];
+    if (!file) return toast.error("Please select a file to upload.");
+
+    const uploadPromise = uploadPropertyDocument(file, null, formData.property_name, "79/A Consent", formData.consent_79a_file || null);
+
+    toast.promise(uploadPromise, {
+      loading: `Uploading 79/A Consent...`,
+      success: (res) => {
+        if (!res.success) throw new Error(res.error);
+        updateField('consent_79a_file', res.fileKey);
+        return `79/A Consent uploaded successfully!`;
+      },
+      error: (err) => `Upload failed: ${err.message}`
+    });
+  };
+
   const handleBulkFileSelect = (e) => {
     const files = Array.from(e.target.files);
     if(files.length === 0) return setBulkPendingFiles([]);
@@ -320,7 +406,7 @@ export default function AddPropertyPage() {
     const pending = files.map((f, i) => ({
       id: Date.now() + i,
       file: f,
-      label: '' // Empty means "Unassigned / Generic Bulk"
+      label: '' 
     }));
     setBulkPendingFiles(pending);
   };
@@ -342,14 +428,12 @@ export default function AddPropertyPage() {
           nextInterestLetter = res.fileKey;
           nextHasInterest = 1;
         } else if (pf.label) {
-          // It was mapped to a specific checklist item
           const itemIndex = nextChecklist.findIndex(item => item.label === pf.label);
           if (itemIndex > -1) {
             nextChecklist[itemIndex].file_name = res.fileKey;
-            nextChecklist[itemIndex].value = 1; // Auto mark YES
+            nextChecklist[itemIndex].value = 1; 
           }
         } else {
-          // Generic unmapped bulk file
           newBulkItems.push({ label: actualLabel, value: 1, file_name: res.fileKey });
         }
       } else {
@@ -360,10 +444,12 @@ export default function AddPropertyPage() {
     toast.promise(Promise.all(uploadPromises), {
       loading: `Uploading & Mapping ${bulkPendingFiles.length} files...`,
       success: () => {
-        updateField('document_checklist', [...nextChecklist, ...newBulkItems]);
-        if (nextInterestLetter !== formData.interest_letter_file) {
-          setFormData(prev => ({...prev, interest_letter_file: nextInterestLetter, has_interest_letter: nextHasInterest}));
-        }
+        setFormData(prev => ({
+          ...prev,
+          document_checklist: [...nextChecklist, ...newBulkItems],
+          interest_letter_file: nextInterestLetter,
+          has_interest_letter: nextHasInterest
+        }));
         setBulkPendingFiles([]);
         document.getElementById('bulk_upload_input').value = '';
         return "Bulk upload mapped and completed!";
@@ -372,13 +458,11 @@ export default function AddPropertyPage() {
     });
   };
 
-  // Get labels that are missing files so user can map to them
   const availableLabelsForMapping = [
     ...(!formData.interest_letter_file ? ["Interest Letter"] : []),
     ...formData.document_checklist.filter(item => !item.file_name && !item.label.startsWith('Bulk:')).map(item => item.label)
   ];
 
-  // Derive which labels have already been selected in the mapping dropdowns
   const currentlySelectedLabels = bulkPendingFiles.map(pf => pf.label).filter(Boolean);
 
   const handleCreateExecutive = async (e) => {
@@ -416,8 +500,21 @@ export default function AddPropertyPage() {
   };
 
   const handleSave = async () => {
-    // Ensure all toggled items have files if mapped correctly
-    const validation = validatePropertyForm(formData);
+    let dataToValidate = { ...formData };
+    if (isBulkUpload) {
+      dataToValidate.document_checklist = dataToValidate.document_checklist.map(item => {
+        if (item.value === 1 && !item.file_name && !item.label.startsWith('Bulk:')) {
+          return { ...item, file_name: 'bulk_override_placeholder' };
+        }
+        return item;
+      });
+      
+      if (dataToValidate.has_interest_letter === 1 && !dataToValidate.interest_letter_file) {
+        dataToValidate.interest_letter_file = 'bulk_override_placeholder';
+      }
+    }
+
+    const validation = validatePropertyForm(dataToValidate);
     if (!validation.isValid) {
       const firstError = Object.values(validation.errors)[0];
       toast.error(firstError);
@@ -461,9 +558,13 @@ export default function AddPropertyPage() {
 
   const isAdmin = currentUserRole === 'super admin' || currentUserRole === 'admin';
   
-  // Aggregate all files for the modal (Checklist files + Interest Letter)
   const allUploadedFiles = [
     ...(formData.interest_letter_file ? [{ label: 'Interest Letter', file_name: formData.interest_letter_file }] : []),
+    ...(formData.offer_letter_files?.map((f, i) => ({ label: `Offer Letter ${i+1}`, file_name: f })) || []),
+    ...(formData.offer_acceptance_letter_file ? [{ label: 'Offer Acceptance Letter', file_name: formData.offer_acceptance_letter_file }] : []),
+    ...(formData.approved_plan_file ? [{ label: 'Approved Plan', file_name: formData.approved_plan_file }] : []),
+    ...(formData.cc_file ? [{ label: 'CC', file_name: formData.cc_file }] : []),
+    ...(formData.consent_79a_file ? [{ label: '79/A Consent', file_name: formData.consent_79a_file }] : []),
     ...formData.document_checklist.filter(item => item.file_name)
   ];
 
@@ -656,7 +757,7 @@ export default function AddPropertyPage() {
             </div>
           </Accordion>
 
-          <Accordion title="7 & 8. Area Info" icon="fa-info-circle">
+          <Accordion title="7. Area Info" icon="fa-info-circle">
             <div className={styles.grid2}>
               <div className={styles.inputGroup}><label className={styles.label}>Total Plot Area</label><input className={styles.input} value={formData.total_plot_area} onChange={e => updateField('total_plot_area', e.target.value)} /></div>
               <div className={styles.inputGroup}><label className={styles.label}>Total Flats</label><input className={styles.input} type="number" value={formData.total_flats} onChange={e => updateField('total_flats', e.target.value)} /></div>
@@ -665,10 +766,9 @@ export default function AddPropertyPage() {
             </div>
           </Accordion>
 
-          <Accordion title="9, 10 & 11. Legal Permissions" icon="fa-gavel">
+          <Accordion title="8. Legal Permissions" icon="fa-gavel">
             {[
-              { l: 'Approved Plan', k: 'has_approved_plan' },
-              { l: 'OC', k: 'has_oc' }, { l: 'CC', k: 'has_cc' },
+              { l: 'OC', k: 'has_oc' }, 
               { l: 'Legal Dispute', k: 'has_legal_dispute' },
               { l: 'Mortgaged', k: 'is_mortgaged' },
               { l: 'Redevelopment Interest', k: 'has_redevelopment_interest' }
@@ -678,48 +778,187 @@ export default function AddPropertyPage() {
                 <YesNoToggle value={formData[f.k]} onChange={(v) => updateField(f.k, v)} />
               </div>
             ))}
-          </Accordion>
-
-          <Accordion title="12. Survey, Banners & Hoarding" icon="fa-search">
-            <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
-              <label className={styles.label}>Physical Survey Status</label>
-              <select className={styles.input} value={formData.physical_survey} onChange={e => updateField('physical_survey', e.target.value)}>
-                <option>Not Started</option><option>In Progress</option><option>Completed</option>
-              </select>
+            
+            <div className={styles.checkRow}>
+              <span>Physical Survey Allowed</span>
+              <YesNoToggle value={formData.physical_survey_allowed} onChange={(v) => updateField('physical_survey_allowed', v)} />
             </div>
 
-            <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
-              <label className={styles.label}>Physical Survey Records / Notes</label>
-              <textarea className={styles.input} rows="3" value={formData.physical_survey_records} onChange={e => updateField('physical_survey_records', e.target.value)} placeholder="Enter survey details..." />
-            </div>
-
-            <div className={styles.checkRow} style={{ marginBottom: '15px' }}>
+            <div className={styles.checkRow}>
               <span>Flat Measurement Allowed</span>
               <YesNoToggle value={formData.flat_measure_allowed} onChange={(v) => updateField('flat_measure_allowed', v)} />
             </div>
 
-            <div className={styles.checkRow} style={{ marginBottom: '15px' }}>
+            <div className={styles.checkRow}>
               <span>Banner Permission / Hoarding Allowed</span>
               <YesNoToggle value={formData.banner_permission_allowed} onChange={(v) => updateField('banner_permission_allowed', v)} />
             </div>
 
             {formData.banner_permission_allowed === 1 && (
-              <div className={styles.inputGroup}>
+              <div className={styles.inputGroup} style={{ marginTop: '10px' }}>
                 <label className={styles.label}>Hoarding Installation Date</label>
                 <input type="date" className={styles.input} value={formData.hoarding_date} onChange={e => updateField('hoarding_date', e.target.value)} />
               </div>
             )}
+
+            <div className={styles.checkRow} style={{ marginTop: '10px', borderTop: '1px dashed #eee', paddingTop: '10px' }}>
+              <span>Consent Type</span>
+              <ConsentToggle value={formData.consent_type} onChange={(v) => updateField('consent_type', v)} />
+            </div>
+
+            {formData.consent_type === '79/A' && (
+              <div className={styles.checkItem} style={{ marginTop: '10px' }}>
+                <div className={styles.docItemHeader}>
+                  <span>79/A Consent Document</span>
+                  {formData.consent_79a_file ? (
+                    <div className={styles.submittedWrapper}>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(formData.consent_79a_file)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
+                      <button type="button" className={styles.reuploadBtn} onClick={() => updateField('consent_79a_file', '')}>
+                        <i className="fa fa-refresh"></i> Re-upload
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold' }}>Pending Upload</span>
+                  )}
+                </div>
+
+                {!formData.consent_79a_file && !isBulkUpload && (
+                  <div className={styles.uploadRow}>
+                    <input type="file" id="consent_79a_upload" className={styles.fileInput} />
+                    <button type="button" className={styles.uploadBtn} onClick={executeConsent79aUpload}>
+                      <i className="fa fa-upload"></i> Upload
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </Accordion>
 
-          <Accordion title="13. Document Checklist & File Mapping" icon="fa-list-ol">
+          <Accordion title="9. Proposal & Offer Documents" icon="fa-envelope">
+            <div className={styles.checklist}>
+              {/* Interest Letter */}
+              <div className={styles.checkItem}>
+                <div className={styles.docItemHeader}>
+                  <span>Interest Letter</span>
+                  {!formData.interest_letter_file ? (
+                    <YesNoToggle value={formData.has_interest_letter} onChange={(v) => updateField('has_interest_letter', v)} />
+                  ) : (
+                    <div className={styles.submittedWrapper}>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(formData.interest_letter_file)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
+                      <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
+                        <i className="fa fa-refresh"></i> Re-upload
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {!formData.interest_letter_file && formData.has_interest_letter === 1 && !isBulkUpload && (
+                  <div className={styles.uploadRow}>
+                    <input type="file" id="interest_letter_upload" className={styles.fileInput} />
+                    <button type="button" className={styles.uploadBtn} onClick={executeInterestLetterUpload}>
+                      <i className="fa fa-upload"></i> Upload
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Society Acknowledgement (No Upload) */}
+              <div className={styles.checkRow}>
+                <span>Society Acknowledgement</span>
+                <YesNoToggle value={formData.society_acknowledgement} onChange={(v) => updateField('society_acknowledgement', v)} />
+              </div>
+
+              {/* Offer Letter Sent (Stacked Upload) */}
+              <div className={styles.checkItem} >
+                <div className={styles.docItemHeader}>
+                  <span>Offer Letter Sent</span>
+                  <YesNoToggle value={formData.offer_letter_sent} onChange={(v) => updateField('offer_letter_sent', v)} />
+                </div>
+                
+                {formData.offer_letter_sent === 1 && (
+                  <>
+                    {formData.offer_letter_files?.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                        {formData.offer_letter_files.map((f, i) => (
+                          <div key={i} className={styles.submittedWrapper} style={{ justifyContent: 'space-between', background: 'white', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
+                            <span style={{ fontSize: '11px', color: '#6b7280' }}>Document {i + 1}</span>
+                            <a href={`/api/viewDoc?key=${encodeURIComponent(f)}`} target="_blank" rel="noopener noreferrer" className={styles.viewFileBtn}><i className="fa fa-external-link"></i> View</a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {!isBulkUpload && (
+                      <div className={styles.uploadRow}>
+                        <input type="file" id="offer_letter_upload" className={styles.fileInput} />
+                        <button type="button" className={styles.uploadBtn} onClick={executeOfferLetterUpload}>
+                          <i className="fa fa-upload"></i> Upload
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Offer Acceptance Letter (Single Upload) */}
+              <div className={styles.checkItem}>
+                <div className={styles.docItemHeader}>
+                  <span>Offer Acceptance Letter</span>
+                  {!formData.offer_acceptance_letter_file ? (
+                    <YesNoToggle value={formData.offer_acceptance_letter} onChange={(v) => updateField('offer_acceptance_letter', v)} />
+                  ) : (
+                    <div className={styles.submittedWrapper}>
+                      <a 
+                        href={`/api/viewDoc?key=${encodeURIComponent(formData.offer_acceptance_letter_file)}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={styles.viewFileBtn}
+                      >
+                        <i className="fa fa-external-link"></i> View
+                      </a>
+                      <button type="button" className={styles.reuploadBtn} onClick={() => updateField('offer_acceptance_letter_file', '')}>
+                        <i className="fa fa-refresh"></i> Re-upload
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {formData.offer_acceptance_letter === 1 && !formData.offer_acceptance_letter_file && !isBulkUpload && (
+                  <div className={styles.uploadRow}>
+                    <input type="file" id="offer_acceptance_upload" className={styles.fileInput} />
+                    <button type="button" className={styles.uploadBtn} onClick={() => executeSpecificUpload('offer_acceptance_upload', 'offer_acceptance_letter_file', 'Offer Acceptance Letter')}>
+                      <i className="fa fa-upload"></i> Upload
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Accordion>
+
+          <Accordion title="10. Document Checklist & File Mapping" icon="fa-list-ol">
             <div className={styles.bulkActionRow}>
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                 <strong>Enable Bulk Upload & Mapping?</strong>
-                <div style={{ marginTop: '5px' }}>
+                <div>
                   <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
                 </div>
               </div>
-              
+            </div>
+            <div>
               {allUploadedFiles.length > 0 && (
                 <button 
                   type="button" 
@@ -730,6 +969,7 @@ export default function AddPropertyPage() {
                 </button>
               )}
             </div>
+            
 
             {isBulkUpload && (
               <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0', flexDirection: 'column', alignItems: 'flex-start' }}>
@@ -786,45 +1026,12 @@ export default function AddPropertyPage() {
             )}
 
             <div className={styles.checklist}>
-              <div className={styles.checkItem}>
-                <div className={styles.docItemHeader}>
-                  <span>Interest Letter</span>
-                  {!formData.interest_letter_file ? (
-                    <YesNoToggle value={formData.has_interest_letter} onChange={(v) => updateField('has_interest_letter', v)} />
-                  ) : (
-                    <div className={styles.submittedWrapper}>
-                      <a 
-                        href={`/api/viewDoc?key=${encodeURIComponent(formData.interest_letter_file)}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className={styles.viewFileBtn}
-                      >
-                        <i className="fa fa-external-link"></i> View
-                      </a>
-                      <button type="button" className={styles.reuploadBtn} onClick={() => updateField('interest_letter_file', '')}>
-                        <i className="fa fa-refresh"></i> Re-upload
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Individual upload logic: hidden if mapped in bulk mode */}
-                {formData.has_interest_letter === 1 && !formData.interest_letter_file && !isBulkUpload && (
-                  <div className={styles.uploadRow}>
-                    <input type="file" id="interest_letter_upload" className={styles.fileInput} />
-                    <button type="button" className={styles.uploadBtn} onClick={executeInterestLetterUpload}>
-                      <i className="fa fa-upload"></i> Upload
-                    </button>
-                  </div>
-                )}
-              </div>
-
               {formData.document_checklist.map((item, i) => {
                 if (item.label.startsWith('Bulk:')) return null;
                 return (
                   <div key={i} className={styles.checkItem}>
                     <div className={styles.docItemHeader}>
-                      <span>{i + 1}. {item.label}</span>
+                      <span>{item.label}</span>
 
                       {!item.file_name ? (
                         <YesNoToggle value={item.value} onChange={(v) => updateCheck(i, v)} />
@@ -845,7 +1052,6 @@ export default function AddPropertyPage() {
                       )}
                     </div>
 
-                    {/* Individual upload logic: hidden if mapped in bulk mode */}
                     {item.value === 1 && !item.file_name && !isBulkUpload && (
                       <div className={styles.uploadRow}>
                         <input type="file" id={`doc_upload_${i}`} className={styles.fileInput} />
@@ -863,18 +1069,83 @@ export default function AddPropertyPage() {
               })}
             </div>
 
-            <div className={styles.checkRow} style={{ margin: '20px 0' }}>
-              <strong>Documents Submitted to Architect?</strong>
-              <YesNoToggle value={formData.architect_submitted} onChange={(v) => updateField('architect_submitted', v)} />
-            </div>
-
-            <div className={styles.inputGroup}>
+            <div className={styles.inputGroup} style={{ marginTop: '15px' }}>
               <label className={styles.label}>Overall Checklist Remarks</label>
               <textarea className={styles.input} rows="3" value={formData.document_remarks} onChange={e => updateField('document_remarks', e.target.value)} placeholder="Notes on missing or pending documents..." />
             </div>
           </Accordion>
 
-          <Accordion title="14. Interaction & Offer Journey" icon="fa-handshake-o">
+          <Accordion title="11. Plan & CC" icon="fa-map">
+            <div className={styles.checkItem}>
+              <div className={styles.docItemHeader}>
+                <span>Approved Plan</span>
+                {!formData.approved_plan_file ? (
+                  <YesNoToggle value={formData.has_approved_plan} onChange={(v) => updateField('has_approved_plan', v)} />
+                ) : (
+                  <div className={styles.submittedWrapper}>
+                    <a href={`/api/viewDoc?key=${encodeURIComponent(formData.approved_plan_file)}`} target="_blank" rel="noopener noreferrer" className={styles.viewFileBtn}><i className="fa fa-external-link"></i> View</a>
+                    <button type="button" className={styles.reuploadBtn} onClick={() => updateField('approved_plan_file', '')}><i className="fa fa-refresh"></i> Re-upload</button>
+                  </div>
+                )}
+              </div>
+              {formData.has_approved_plan === 1 && !formData.approved_plan_file && (
+                <div className={styles.uploadRow}>
+                  <input type="file" id="approved_plan_upload" className={styles.fileInput} />
+                  <button type="button" className={styles.uploadBtn} onClick={() => executeSpecificUpload('approved_plan_upload', 'approved_plan_file', 'Approved Plan')}><i className="fa fa-upload"></i> Upload</button>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.checkItem} style={{ borderBottom: 'none' }}>
+              <div className={styles.docItemHeader}>
+                <span>CC (Commencement Certificate)</span>
+                {!formData.cc_file ? (
+                  <YesNoToggle value={formData.has_cc} onChange={(v) => updateField('has_cc', v)} />
+                ) : (
+                  <div className={styles.submittedWrapper}>
+                    <a href={`/api/viewDoc?key=${encodeURIComponent(formData.cc_file)}`} target="_blank" rel="noopener noreferrer" className={styles.viewFileBtn}><i className="fa fa-external-link"></i> View</a>
+                    <button type="button" className={styles.reuploadBtn} onClick={() => updateField('cc_file', '')}><i className="fa fa-refresh"></i> Re-upload</button>
+                  </div>
+                )}
+              </div>
+              {formData.has_cc === 1 && !formData.cc_file && (
+                <div className={styles.uploadRow}>
+                  <input type="file" id="cc_upload" className={styles.fileInput} />
+                  <button type="button" className={styles.uploadBtn} onClick={() => executeSpecificUpload('cc_upload', 'cc_file', 'CC')}><i className="fa fa-upload"></i> Upload</button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '20px', borderTop: '1px dashed #e5e7eb', paddingTop: '20px' }}>
+              <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
+                <label className={styles.label}>Architect Survey Status</label>
+                <select className={styles.input} value={formData.architect_survey_status} onChange={e => updateField('architect_survey_status', e.target.value)}>
+                  <option>Not Started</option><option>Started</option><option>Completed</option>
+                </select>
+              </div>
+              
+              <div className={styles.checkRow}>
+                <strong>Sent to Architect?</strong>
+                <YesNoToggle value={formData.sent_to_architect} onChange={(v) => updateField('sent_to_architect', v)} />
+              </div>
+            </div>
+          </Accordion>
+
+          <Accordion title="12. Physical Survey & Notes" icon="fa-search">
+            <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
+              <label className={styles.label}>Physical Survey Status</label>
+              <select className={styles.input} value={formData.physical_survey} onChange={e => updateField('physical_survey', e.target.value)}>
+                <option>Not Started</option><option>In Progress</option><option>Completed</option>
+              </select>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Physical Survey Records / Notes</label>
+              <textarea className={styles.input} rows="3" value={formData.physical_survey_records} onChange={e => updateField('physical_survey_records', e.target.value)} placeholder="Enter survey details..." />
+            </div>
+          </Accordion>
+
+          <Accordion title="13. Interaction & Offer Journey" icon="fa-comments">
             <div className={styles.inputGroup}>
               <label className={styles.label}>Interaction History</label>
               <textarea className={styles.input} rows="3" value={formData.interaction_history} onChange={e => updateField('interaction_history', e.target.value)} placeholder="Log of calls and interactions..." />
@@ -900,7 +1171,7 @@ export default function AddPropertyPage() {
             )}
           </Accordion>
 
-          <Accordion title="15. Legal Pipeline & Milestones" icon="fa-file-text-o">
+          <Accordion title="14. Legal Pipeline & Milestones" icon="fa-flag-checkered">
             <div className={styles.checkRow} style={{ marginBottom: '15px' }}>
               <span>SGM Completed (Appointment of Developer)?</span>
               <YesNoToggle value={formData.sgm_completed} onChange={(v) => updateField('sgm_completed', v)} />
