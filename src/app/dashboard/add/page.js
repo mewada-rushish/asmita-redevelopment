@@ -1,5 +1,3 @@
-// src/app/dashboard/add/page.js
-
 'use client';
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +14,19 @@ const safeParse = (str) => {
   if (typeof str === 'object') return str;
   try { return JSON.parse(str); } catch { return {}; }
 };
+
+const STATUS_FLOW = [
+  'Not Approached',             // 0
+  'Interest Letter Sent',       // 1
+  'Society Docs Received',      // 2
+  'Architect Survey Phase',     // 3
+  'Offer Letter Sent',          // 4
+  'Offer Under Negotiation',    // 5
+  'Offer Accepted',             // 6
+  'Consent Phase',              // 7
+  'DA Phase',                   // 8
+  'Plan & CC Phase'             // 9
+];
 
 const YesNoToggle = ({ value, onChange }) => (
   <div className={styles.toggle}>
@@ -135,6 +146,7 @@ export default function AddPropertyPage() {
     architect_survey_status: 'Not Started',
     sent_to_architect: 0,
     sgm_completed: 0, da_agreement_status: 'Not Started',
+    project_progress: 'Not Started', // New Progress Tracking Field
     activity_logs: []
   });
 
@@ -177,6 +189,36 @@ export default function AddPropertyPage() {
   useEffect(() => {
     fetchUsersData();
   }, [fetchUsersData]);
+
+  // SMART AUTO-UPGRADE STATUS LOGIC
+  useEffect(() => {
+    let maxIndex = 0;
+    
+    // Evaluate conditions sequentially to find highest achieved stage
+    if (formData.has_approved_plan === 1 || formData.has_cc === 1 || formData.approved_plan_file || formData.cc_file) maxIndex = Math.max(maxIndex, 9);
+    else if (formData.da_agreement_status === 'In Process' || formData.da_agreement_status === 'Completed') maxIndex = Math.max(maxIndex, 8);
+    else if (formData.consent_79a_file || formData.consent_type === '100%') maxIndex = Math.max(maxIndex, 7);
+    else if (formData.offer_acceptance_letter_file || formData.offer_letter_status === 'Accepted') maxIndex = Math.max(maxIndex, 6);
+    else if (formData.offer_letter_status === 'Under Negotiation' || (Array.isArray(formData.activity_logs) && formData.activity_logs.some(l => l.category === 'Offer Negotiation'))) maxIndex = Math.max(maxIndex, 5);
+    else if ((Array.isArray(formData.offer_letter_files) && formData.offer_letter_files.length > 0) || formData.offer_letter_sent === 1) maxIndex = Math.max(maxIndex, 4);
+    else if (formData.architect_survey_status === 'Started' || formData.architect_survey_status === 'Completed' || formData.sent_to_architect === 1) maxIndex = Math.max(maxIndex, 3);
+    else if (formData.society_acknowledgement === 1) maxIndex = Math.max(maxIndex, 2);
+    else if (formData.interest_letter_file || formData.has_interest_letter === 1) maxIndex = Math.max(maxIndex, 1);
+
+    const currentStatusIndex = STATUS_FLOW.indexOf(formData.status);
+    
+    // Only upgrade, never downgrade automatically
+    if (maxIndex > currentStatusIndex) {
+      setFormData(prev => ({ ...prev, status: STATUS_FLOW[maxIndex] }));
+    }
+  }, [
+    formData.has_approved_plan, formData.has_cc, formData.approved_plan_file, formData.cc_file,
+    formData.da_agreement_status, formData.consent_79a_file, formData.consent_type,
+    formData.offer_acceptance_letter_file, formData.offer_letter_status, formData.activity_logs, 
+    formData.offer_letter_files, formData.offer_letter_sent, formData.architect_survey_status, 
+    formData.sent_to_architect, formData.society_acknowledgement, formData.interest_letter_file, 
+    formData.has_interest_letter, formData.status
+  ]);
 
   const checkDuplicates = async () => {
     if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
@@ -630,7 +672,7 @@ export default function AddPropertyPage() {
           <div className={styles.card}>
             <label className={styles.label}>🏠 Overall Status *</label>
             <select className={styles.input} value={formData.status} onChange={e => updateField('status', e.target.value)}>
-              <option>Not Approached</option><option>Interested Letter Sent</option><option>Meeting Finalized</option><option>Approved</option>
+              {STATUS_FLOW.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
@@ -818,7 +860,7 @@ export default function AddPropertyPage() {
             </div>
           </Accordion>
 
-          <Accordion title="8. Legal Permissions" icon="fa-gavel">
+          <Accordion title="8. Legal Permissions & Survey" icon="fa-gavel">
             {[
               { l: 'OC', k: 'has_oc' }, 
               { l: 'Legal Dispute', k: 'has_legal_dispute' },
@@ -852,6 +894,22 @@ export default function AddPropertyPage() {
                 <input type="date" className={styles.input} value={formData.hoarding_date} onChange={e => updateField('hoarding_date', e.target.value)} />
               </div>
             )}
+
+            <hr style={{ borderTop: '1px dashed #cbd5e1', margin: '15px 0' }} />
+            
+            <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
+              <label className={styles.label}>Physical Survey Status</label>
+              <select className={styles.input} value={formData.physical_survey} onChange={e => updateField('physical_survey', e.target.value)}>
+                <option>Not Started</option><option>In Progress</option><option>Completed</option>
+              </select>
+            </div>
+
+            <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
+              <label className={styles.label}>Physical Survey Records / Notes</label>
+              <textarea className={styles.input} rows="3" value={formData.physical_survey_records} onChange={e => updateField('physical_survey_records', e.target.value)} placeholder="Enter survey details..." />
+            </div>
+
+            <hr style={{ borderTop: '1px dashed #cbd5e1', margin: '15px 0' }} />
 
             <div className={styles.consentDivider}>
               <span>Consent Type</span>
@@ -995,6 +1053,32 @@ export default function AddPropertyPage() {
                 )}
               </div>
             </div>
+
+            <hr style={{ borderTop: '1px dashed #cbd5e1', margin: '15px 0' }} />
+            
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Interaction History</label>
+              <textarea className={styles.input} rows="3" value={formData.interaction_history} onChange={e => updateField('interaction_history', e.target.value)} placeholder="Log of calls and interactions..." />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Offer Letter Status</label>
+              <select className={styles.input} value={formData.offer_letter_status} onChange={e => updateField('offer_letter_status', e.target.value)}>
+                <option>Not Sent</option><option>Offer Sent</option><option>Under Negotiation</option><option>Accepted</option>
+              </select>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Offer Meeting Track</label>
+              <textarea className={styles.input} rows="2" value={formData.offer_meeting_track} onChange={e => updateField('offer_meeting_track', e.target.value)} placeholder="Tracking of society meetings regarding offer..." />
+            </div>
+
+            {formData.offer_letter_status === 'Accepted' && (
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Offer Acceptance Date</label>
+                <input type="date" className={styles.input} value={formData.offer_acceptance_date} onChange={e => updateField('offer_acceptance_date', e.target.value)} />
+              </div>
+            )}
           </Accordion>
 
           <Accordion title="10. Document Checklist & File Mapping" icon="fa-list-ol">
@@ -1113,7 +1197,7 @@ export default function AddPropertyPage() {
               })}
             </div>
 
-            <div className={styles.inputGroup}>
+            <div className={styles.inputGroup} style={{ marginTop: '15px' }}>
               <label className={styles.label}>Overall Checklist Remarks</label>
               <textarea className={styles.input} rows="3" value={formData.document_remarks} onChange={e => updateField('document_remarks', e.target.value)} placeholder="Notes on missing or pending documents..." />
             </div>
@@ -1160,7 +1244,9 @@ export default function AddPropertyPage() {
               )}
             </div>
 
-            <div className={styles.architectSection}>
+            <hr style={{ borderTop: '1px dashed #cbd5e1', margin: '15px 0' }} />
+
+            <div className={styles.architectSection} style={{ marginTop: 0, borderTop: 'none', paddingTop: 0 }}>
               <div className={styles.inputGroup}>
                 <label className={styles.label}>Architect Survey Status</label>
                 <select className={styles.input} value={formData.architect_survey_status} onChange={e => updateField('architect_survey_status', e.target.value)}>
@@ -1181,10 +1267,21 @@ export default function AddPropertyPage() {
               <YesNoToggle value={formData.sgm_completed} onChange={(v) => updateField('sgm_completed', v)} />
             </div>
 
-            <div className={styles.inputGroup}>
+            <div className={styles.inputGroup} style={{ marginTop: '15px' }}>
               <label className={styles.label}>DA (Development Agreement) Status</label>
               <select className={styles.input} value={formData.da_agreement_status} onChange={e => updateField('da_agreement_status', e.target.value)}>
                 <option>Not Started</option><option>In Process</option><option>Completed</option>
+              </select>
+            </div>
+
+            {/* NEW PROGRESS TRACKING DROPDOWN */}
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>On-Ground Project Progress</label>
+              <select className={styles.input} value={formData.project_progress} onChange={e => updateField('project_progress', e.target.value)}>
+                <option>Not Started</option>
+                <option>Vacant</option>
+                <option>Work Started</option>
+                <option>Completed</option>
               </select>
             </div>
           </Accordion>

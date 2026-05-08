@@ -12,6 +12,19 @@ const safeParse = (data) => {
   try { return JSON.parse(data); } catch { return {}; }
 };
 
+const STATUS_FLOW = [
+  'Not Approached',
+  'Interest Letter Sent',
+  'Society Docs Received',
+  'Architect Survey Phase',
+  'Offer Letter Sent',
+  'Offer Under Negotiation',
+  'Offer Accepted',
+  'Consent Phase',
+  'DA Phase',
+  'Plan & CC Phase'
+];
+
 export default function PropertiesList() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +48,7 @@ export default function PropertiesList() {
   const [startX, setStartX] = useState(0);
   const [scrollLeftState, setScrollLeftState] = useState(0);
 
-  const filterOptions = ['All', 'Not Approached', 'Interested Letter Sent', 'Meeting Finalized', 'Approved'];
+  const filterOptions = ['All', ...STATUS_FLOW];
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -304,7 +317,7 @@ export default function PropertiesList() {
                           cursor: !canEdit ? 'not-allowed' : 'pointer'
                         }}
                       >
-                        {filterOptions.filter(o => o !== 'All').map(o => (
+                        {STATUS_FLOW.map(o => (
                           <option key={o} value={o}>{o}</option>
                         ))}
                       </select>
@@ -454,7 +467,7 @@ export default function PropertiesList() {
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Architect Submitted</span>
-                    {renderBool(selectedProperty.architect_submitted)}
+                    {renderBool(selectedProperty.sent_to_architect || selectedProperty.architect_submitted)}
                   </div>
                 </div>
                 
@@ -486,6 +499,7 @@ export default function PropertiesList() {
                   <Field label="Acceptance Date" value={selectedProperty.offer_acceptance_date ? selectedProperty.offer_acceptance_date.split('T')[0] : '-'} />
                   <div className={styles.detailItem}><span className={styles.detailLabel}>SGM Completed</span>{renderBool(selectedProperty.sgm_completed)}</div>
                   <Field label="DA Agreement Status" value={selectedProperty.da_agreement_status} />
+                  <Field label="On-Ground Progress" value={selectedProperty.project_progress || 'Not Started'} />
                 </div>
               </Accordion>
 
@@ -499,10 +513,33 @@ export default function PropertiesList() {
 }
 
 function getStatusColor(s) {
-  const colors = { 'Not Approached': '#ef4444', 'Interested Letter Sent': '#f59e0b', 'Meeting Finalized': '#b45309', 'Approved': '#10b981' };
+  const colors = { 
+    'Not Approached': '#ef4444', 
+    'Interest Letter Sent': '#f59e0b', 
+    'Society Docs Received': '#8b5cf6', 
+    'Architect Survey Phase': '#3b82f6', 
+    'Offer Letter Sent': '#6366f1', 
+    'Offer Under Negotiation': '#a855f7', 
+    'Offer Accepted': '#10b981', 
+    'Consent Phase': '#f97316', 
+    'DA Phase': '#ec4899', 
+    'Plan & CC Phase': '#14b8a6' 
+  };
   return colors[s] || '#9ca3af';
 }
+
 function getStatusBgColor(s) {
-  const bgs = { 'Not Approached': '#fef2f2', 'Interested Letter Sent': '#fffbeb', 'Meeting Finalized': '#fffcf0', 'Approved': '#f0fdf4' };
+  const bgs = { 
+    'Not Approached': '#fef2f2', 
+    'Interest Letter Sent': '#fffbeb', 
+    'Society Docs Received': '#f5f3ff', 
+    'Architect Survey Phase': '#eff6ff', 
+    'Offer Letter Sent': '#e0e7ff', 
+    'Offer Under Negotiation': '#faf5ff', 
+    'Offer Accepted': '#f0fdf4', 
+    'Consent Phase': '#fff7ed', 
+    'DA Phase': '#fdf2f8', 
+    'Plan & CC Phase': '#f0fdfa' 
+  };
   return bgs[s] || '#f9fafb';
 }

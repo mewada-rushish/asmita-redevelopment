@@ -31,8 +31,9 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
     return b;
   }, [apiIsLoaded, properties]);
 
+  // Initial bounds loading and limits
   useEffect(() => {
-    if (map && bounds && !bounds.isEmpty() && !onLocationSelect) {
+    if (map && bounds && !bounds.isEmpty() && !onLocationSelect && !selectedProperty) {
       map.fitBounds(bounds, { padding: 70 });
 
       const listener = map.addListener('idle', () => {
@@ -42,7 +43,32 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
         google.maps.event.removeListener(listener);
       });
     }
-  }, [map, bounds, onLocationSelect]);
+  }, [map, bounds, onLocationSelect, selectedProperty]);
+
+  // Handle zooming & offset when a specific property is clicked from legend or map
+  useEffect(() => {
+    if (!map) return;
+    
+    if (selectedProperty && selectedProperty.lat && selectedProperty.lng) {
+      // Determine if we are on a mobile device where the sidebar stacks at the bottom
+      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+      
+      // Calculate a geographic offset to prevent the marker from hiding under the sidebar
+      // On desktop: Offset Longitude positive (East) so the marker shifts Left
+      // On mobile: Offset Latitude negative (South) so the marker shifts Up
+      const lngOffset = isMobile ? 0 : 0.0005; // Approx 180px left shift at zoom 19
+      const latOffset = isMobile ? -0.0004 : 0; // Approx 150px up shift at zoom 19
+      
+      map.setZoom(19); // High zoom level to focus on building
+      map.panTo({
+        lat: parseFloat(selectedProperty.lat) + latOffset,
+        lng: parseFloat(selectedProperty.lng) + lngOffset
+      });
+    } else if (!selectedProperty && !onLocationSelect && properties.length > 0 && bounds && !bounds.isEmpty()) {
+      // Re-fit to bounds if property is deselected (e.g., sidebar closed)
+      map.fitBounds(bounds, { padding: 70 });
+    }
+  }, [selectedProperty, map, bounds, onLocationSelect, properties.length]);
 
   const handleRecenter = useCallback(() => {
     if (!map) return;

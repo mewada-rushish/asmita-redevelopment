@@ -4,12 +4,12 @@
   padding: 20px;
   box-sizing: border-box;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip; /* Changed from hidden to clip to allow sticky header to work */
 }
 
 .header {
   position: sticky;
-  top: 20px;
+  top: 0; /* Changed from 20px to 0 to stick precisely to the top edge */
   z-index: 99999;
   background-color: #ffffff;
   border-radius: 10px;
@@ -29,6 +29,13 @@
   margin: 0;
 }
 
+.titleGroup p {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 5px 0 0 0;
+  font-weight: 600;
+}
+
 .saveBtn {
   background: #1e4ec4;
   color: white;
@@ -45,7 +52,6 @@
   background: #163a94;
   transform: translateY(-1px);
 }
-
 .saveBtn:disabled {
   background: #94a3b8;
   cursor: not-allowed;
@@ -115,13 +121,40 @@ textarea.input {
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
-
 .grid3 {
   display: grid;
   grid-template-columns: 100px 1fr 1fr;
   gap: 10px;
   align-items: center;
   margin-bottom: 10px;
+}
+
+.radioGroup {
+  display: flex;
+  gap: 20px;
+  font-weight: 600;
+  font-size: 13px;
+  padding-top: 5px;
+}
+
+.radioGroup label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.radioGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.checkGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 15px;
 }
 
 .quickAddBtn {
@@ -184,6 +217,10 @@ textarea.input {
   gap: 8px;
 }
 
+.modalHeader h2 i {
+  color: #1e4ec4;
+}
+
 .closeBtn {
   background: none;
   border: none;
@@ -200,6 +237,10 @@ textarea.input {
 .modalBody {
   display: flex;
   flex-direction: column;
+}
+
+.modalBody .inputGroup {
+  margin-bottom: 12px;
 }
 
 .searchWrapper {
@@ -223,6 +264,12 @@ textarea.input {
   font-size: 14px;
   box-sizing: border-box;
   background: white;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #1e4ec4;
+  box-shadow: 0 0 0 3px rgba(30, 78, 196, 0.1);
 }
 
 .suggestions {
@@ -263,6 +310,11 @@ textarea.input {
   color: #1e4ec4;
 }
 
+.suggestions li i {
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
 .suggestionAddress {
   font-size: 11px;
   color: #64748b;
@@ -289,6 +341,10 @@ textarea.input {
   gap: 8px;
   flex-wrap: wrap; 
   line-height: 1.4;
+}
+
+.linkGroupTitle i {
+  color: #64748b;
 }
 
 .chipContainer {
@@ -333,6 +389,31 @@ textarea.input {
   color: #ef4444;
 }
 
+.coordInputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.inputSubGroup label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  display: block;
+  text-transform: uppercase;
+}
+
+.inputSubGroup .input {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: monospace;
+  background: #f8fafc;
+}
+
 .coords {
   font-family: monospace;
   font-size: 10px;
@@ -345,14 +426,14 @@ textarea.input {
   word-break: break-all;
 }
 
-/* .checklist {
+.checklist {
   border: 1px solid #f3f4f6;
   border-radius: 8px;
   padding: 10px;
   background: white;
   width: 100%;
   box-sizing: border-box;
-} */
+}
 
 .checkRow {
   display: flex;
@@ -363,6 +444,15 @@ textarea.input {
   font-size: 13px;
   gap: 15px;
   flex-wrap: wrap; 
+}
+
+.checkRow > span,
+.docItemHeader > span,
+.proposalItem > span,
+.consentDivider > span {
+  flex: 1 1 auto;
+  min-width: 0; 
+  word-wrap: break-word;
 }
 
 .checkItem {
@@ -382,38 +472,25 @@ textarea.input {
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0; 
-  background: #fff;
 }
 
 .toggle button {
   border: none;
   background: white;
-  padding: 6px 14px;
+  padding: 5px 12px;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
   flex: 1; 
-  color: #4b5563;
 }
 
 .activeYes {
-  background: #10b981 !important;
+  background: #1e4ec4 !important;
   color: white !important;
 }
-
 .activeNo {
   background: #ef4444 !important;
-  color: white !important;
-}
-
-.activeConsentBlue {
-  background: #3b82f6 !important;
-  color: white !important;
-}
-
-.activeConsentOrange {
-  background: #f59e0b !important;
   color: white !important;
 }
 
@@ -429,10 +506,18 @@ textarea.input {
   transition: 0.2s;
   box-sizing: border-box;
 }
-
 .addBtn:hover {
   background: #e5e7eb;
   border-color: #1e4ec4;
+}
+
+.uploadArea {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  color: #9ca3af;
+  background: #f9fafb;
 }
 
 .docItemHeader {
@@ -489,6 +574,11 @@ textarea.input {
   flex-shrink: 0;
 }
 
+.reuploadBtn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .uploadRow {
   margin-top: 12px;
   padding: 10px;
@@ -531,6 +621,10 @@ textarea.input {
   transition: 0.2s;
 }
 
+.fileInput::file-selector-button:hover {
+  background: #e2e8f0;
+}
+
 .uploadBtn {
   background-color: #10b981;
   color: white;
@@ -548,22 +642,39 @@ textarea.input {
   flex-shrink: 0;
 }
 
+.uploadBtn:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
 .proposalItem {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
+  background: #fafafa;
+  padding: 10px;
   border-bottom: 1px solid #f3f4f6;
   font-size: 13px;
   gap: 15px;
   flex-wrap: wrap;
 }
 
-.proposalItemRow, .proposalItemRowLast {
+.proposalItemRow {
   display: flex;
   flex-direction: column;
-  padding: 10px 0;
+  background: #fafafa;
+  padding: 10px;
   border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.proposalItemRowLast {
+  display: flex;
+  flex-direction: column;
+  background: #fafafa;
+  padding: 10px;
   font-size: 13px;
   width: 100%;
   box-sizing: border-box;
@@ -589,6 +700,12 @@ textarea.input {
   gap: 10px;
 }
 
+.stackedItem span {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
 .consentDivider {
   display: flex;
   justify-content: space-between;
@@ -612,16 +729,16 @@ textarea.input {
   justify-content: space-between;
   align-items: center;
   background: #f8fafc;
-  padding: 15px;
+  padding: 12px 15px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   margin-bottom: 15px;
+  gap: 15px;
 }
 
 .bulkHeaderWrapper {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 15px;
   flex: 1; 
 }
@@ -636,12 +753,14 @@ textarea.input {
   font-weight: 600;
   cursor: pointer;
   display: flex;
-  margin: auto;
-  margin-bottom: 20px;
   align-items: center;
   gap: 8px;
   transition: background-color 0.2s;
   flex-shrink: 0;
+}
+
+.libraryBtn:hover {
+  background-color: #4f46e5;
 }
 
 .bulkUploadWrapper {
@@ -655,6 +774,12 @@ textarea.input {
   align-items: flex-start;
   width: 100%;
   box-sizing: border-box;
+}
+
+.bulkInputContainer {
+  display: flex;
+  width: 100%;
+  align-items: center;
 }
 
 .bulkList {
@@ -675,6 +800,31 @@ textarea.input {
   border-radius: 6px;
   border: 1px solid #cbd5e1;
   gap: 10px;
+}
+
+.fileName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.fileName i {
+  color: #94a3b8;
+  font-size: 16px;
+  margin-top: 2px;
+}
+
+.fileActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .mappingContainer {
@@ -741,6 +891,10 @@ textarea.input {
   box-sizing: border-box;
 }
 
+.uploadBtnFull:hover {
+  background-color: #059669;
+}
+
 .planLastItem {
   display: flex;
   flex-direction: column;
@@ -767,6 +921,13 @@ textarea.input {
   margin-top: 10px;
 }
 
+.emptyLog {
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 20px 0;
+}
+
 .logItem {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
@@ -781,6 +942,19 @@ textarea.input {
   margin-bottom: 4px;
   color: #6b7280;
   font-size: 11px;
+}
+
+.logNote {
+  color: #1f2937;
+  margin-bottom: 6px;
+  word-wrap: break-word;
+}
+
+.logUser {
+  color: #9ca3af;
+  font-size: 10px;
+  font-style: italic;
+  text-align: right;
 }
 
 .logSaveBtn {
@@ -802,186 +976,205 @@ textarea.input {
   box-sizing: border-box;
 }
 
-@media (max-width: 1024px) {
-  .mainGrid {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-  
-  .libraryBtn {
-    margin-bottom: 15px;
-  }
+.logSaveBtn:hover {
+  background: #2563eb;
 }
 
-/* ==============================================================
-   AGGRESSIVE MOBILE OVERRIDE BLOCK
-   Forces full-width stacking for all complex flex containers
-   ============================================================== */
-@media (max-width: 768px) {
-  .container {
-    padding: 15px !important;
-    padding-bottom: 120px !important;
-  }
+.content :global(.accordion-header),
+.content :global([class*="accordion-header"]),
+.content :global([class*="Accordion_header"]),
+.content :global([class*="premiumHeader"]),
+.content :global(summary) {
+  text-align: left !important;
+  justify-content: space-between !important; 
+  align-items: center !important;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 10px;
+}
 
-  .header {
-    position: fixed !important;
-    top: auto !important; 
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    margin-bottom: 0 !important;
-    border-radius: 15px 15px 0 0 !important;
-    border-bottom: none !important;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1) !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 15px !important;
-  }
+.content :global([class*="premiumTitleArea"]) {
+  flex: 1 1 auto;
+  min-width: 0; 
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
 
-  .saveBtn {
-    width: 100% !important;
-    padding: 14px 20px !important;
-  }
+.content :global(.accordion-title),
+.content :global([class*="title"]) {
+  flex: 1 1 auto;
+  text-align: left !important;
+  white-space: normal !important; 
+  word-wrap: break-word;
+  min-width: 0;
+  line-height: 1.4;
+}
 
+@media (max-width: 1024px) {
   .mainGrid {
-    grid-template-columns: 1fr !important;
-    gap: 20px !important;
-  }
-
-  .sidebar {
-    position: static !important;
-  }
-
-  .grid2 {
-    grid-template-columns: 1fr !important;
-    gap: 15px !important;
+    grid-template-columns: 260px 1fr;
+    gap: 20px;
   }
 
   .grid3 {
-    grid-template-columns: 1fr !important;
-    background: #f8fafc !important;
-    padding: 10px !important;
-    border-radius: 8px !important;
-    border: 1px solid #f1f5f9 !important;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 15px;
   }
 
-  /* Force vertical stacking on all flex rows */
+  .grid3 label,
+  .grid3 span {
+    grid-column: span 2;
+    margin-bottom: -5px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+    padding-bottom: 120px;
+  }
+
+  .header {
+    position: fixed;
+    top: auto; 
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin-bottom: 0;
+    border-radius: 15px 15px 0 0;
+    border-bottom: none;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+
+  .header h1 {
+    font-size: 16px;
+  }
+
+  .saveBtn {
+    width: 100%;
+    padding: 14px 20px;
+  }
+
+  .mainGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
+  .grid2 {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .grid3 {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: flex-start;
+    background: #f8fafc;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #f1f5f9;
+  }
+
+  .grid3 label,
+  .grid3 span {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    grid-column: span 1;
+  }
+
   .checkRow, 
   .bulkActionRow, 
   .proposalItem, 
   .proposalItemRow, 
-  .proposalItemRowLast, 
+  .proposalItemRowLast,
   .consentDivider {
-    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important; 
-    gap: 15px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    gap: 12px;
+    width: 100%;
   }
 
-  /* Target the exact wrapper causing the squeeze */
-  .bulkHeaderWrapper {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    width: 100% !important;
-    gap: 10px !important;
-  }
-
-  .bulkHeaderWrapper strong {
-    text-align: left !important;
-    display: block !important;
-    width: 100% !important;
-  }
-
-  /* Mapping Row Fixes */
   .mappingRow {
-    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 10px !important;
-    padding: 15px !important;
-    box-sizing: border-box !important;
+    gap: 8px;
   }
 
   .mappingSelect {
-    flex: none !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    height: 42px !important;
-    display: block !important;
-    box-sizing: border-box !important;
+    flex: 1 1 auto;
+    max-width: 100%;
+    width: 100%;
   }
   
   .mappingFilename {
-    width: 100% !important;
-    white-space: normal !important; 
-    word-wrap: break-word !important;
+    width: 100%;
+    white-space: normal; 
+    word-wrap: break-word;
   }
 
-  /* Force Toggle to be 100% wide and 50/50 split */
+  .bulkHeaderWrapper {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .checkRow > span,
+  .docItemHeader > span,
+  .proposalItem > span,
+  .consentDivider > span {
+    min-width: 0;
+    width: 100%;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .radioGroup {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 0;
+  }
+
   .toggle {
-    display: flex !important;
-    width: 100% !important;
-    min-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .toggle button {
-    flex: 1 !important;
-    width: 50% !important;
-    padding: 12px 10px !important;
-    border-radius: 0 !important;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
   .docItemHeader {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 12px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
   }
 
   .submittedWrapper {
-    display: flex !important;
-    width: 100% !important;
-    justify-content: space-between !important;
-    margin-top: 5px !important;
-    box-sizing: border-box !important;
-  }
-
-  .libraryBtn {
-    width: 100% !important;
-    justify-content: center !important;
-    margin-top: 10px !important;
-    margin-bottom: 15px !important;
-    box-sizing: border-box !important;
-  }
-
-  .uploadBtnFull, 
-  .uploadBtn {
-    width: 100% !important;
-    justify-content: center !important;
-    margin-top: 10px !important;
-    box-sizing: border-box !important;
+    width: 100%;
+    justify-content: space-between;
+    margin-top: 5px;
   }
 
   .uploadRow {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
   }
 
-  .fileInput {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 100% !important;
-    box-sizing: border-box !important;
+  .uploadBtn, .uploadBtnFull {
+    width: 100%;
+    justify-content: center;
+    display: flex;
+  }
+  
+  .propertyChip strong {
+    max-width: 180px; 
   }
 }
