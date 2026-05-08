@@ -4,12 +4,12 @@
   padding: 20px;
   box-sizing: border-box;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip; /* Changed from hidden to clip to allow sticky header to work */
 }
 
 .header {
   position: sticky;
-  top: 20px;
+  top: 0; /* Changed from 20px to 0 to stick precisely to the top edge */
   z-index: 99999;
   background-color: #ffffff;
   border-radius: 10px;
@@ -1020,13 +1020,8 @@ textarea.input {
 
 @media (max-width: 1024px) {
   .mainGrid {
-    display: flex;
-    flex-direction: column;
+    grid-template-columns: 260px 1fr;
     gap: 20px;
-  }
-
-  .libraryBtn {
-    margin-bottom: 15px;
   }
 
   .grid3 {
