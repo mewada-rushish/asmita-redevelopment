@@ -1,10 +1,10 @@
-/* ===============================
-   BASE LAYOUT
-=============================== */
 .container {
   font-family: var(--font-poppins), sans-serif;
   color: #1f2937;
   padding: 20px;
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .header {
@@ -20,19 +20,13 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
+  box-sizing: border-box;
 }
 
 .header h1 {
   font-family: var(--font-montserrat), sans-serif;
   font-size: 24px;
   margin: 0;
-}
-
-.titleGroup p {
-  font-size: 11px;
-  color: #94a3b8;
-  margin: 5px 0 0 0;
-  font-weight: 600;
 }
 
 .saveBtn {
@@ -51,6 +45,7 @@
   background: #163a94;
   transform: translateY(-1px);
 }
+
 .saveBtn:disabled {
   background: #94a3b8;
   cursor: not-allowed;
@@ -60,11 +55,9 @@
   display: grid;
   grid-template-columns: 340px 1fr;
   gap: 30px;
+  max-width: 100%;
 }
 
-/* ===============================
-   SIDEBAR & CARDS
-=============================== */
 .sidebar {
   position: sticky;
   top: 20px;
@@ -77,6 +70,7 @@
   padding: 20px;
   margin-bottom: 20px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
 }
 
 .label {
@@ -88,9 +82,6 @@
   margin: 8px auto !important;
 }
 
-/* ===============================
-   INPUTS & GROUPS
-=============================== */
 .input {
   width: 100%;
   padding: 10px 14px;
@@ -110,6 +101,8 @@
 .inputGroup {
   margin-bottom: 15px;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 textarea.input {
@@ -122,6 +115,7 @@ textarea.input {
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
+
 .grid3 {
   display: grid;
   grid-template-columns: 100px 1fr 1fr;
@@ -130,46 +124,6 @@ textarea.input {
   margin-bottom: 10px;
 }
 
-.radioGroup {
-  display: flex;
-  gap: 20px;
-  font-weight: 600;
-  font-size: 13px;
-  padding-top: 5px;
-}
-
-.radioGroup label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.radioGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-
-.checkRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f3f4f6;
-  font-size: 13px;
-}
-
-.checkGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-/* ===============================
-   QUICK ADD EXECUTIVE BTN & MODAL
-=============================== */
 .quickAddBtn {
   background: none;
   border: none;
@@ -189,7 +143,6 @@ textarea.input {
   text-decoration: underline;
 }
 
-/* --- MODAL STYLES --- */
 .modalOverlay {
   position: fixed;
   top: 0; 
@@ -210,6 +163,7 @@ textarea.input {
   width: 90%;
   max-width: 420px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
 }
 
 .modalHeader {
@@ -230,10 +184,6 @@ textarea.input {
   gap: 8px;
 }
 
-.modalHeader h2 i {
-  color: #1e4ec4;
-}
-
 .closeBtn {
   background: none;
   border: none;
@@ -252,16 +202,27 @@ textarea.input {
   flex-direction: column;
 }
 
-.modalBody .inputGroup {
-  margin-bottom: 12px;
-}
-
-/* ===============================
-   ADDRESS AUTOCOMPLETE & SEARCH WRAPPER
-=============================== */
 .searchWrapper {
   position: relative;
   width: 100%;
+  box-sizing: border-box;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  color: #94a3b8;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 14px 10px 35px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: white;
 }
 
 .suggestions {
@@ -279,6 +240,7 @@ textarea.input {
   margin-top: 5px;
   max-height: 250px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .suggestions li {
@@ -288,10 +250,12 @@ textarea.input {
   font-size: 13px;
   background: white;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap; 
   gap: 10px;
   transition: background 0.2s;
   color: #1f2937;
+  word-break: break-word;
 }
 
 .suggestions li:hover {
@@ -299,18 +263,41 @@ textarea.input {
   color: #1e4ec4;
 }
 
-.suggestions li i {
-  color: #94a3b8;
+.suggestionAddress {
+  font-size: 11px;
+  color: #64748b;
+  width: 100%; 
+  margin-left: 0;
+  margin-top: 4px;
+  display: block;
 }
 
-/* ===============================
-   CLUBBING CHIP STYLES (NEW)
-=============================== */
+.linkGroup {
+  margin-top: 25px;
+  border-top: 1px dashed #e5e7eb;
+  padding-top: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.linkGroupTitle {
+  font-size: 15px;
+  color: #1f2937;
+  margin: 0 0 15px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap; 
+  line-height: 1.4;
+}
+
 .chipContainer {
   margin-top: 15px;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .propertyChip {
@@ -323,6 +310,15 @@ textarea.input {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  max-width: 100%; 
+  box-sizing: border-box;
+}
+
+.propertyChip strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px; 
 }
 
 .propertyChip i.fa-times-circle {
@@ -330,38 +326,11 @@ textarea.input {
   color: #94a3b8;
   font-size: 16px;
   transition: color 0.2s;
+  flex-shrink: 0;
 }
 
 .propertyChip i.fa-times-circle:hover {
   color: #ef4444;
-}
-
-/* ===============================
-   COORDINATE INPUTS
-=============================== */
-.coordInputs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid #f1f5f9;
-}
-
-.inputSubGroup label {
-  font-size: 9px;
-  font-weight: 800;
-  color: #94a3b8;
-  margin-bottom: 4px;
-  display: block;
-  text-transform: uppercase;
-}
-
-.inputSubGroup .input {
-  padding: 6px 10px;
-  font-size: 12px;
-  font-family: monospace;
-  background: #f8fafc;
 }
 
 .coords {
@@ -373,16 +342,27 @@ textarea.input {
   background: #f1f5f9;
   padding: 4px;
   border-radius: 4px;
+  word-break: break-all;
 }
 
-/* ===============================
-   CHECKLIST TOGGLE
-=============================== */
-.checklist {
+/* .checklist {
   border: 1px solid #f3f4f6;
   border-radius: 8px;
   padding: 10px;
   background: white;
+  width: 100%;
+  box-sizing: border-box;
+} */
+
+.checkRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+  gap: 15px;
+  flex-wrap: wrap; 
 }
 
 .checkItem {
@@ -391,6 +371,8 @@ textarea.input {
   padding: 10px 0;
   border-bottom: 1px solid #f3f4f6;
   font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .toggle {
@@ -399,24 +381,39 @@ textarea.input {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   overflow: hidden;
+  flex-shrink: 0; 
+  background: #fff;
 }
 
 .toggle button {
   border: none;
   background: white;
-  padding: 5px 12px;
+  padding: 6px 14px;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
+  flex: 1; 
+  color: #4b5563;
 }
 
 .activeYes {
-  background: #1e4ec4 !important;
+  background: #10b981 !important;
   color: white !important;
 }
+
 .activeNo {
   background: #ef4444 !important;
+  color: white !important;
+}
+
+.activeConsentBlue {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+.activeConsentOrange {
+  background: #f59e0b !important;
   color: white !important;
 }
 
@@ -430,22 +427,12 @@ textarea.input {
   font-size: 13px;
   font-weight: 600;
   transition: 0.2s;
+  box-sizing: border-box;
 }
+
 .addBtn:hover {
   background: #e5e7eb;
   border-color: #1e4ec4;
-}
-
-/* ===============================
-   DOCUMENT UPLOAD UI
-=============================== */
-.uploadArea {
-  border: 2px dashed #d1d5db;
-  border-radius: 12px;
-  padding: 40px;
-  text-align: center;
-  color: #9ca3af;
-  background: #f9fafb;
 }
 
 .docItemHeader {
@@ -453,12 +440,15 @@ textarea.input {
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  gap: 15px;
+  flex-wrap: wrap;
 }
 
 .submittedWrapper {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .viewFileBtn {
@@ -475,6 +465,7 @@ textarea.input {
   align-items: center;
   gap: 5px;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .viewFileBtn:hover {
@@ -495,11 +486,7 @@ textarea.input {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-}
-
-.reuploadBtn:hover {
-  background: #fee2e2;
-  color: #b91c1c;
+  flex-shrink: 0;
 }
 
 .uploadRow {
@@ -513,6 +500,7 @@ textarea.input {
   align-items: center;
   width: 100%;
   box-sizing: border-box;
+  flex-wrap: wrap;
 }
 
 .fileInput {
@@ -525,6 +513,9 @@ textarea.input {
   font-size: 12px;
   color: #4b5563;
   cursor: pointer;
+  max-width: 100%;
+  min-width: 200px;
+  box-sizing: border-box;
 }
 
 .fileInput::file-selector-button {
@@ -538,10 +529,6 @@ textarea.input {
   font-size: 11px;
   cursor: pointer;
   transition: 0.2s;
-}
-
-.fileInput::file-selector-button:hover {
-  background: #e2e8f0;
 }
 
 .uploadBtn {
@@ -558,25 +545,85 @@ textarea.input {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
-.uploadBtn:hover {
-  background-color: #059669;
-  transform: translateY(-1px);
+.proposalItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+  gap: 15px;
+  flex-wrap: wrap;
 }
 
-/* ===============================
-   BULK LIBRARY STYLES (NEW)
-=============================== */
+.proposalItemRow, .proposalItemRowLast {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.stackedList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.stackedItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.consentDivider {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  border-top: 1px dashed #eee;
+  padding-top: 10px;
+  font-size: 13px;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.pendingStatus {
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: bold;
+}
+
 .bulkActionRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: #f8fafc;
-  padding: 12px 15px;
+  padding: 15px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   margin-bottom: 15px;
+}
+
+.bulkHeaderWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex: 1; 
 }
 
 .libraryBtn {
@@ -589,13 +636,25 @@ textarea.input {
   font-weight: 600;
   cursor: pointer;
   display: flex;
+  margin: auto;
+  margin-bottom: 20px;
   align-items: center;
   gap: 8px;
   transition: background-color 0.2s;
+  flex-shrink: 0;
 }
 
-.libraryBtn:hover {
-  background-color: #4f46e5;
+.bulkUploadWrapper {
+  margin-bottom: 20px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .bulkList {
@@ -615,34 +674,9 @@ textarea.input {
   background: #f1f5f9;
   border-radius: 6px;
   border: 1px solid #cbd5e1;
+  gap: 10px;
 }
 
-.fileName {
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 70%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.fileName i {
-  color: #94a3b8;
-  font-size: 16px;
-}
-
-.fileActions {
-  display: flex;
-  gap: 8px;
-}
-
-/* ===============================
-   BULK MAPPER STYLES
-=============================== */
 .mappingContainer {
   margin-top: 15px;
   background: white;
@@ -650,6 +684,7 @@ textarea.input {
   border-radius: 8px;
   padding: 15px;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .mappingRow {
@@ -664,9 +699,18 @@ textarea.input {
   border: 1px solid #e2e8f0;
 }
 
-.mappingSelect {
+.mappingFilename {
   flex: 1;
-  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mappingSelect {
+  flex: 0 0 240px; 
+  max-width: 240px;
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid #cbd5e1;
@@ -675,110 +719,269 @@ textarea.input {
   background: white;
   color: #1e293b;
   font-weight: 500;
+  box-sizing: border-box;
 }
 
-/* ===============================
-   MOBILE OPTIMIZATIONS
-=============================== */
+.uploadBtnFull {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  width: 100%;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: 0.2s;
+  box-sizing: border-box;
+}
+
+.planLastItem {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.architectSection {
+  margin-top: 20px;
+  border-top: 1px dashed #e5e7eb;
+  padding-top: 20px;
+}
+
+.logTimeline {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+  padding-right: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.logItem {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 12px;
+}
+
+.logHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.logSaveBtn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: 0.2s;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .mainGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .libraryBtn {
+    margin-bottom: 15px;
+  }
+}
+
+/* ==============================================================
+   AGGRESSIVE MOBILE OVERRIDE BLOCK
+   Forces full-width stacking for all complex flex containers
+   ============================================================== */
 @media (max-width: 768px) {
   .container {
-    padding: 15px;
-    padding-bottom: 120px;
+    padding: 15px !important;
+    padding-bottom: 120px !important;
   }
 
   .header {
-    position: fixed;
-    top: auto; 
-    bottom: 0;
-    left: 0;
-    right: 0;
-    margin-bottom: 0;
-    border-radius: 15px 15px 0 0;
-    border-bottom: none;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
-    flex-direction: column;
-    align-items: stretch;
-    gap: 15px;
-  }
-
-  .header h1 {
-    font-size: 16px;
+    position: fixed !important;
+    top: auto !important; 
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin-bottom: 0 !important;
+    border-radius: 15px 15px 0 0 !important;
+    border-bottom: none !important;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1) !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 15px !important;
   }
 
   .saveBtn {
-    width: 100%;
-    padding: 14px 20px;
+    width: 100% !important;
+    padding: 14px 20px !important;
   }
 
   .mainGrid {
-    grid-template-columns: 1fr;
-    gap: 20px;
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
   }
 
   .sidebar {
-    position: static;
+    position: static !important;
   }
 
   .grid2 {
-    grid-template-columns: 1fr;
-    gap: 15px;
+    grid-template-columns: 1fr !important;
+    gap: 15px !important;
   }
 
   .grid3 {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    align-items: flex-start;
-    background: #f8fafc;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #f1f5f9;
+    grid-template-columns: 1fr !important;
+    background: #f8fafc !important;
+    padding: 10px !important;
+    border-radius: 8px !important;
+    border: 1px solid #f1f5f9 !important;
   }
 
-  .grid3 label,
-  .grid3 span {
-    font-size: 11px;
-    font-weight: 700;
-    color: #64748b;
-    text-transform: uppercase;
+  /* Force vertical stacking on all flex rows */
+  .checkRow, 
+  .bulkActionRow, 
+  .proposalItem, 
+  .proposalItemRow, 
+  .proposalItemRowLast, 
+  .consentDivider {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important; 
+    gap: 15px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  .checkRow, .bulkActionRow {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+  /* Target the exact wrapper causing the squeeze */
+  .bulkHeaderWrapper {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 10px !important;
   }
 
-  .radioGroup {
-    width: 100%;
-    justify-content: flex-start;
-    padding-top: 0;
+  .bulkHeaderWrapper strong {
+    text-align: left !important;
+    display: block !important;
+    width: 100% !important;
   }
 
+  /* Mapping Row Fixes */
+  .mappingRow {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 15px !important;
+    box-sizing: border-box !important;
+  }
+
+  .mappingSelect {
+    flex: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: 42px !important;
+    display: block !important;
+    box-sizing: border-box !important;
+  }
+  
+  .mappingFilename {
+    width: 100% !important;
+    white-space: normal !important; 
+    word-wrap: break-word !important;
+  }
+
+  /* Force Toggle to be 100% wide and 50/50 split */
   .toggle {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .toggle button {
+    flex: 1 !important;
+    width: 50% !important;
+    padding: 12px 10px !important;
+    border-radius: 0 !important;
   }
 
   .docItemHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .submittedWrapper {
-    width: 100%;
-    justify-content: space-between;
+    display: flex !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    margin-top: 5px !important;
+    box-sizing: border-box !important;
+  }
+
+  .libraryBtn {
+    width: 100% !important;
+    justify-content: center !important;
+    margin-top: 10px !important;
+    margin-bottom: 15px !important;
+    box-sizing: border-box !important;
+  }
+
+  .uploadBtnFull, 
+  .uploadBtn {
+    width: 100% !important;
+    justify-content: center !important;
+    margin-top: 10px !important;
+    box-sizing: border-box !important;
   }
 
   .uploadRow {
-    flex-direction: column;
-    align-items: stretch;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  .uploadBtn {
-    width: 100%;
-    justify-content: center;
-    display: flex;
+  .fileInput {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    box-sizing: border-box !important;
   }
 }

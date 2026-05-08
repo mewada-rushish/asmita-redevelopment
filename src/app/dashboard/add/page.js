@@ -1,3 +1,5 @@
+// src/app/dashboard/add/page.js
+
 'use client';
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,12 +18,11 @@ const safeParse = (str) => {
 };
 
 const YesNoToggle = ({ value, onChange }) => (
-  <div className={styles.toggle} style={{ display: 'flex', gap: '5px' }}>
+  <div className={styles.toggle}>
     <button
       type="button"
       onClick={() => onChange(1)}
       className={value === 1 ? styles.activeYes : ''}
-      style={value === 1 ? { backgroundColor: '#10b981', color: 'white', border: '1px solid #10b981', padding: '4px 12px', borderRadius: '4px' } : { padding: '4px 12px', border: '1px solid #ccc', borderRadius: '4px', background: 'white' }}
     >
       YES
     </button>
@@ -29,7 +30,6 @@ const YesNoToggle = ({ value, onChange }) => (
       type="button"
       onClick={() => onChange(0)}
       className={value === 0 ? styles.activeNo : ''}
-      style={value === 0 ? { backgroundColor: '#ef4444', color: 'white', border: '1px solid #ef4444', padding: '4px 12px', borderRadius: '4px' } : { padding: '4px 12px', border: '1px solid #ccc', borderRadius: '4px', background: 'white' }}
     >
       NO
     </button>
@@ -37,25 +37,24 @@ const YesNoToggle = ({ value, onChange }) => (
 );
 
 const ConsentToggle = ({ value, onChange }) => (
-  <div className={styles.toggle} style={{ display: 'flex', gap: '5px' }}>
+  <div className={styles.toggle}>
     <button
       type="button"
       onClick={() => onChange('100%')}
-      style={value === '100%' ? { backgroundColor: '#3b82f6', color: 'white', border: '1px solid #3b82f6', padding: '4px 12px', borderRadius: '4px' } : { padding: '4px 12px', border: '1px solid #ccc', borderRadius: '4px', background: 'white', color: '#4b5563' }}
+      className={value === '100%' ? styles.activeConsentBlue : ''}
     >
       100%
     </button>
     <button
       type="button"
       onClick={() => onChange('79/A')}
-      style={value === '79/A' ? { backgroundColor: '#f59e0b', color: 'white', border: '1px solid #f59e0b', padding: '4px 12px', borderRadius: '4px' } : { padding: '4px 12px', border: '1px solid #ccc', borderRadius: '4px', background: 'white', color: '#4b5563' }}
+      className={value === '79/A' ? styles.activeConsentOrange : ''}
     >
       79/A
     </button>
   </div>
 );
 
-// Updated Checklist with MBMC Approved plan with OC before Any NOC
 const checklistNames = [
   "Old Agreement (One Copy)", "Gaon Namuna 2", "7/12 Extract", "Approved Survey Plan", "Physical Plot Survey",
   "Structural Audit Report", "Society Reg Certificate", "Committee Details", "Members List", "Carpet Area Statement",
@@ -77,6 +76,7 @@ export default function AddPropertyPage() {
   
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState('');
+  const [currentUserName, setCurrentUserName] = useState('');
   
   const [showExecModal, setShowExecModal] = useState(false);
   const [creatingExec, setCreatingExec] = useState(false);
@@ -95,6 +95,9 @@ export default function AddPropertyPage() {
   const [clubbingSearch, setClubbingSearch] = useState('');
   const [clubbingSuggestions, setClubbingSuggestions] = useState([]);
   const [clubbedProperties, setClubbedProperties] = useState([]);
+
+  const [logFilterDate, setLogFilterDate] = useState('');
+  const [logForm, setLogForm] = useState({ category: 'General Note', note: '' });
 
   const [formData, setFormData] = useState({
     category: 'Redevelopment', status: 'Not Approached',
@@ -131,9 +134,8 @@ export default function AddPropertyPage() {
     cc_file: '',
     architect_survey_status: 'Not Started',
     sent_to_architect: 0,
-    physical_survey: 'Not Started', physical_survey_records: '',
-    interaction_history: '', offer_letter_status: 'Not Sent', offer_meeting_track: '',
-    offer_acceptance_date: '', sgm_completed: 0, da_agreement_status: 'Not Started'
+    sgm_completed: 0, da_agreement_status: 'Not Started',
+    activity_logs: []
   });
 
   useEffect(() => {
@@ -143,6 +145,7 @@ export default function AddPropertyPage() {
         const data = await res.json();
         const role = (data.user?.role || data.role || '').toLowerCase();
         setCurrentUserRole(role); 
+        setCurrentUserName(data.user?.name || 'User');
         const allowed = ['super admin', 'admin', 'crm', 'crm team', 'sales', 'field executive', 'channel partner', 'cp'];
         if (!allowed.includes(role)) {
           router.push('/dashboard');
@@ -305,6 +308,26 @@ export default function AddPropertyPage() {
   const handleLocationSelect = useCallback((c) => {
     setFormData(prev => ({ ...prev, lat: c.lat, lng: c.lng }));
   }, []);
+
+  const handleAddLog = () => {
+    if (!logForm.note.trim()) return toast.error("Please enter a note.");
+    const now = new Date();
+    const newEntry = {
+      id: Date.now(),
+      date: now.toLocaleString(),
+      isoDate: now.toISOString().split('T')[0],
+      user: currentUserName,
+      category: logForm.category,
+      note: logForm.note
+    };
+    updateField('activity_logs', [newEntry, ...formData.activity_logs]);
+    setLogForm({ ...logForm, note: '' });
+  };
+
+  const filteredLogs = formData.activity_logs.filter(log => {
+    if (!logFilterDate) return true;
+    return log.isoDate === logFilterDate;
+  });
 
   const executeDocUpload = async (index, inputId, item) => {
     const fileInput = document.getElementById(inputId);
@@ -525,7 +548,8 @@ export default function AddPropertyPage() {
     try {
       const payload = {
         ...formData,
-        clubbed_properties: clubbedProperties.map(p => p.id)
+        clubbed_properties: clubbedProperties.map(p => p.id),
+        activity_logs: JSON.stringify(formData.activity_logs)
       };
 
       const res = await fetch('/api/properties', {
@@ -597,7 +621,6 @@ export default function AddPropertyPage() {
                 type="button" 
                 onClick={() => setShowExecModal(true)} 
                 className={styles.quickAddBtn}
-                style={{ marginTop: '10px' }}
               >
                 <i className="fa fa-plus-circle"></i> Add New CP
               </button>
@@ -609,6 +632,36 @@ export default function AddPropertyPage() {
             <select className={styles.input} value={formData.status} onChange={e => updateField('status', e.target.value)}>
               <option>Not Approached</option><option>Interested Letter Sent</option><option>Meeting Finalized</option><option>Approved</option>
             </select>
+          </div>
+
+          <div className={styles.card}>
+            <label className={styles.label}><i className="fa fa-history"></i> Activity Log Trail</label>
+            <div className={styles.inputGroup}>
+              <input 
+                type="date" 
+                className={styles.input} 
+                value={logFilterDate} 
+                onChange={e => setLogFilterDate(e.target.value)} 
+                title="Filter logs by date"
+              />
+            </div>
+            
+            <div className={styles.logTimeline}>
+              {filteredLogs.length === 0 ? (
+                <div className={styles.emptyLog}>No activity logged yet.</div>
+              ) : (
+                filteredLogs.map((log) => (
+                  <div key={log.id} className={styles.logItem}>
+                    <div className={styles.logHeader}>
+                      <strong>{log.category}</strong>
+                      <span>{log.date.split(',')[0]}</span>
+                    </div>
+                    <div className={styles.logNote}>{log.note}</div>
+                    <div className={styles.logUser}>Logged by: {log.user}</div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </aside>
 
@@ -658,18 +711,17 @@ export default function AddPropertyPage() {
               )}
             </div>
 
-            <div style={{ marginTop: '25px', borderTop: '1px dashed #e5e7eb', paddingTop: '20px' }}>
-              <h3 style={{ fontSize: '15px', color: '#1f2937', margin: '0 0 15px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <i className="fa fa-link" style={{ color: '#64748b' }}></i> Property Grouping (Clubbed Redevelopment)
+            <div className={styles.linkGroup}>
+              <h3 className={styles.linkGroupTitle}>
+                  <i className="fa fa-link"></i> Property Grouping (Clubbed Redevelopment)
               </h3>
               <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 98 }}>
                 <label className={styles.label}>Link Nearby Properties</label>
                 <div className={styles.searchWrapper}>
-                    <i className="fa fa-search" style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }}></i>
+                    <i className={`fa fa-search ${styles.searchIcon}`}></i>
                     <input 
                         type="text" 
-                        className={styles.input} 
-                        style={{ paddingLeft: '35px' }}
+                        className={styles.searchInput} 
                         placeholder="Search by building name or address..." 
                         value={clubbingSearch}
                         onChange={(e) => handleClubbingSearch(e.target.value)}
@@ -679,7 +731,7 @@ export default function AddPropertyPage() {
                             {clubbingSuggestions.map(p => (
                                 <li key={p.id} onMouseDown={() => addClubbedProperty(p)}>
                                     <i className="fa fa-building"></i> <strong>{p.property_name}</strong> 
-                                    <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '10px' }}>({p.address.substring(0, 35)}...)</span>
+                                    <span className={styles.suggestionAddress}>({p.address.substring(0, 35)}...)</span>
                                 </li>
                             ))}
                         </ul>
@@ -801,13 +853,13 @@ export default function AddPropertyPage() {
               </div>
             )}
 
-            <div className={styles.checkRow} style={{ marginTop: '10px', borderTop: '1px dashed #eee', paddingTop: '10px' }}>
+            <div className={styles.consentDivider}>
               <span>Consent Type</span>
               <ConsentToggle value={formData.consent_type} onChange={(v) => updateField('consent_type', v)} />
             </div>
 
             {formData.consent_type === '79/A' && (
-              <div className={styles.checkItem} style={{ marginTop: '10px' }}>
+              <div className={styles.checkItem}>
                 <div className={styles.docItemHeader}>
                   <span>79/A Consent Document</span>
                   {formData.consent_79a_file ? (
@@ -825,7 +877,7 @@ export default function AddPropertyPage() {
                       </button>
                     </div>
                   ) : (
-                    <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 'bold' }}>Pending Upload</span>
+                    <span className={styles.pendingStatus}>Pending Upload</span>
                   )}
                 </div>
 
@@ -843,7 +895,6 @@ export default function AddPropertyPage() {
 
           <Accordion title="9. Proposal & Offer Documents" icon="fa-envelope">
             <div className={styles.checklist}>
-              {/* Interest Letter */}
               <div className={styles.checkItem}>
                 <div className={styles.docItemHeader}>
                   <span>Interest Letter</span>
@@ -876,14 +927,12 @@ export default function AddPropertyPage() {
                 )}
               </div>
 
-              {/* Society Acknowledgement (No Upload) */}
-              <div className={styles.checkRow}>
+              <div className={styles.proposalItem}>
                 <span>Society Acknowledgement</span>
                 <YesNoToggle value={formData.society_acknowledgement} onChange={(v) => updateField('society_acknowledgement', v)} />
               </div>
 
-              {/* Offer Letter Sent (Stacked Upload) */}
-              <div className={styles.checkItem} >
+              <div className={styles.proposalItemRow} >
                 <div className={styles.docItemHeader}>
                   <span>Offer Letter Sent</span>
                   <YesNoToggle value={formData.offer_letter_sent} onChange={(v) => updateField('offer_letter_sent', v)} />
@@ -892,10 +941,10 @@ export default function AddPropertyPage() {
                 {formData.offer_letter_sent === 1 && (
                   <>
                     {formData.offer_letter_files?.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                      <div className={styles.stackedList}>
                         {formData.offer_letter_files.map((f, i) => (
-                          <div key={i} className={styles.submittedWrapper} style={{ justifyContent: 'space-between', background: 'white', padding: '8px', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
-                            <span style={{ fontSize: '11px', color: '#6b7280' }}>Document {i + 1}</span>
+                          <div key={i} className={styles.stackedItem}>
+                            <span>Document {i + 1}</span>
                             <a href={`/api/viewDoc?key=${encodeURIComponent(f)}`} target="_blank" rel="noopener noreferrer" className={styles.viewFileBtn}><i className="fa fa-external-link"></i> View</a>
                           </div>
                         ))}
@@ -914,8 +963,7 @@ export default function AddPropertyPage() {
                 )}
               </div>
 
-              {/* Offer Acceptance Letter (Single Upload) */}
-              <div className={styles.checkItem}>
+              <div className={styles.proposalItemRowLast}>
                 <div className={styles.docItemHeader}>
                   <span>Offer Acceptance Letter</span>
                   {!formData.offer_acceptance_letter_file ? (
@@ -951,11 +999,9 @@ export default function AddPropertyPage() {
 
           <Accordion title="10. Document Checklist & File Mapping" icon="fa-list-ol">
             <div className={styles.bulkActionRow}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div className={styles.bulkHeaderWrapper}>
                 <strong>Enable Bulk Upload & Mapping?</strong>
-                <div>
-                  <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
-                </div>
+                <YesNoToggle value={isBulkUpload ? 1 : 0} onChange={(v) => setIsBulkUpload(v === 1)} />
               </div>
             </div>
             <div>
@@ -970,10 +1016,9 @@ export default function AddPropertyPage() {
               )}
             </div>
             
-
             {isBulkUpload && (
-              <div className={styles.uploadRow} style={{ marginBottom: '20px', background: '#f0fdf4', borderColor: '#bbf7d0', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', gap: '15px', width: '100%', alignItems: 'center' }}>
+              <div className={styles.bulkUploadWrapper}>
+                <div className={styles.bulkInputContainer}>
                   <input 
                     type="file" 
                     multiple 
@@ -985,8 +1030,8 @@ export default function AddPropertyPage() {
                 
                 {bulkPendingFiles.length > 0 && (
                   <div className={styles.mappingContainer}>
-                    <h4 style={{ margin: '0 0 5px 0', fontSize: '13px', color: '#166534' }}>Map Selected Files</h4>
-                    <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#64748b' }}>Each label can only be assigned once. Unassigned files will be saved as &quot;Bulk&quot;.</p>
+                    <h4>Map Selected Files</h4>
+                    <p>Each label can only be assigned once. Unassigned files will be saved as &quot;Bulk&quot;.</p>
                     {bulkPendingFiles.map((pf, index) => {
                       const optionsForThisFile = availableLabelsForMapping.filter(
                         label => !currentlySelectedLabels.includes(label) || label === pf.label
@@ -994,7 +1039,7 @@ export default function AddPropertyPage() {
 
                       return (
                         <div key={pf.id} className={styles.mappingRow}>
-                          <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px', fontWeight: '600'}}>
+                          <span className={styles.mappingFilename}>
                             {pf.file.name}
                           </span>
                           <select 
@@ -1014,9 +1059,8 @@ export default function AddPropertyPage() {
                     })}
                     <button 
                       type="button" 
-                      className={styles.uploadBtn} 
+                      className={styles.uploadBtnFull} 
                       onClick={executeBulkUpload} 
-                      style={{ marginTop: '10px', width: '100%' }}
                     >
                       <i className="fa fa-upload"></i> Upload & Map Files
                     </button>
@@ -1069,7 +1113,7 @@ export default function AddPropertyPage() {
               })}
             </div>
 
-            <div className={styles.inputGroup} style={{ marginTop: '15px' }}>
+            <div className={styles.inputGroup}>
               <label className={styles.label}>Overall Checklist Remarks</label>
               <textarea className={styles.input} rows="3" value={formData.document_remarks} onChange={e => updateField('document_remarks', e.target.value)} placeholder="Notes on missing or pending documents..." />
             </div>
@@ -1096,7 +1140,7 @@ export default function AddPropertyPage() {
               )}
             </div>
 
-            <div className={styles.checkItem} style={{ borderBottom: 'none' }}>
+            <div className={styles.planLastItem}>
               <div className={styles.docItemHeader}>
                 <span>CC (Commencement Certificate)</span>
                 {!formData.cc_file ? (
@@ -1116,8 +1160,8 @@ export default function AddPropertyPage() {
               )}
             </div>
 
-            <div style={{ marginTop: '20px', borderTop: '1px dashed #e5e7eb', paddingTop: '20px' }}>
-              <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
+            <div className={styles.architectSection}>
+              <div className={styles.inputGroup}>
                 <label className={styles.label}>Architect Survey Status</label>
                 <select className={styles.input} value={formData.architect_survey_status} onChange={e => updateField('architect_survey_status', e.target.value)}>
                   <option>Not Started</option><option>Started</option><option>Completed</option>
@@ -1131,48 +1175,8 @@ export default function AddPropertyPage() {
             </div>
           </Accordion>
 
-          <Accordion title="12. Physical Survey & Notes" icon="fa-search">
-            <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
-              <label className={styles.label}>Physical Survey Status</label>
-              <select className={styles.input} value={formData.physical_survey} onChange={e => updateField('physical_survey', e.target.value)}>
-                <option>Not Started</option><option>In Progress</option><option>Completed</option>
-              </select>
-            </div>
-
-            <div className={styles.inputGroup}>
-              <label className={styles.label}>Physical Survey Records / Notes</label>
-              <textarea className={styles.input} rows="3" value={formData.physical_survey_records} onChange={e => updateField('physical_survey_records', e.target.value)} placeholder="Enter survey details..." />
-            </div>
-          </Accordion>
-
-          <Accordion title="13. Interaction & Offer Journey" icon="fa-comments">
-            <div className={styles.inputGroup}>
-              <label className={styles.label}>Interaction History</label>
-              <textarea className={styles.input} rows="3" value={formData.interaction_history} onChange={e => updateField('interaction_history', e.target.value)} placeholder="Log of calls and interactions..." />
-            </div>
-
-            <div className={styles.inputGroup}>
-              <label className={styles.label}>Offer Letter Status</label>
-              <select className={styles.input} value={formData.offer_letter_status} onChange={e => updateField('offer_letter_status', e.target.value)}>
-                <option>Not Sent</option><option>Offer Sent</option><option>Under Negotiation</option><option>Accepted</option>
-              </select>
-            </div>
-
-            <div className={styles.inputGroup}>
-              <label className={styles.label}>Offer Meeting Track</label>
-              <textarea className={styles.input} rows="2" value={formData.offer_meeting_track} onChange={e => updateField('offer_meeting_track', e.target.value)} placeholder="Tracking of society meetings regarding offer..." />
-            </div>
-
-            {formData.offer_letter_status === 'Accepted' && (
-              <div className={styles.inputGroup}>
-                <label className={styles.label}>Offer Acceptance Date</label>
-                <input type="date" className={styles.input} value={formData.offer_acceptance_date} onChange={e => updateField('offer_acceptance_date', e.target.value)} />
-              </div>
-            )}
-          </Accordion>
-
-          <Accordion title="14. Legal Pipeline & Milestones" icon="fa-flag-checkered">
-            <div className={styles.checkRow} style={{ marginBottom: '15px' }}>
+          <Accordion title="12. Legal Pipeline & Milestones" icon="fa-flag-checkered">
+            <div className={styles.checkRow}>
               <span>SGM Completed (Appointment of Developer)?</span>
               <YesNoToggle value={formData.sgm_completed} onChange={(v) => updateField('sgm_completed', v)} />
             </div>
@@ -1184,12 +1188,44 @@ export default function AddPropertyPage() {
               </select>
             </div>
           </Accordion>
+
+          <Accordion title="13. Add Activity Log" icon="fa-pencil-square-o">
+            <div className={styles.grid2}>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Category</label>
+                <select className={styles.input} value={logForm.category} onChange={e => setLogForm({...logForm, category: e.target.value})}>
+                  <option>Physical Survey</option>
+                  <option>Offer Negotiation</option>
+                  <option>Society Meeting</option>
+                  <option>Redevelopment Update</option>
+                  <option>Document Retrieval</option>
+                  <option>Liaison/Legal</option>
+                  <option>General Note</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Log Note</label>
+              <textarea 
+                className={styles.input} 
+                rows="3" 
+                placeholder="Type activity note..." 
+                value={logForm.note} 
+                onChange={e => setLogForm({...logForm, note: e.target.value})} 
+              />
+            </div>
+
+            <button type="button" className={styles.logSaveBtn} onClick={handleAddLog}>
+              <i className="fa fa-plus"></i> Add Log Entry
+            </button>
+          </Accordion>
         </main>
       </div>
 
       {showBulkModal && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modalContent} style={{ maxWidth: '600px' }}>
+          <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h2><i className="fa fa-files-o"></i> Document Library</h2>
               <button className={styles.closeBtn} onClick={() => setShowBulkModal(false)}>
@@ -1231,9 +1267,7 @@ export default function AddPropertyPage() {
               </button>
             </div>
             <form onSubmit={handleCreateExecutive} className={styles.modalBody}>
-              <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#6b7280' }}>
-                This creates a new <strong>CP</strong> account. They will be forced to change their password upon first login.
-              </p>
+              <p>This creates a new <strong>CP</strong> account. They will be forced to change their password upon first login.</p>
               
               <div className={styles.inputGroup}>
                 <label className={styles.label}>Full Name *</label>
@@ -1255,7 +1289,7 @@ export default function AddPropertyPage() {
                 <input type="text" required minLength="8" className={styles.input} value={newExecForm.password} onChange={e => setNewExecForm(prev => ({...prev, password: e.target.value}))} placeholder="Min 8 characters" />
               </div>
 
-              <button type="submit" disabled={creatingExec} className={styles.saveBtn} style={{ marginTop: '10px' }}>
+              <button type="submit" disabled={creatingExec} className={styles.saveBtn}>
                 {creatingExec ? 'Creating...' : 'Create CP'}
               </button>
             </form>
@@ -1268,7 +1302,6 @@ export default function AddPropertyPage() {
         matchedProperty={duplicateMatch} 
         onContinue={() => setShowDuplicateModal(false)} 
       />
-
     </div>
   );
 }
