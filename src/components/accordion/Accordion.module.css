@@ -1,18 +1,23 @@
+
+/* ACCORDION WRAPPER */
 .premiumWrapper {
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   margin-bottom: 16px;
-  overflow: visible; /* CHANGE THIS FROM hidden TO visible */
+  overflow: visible; 
   box-shadow: 0 1px 2px rgba(0,0,0,0.02);
   position: relative;
 }
 
+
+/* ACCORDION HEADER */
 .premiumHeader {
   width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  text-align: left;
   padding: 16px 20px;
   background: white;
   border: none;
@@ -21,6 +26,8 @@
   font-size: 15px;
   color: #374151;
   transition: background 0.2s;
+  gap: 12px; 
+  box-sizing: border-box;
 }
 
 .premiumHeader:hover {
@@ -29,28 +36,73 @@
 
 .premiumHeaderOpen {
   border-bottom: 1px solid #e5e7eb;
-  color: #1e4ec4; /* Primary Blue */
+  color: #1e4ec4; 
 }
 
+
+/* TITLE & ICONS */
 .premiumTitleArea {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0; 
+}
+
+
+.premiumTitleArea span,
+.premiumTitleArea div {
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.4;
 }
 
 .premiumIcon {
-  color: #1e4ec4; /* Primary Blue - instead of generic grey text */
+  color: #1e4ec4; 
   width: 18px;
   text-align: center;
   font-size: 16px;
+  flex-shrink: 0; 
 }
 
 .premiumChevron {
   color: #9ca3af;
   font-size: 11px;
+  flex-shrink: 0; 
+  transition: transform 0.3s ease;
 }
 
+
+/*  ACCORDION CONTENT */
 .premiumContent {
   padding: 20px;
   background: white;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  box-sizing: border-box;
+}
+
+
+/* MOBILE & TABLET OPTIMIZATIONS */
+@media (max-width: 768px) {
+  .premiumHeader {
+    padding: 14px 15px;
+    align-items: flex-start; 
+  }
+
+  .premiumTitleArea {
+    align-items: flex-start;
+  }
+
+  .premiumIcon {
+    margin-top: 2px; 
+  }
+
+  .premiumChevron {
+    margin-top: 6px; 
+  }
+
+  .premiumContent {
+    padding: 15px; 
+  }
 }

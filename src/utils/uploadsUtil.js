@@ -21,7 +21,7 @@ export const uploadPropertyDocument = async (file, propertyId, propertyName, fil
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 propertyId,
-                propertyName, // This guarantees the folder is named correctly
+                propertyName, 
                 fileLabel,
                 contentType,
                 extension,
