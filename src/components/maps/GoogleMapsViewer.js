@@ -31,8 +31,9 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
     return b;
   }, [apiIsLoaded, properties]);
 
+  // Initial bounds loading and limits
   useEffect(() => {
-    if (map && bounds && !bounds.isEmpty() && !onLocationSelect) {
+    if (map && bounds && !bounds.isEmpty() && !onLocationSelect && !selectedProperty) {
       map.fitBounds(bounds, { padding: 70 });
 
       const listener = map.addListener('idle', () => {
@@ -42,7 +43,32 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
         google.maps.event.removeListener(listener);
       });
     }
-  }, [map, bounds, onLocationSelect]);
+  }, [map, bounds, onLocationSelect, selectedProperty]);
+
+  // Handle zooming & offset when a specific property is clicked from legend or map
+  useEffect(() => {
+    if (!map) return;
+    
+    if (selectedProperty && selectedProperty.lat && selectedProperty.lng) {
+      // Determine if we are on a mobile device where the sidebar stacks at the bottom
+      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+      
+      // Calculate a geographic offset to prevent the marker from hiding under the sidebar
+      // On desktop: Offset Longitude positive (East) so the marker shifts Left
+      // On mobile: Offset Latitude negative (South) so the marker shifts Up
+      const lngOffset = isMobile ? 0 : 0.0005; // Approx 180px left shift at zoom 19
+      const latOffset = isMobile ? -0.0004 : 0; // Approx 150px up shift at zoom 19
+      
+      map.setZoom(19); // High zoom level to focus on building
+      map.panTo({
+        lat: parseFloat(selectedProperty.lat) + latOffset,
+        lng: parseFloat(selectedProperty.lng) + lngOffset
+      });
+    } else if (!selectedProperty && !onLocationSelect && properties.length > 0 && bounds && !bounds.isEmpty()) {
+      // Re-fit to bounds if property is deselected (e.g., sidebar closed)
+      map.fitBounds(bounds, { padding: 70 });
+    }
+  }, [selectedProperty, map, bounds, onLocationSelect, properties.length]);
 
   const handleRecenter = useCallback(() => {
     if (!map) return;
@@ -118,13 +144,22 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
   }, [selectedProperty, properties, map]);
 
   const getStatusColor = (status) => {
-    const colors = {
-      'Approved': '#10b981',
-      'Interested Letter Sent': '#f59e0b',
-      'Meeting Finalized': '#f97316',
-      'Not Approached': '#ef4444'
+    const colors = { 
+      'Not Approached': '#ef4444', 
+      'Interest Letter Sent': '#f59e0b', 
+      'Interested Letter Sent': '#f59e0b', // Legacy handling
+      'Society Docs Received': '#8b5cf6', 
+      'Architect Survey Phase': '#3b82f6', 
+      'Offer Letter Sent': '#6366f1', 
+      'Offer Under Negotiation': '#a855f7', 
+      'Meeting Finalized': '#b45309', // Legacy handling
+      'Offer Accepted': '#10b981', 
+      'Approved': '#10b981', // Legacy handling
+      'Consent Phase': '#f97316', 
+      'DA Phase': '#ec4899', 
+      'Plan & CC Phase': '#14b8a6' 
     };
-    return colors[status] || '#1e4ec4';
+    return colors[status] || '#9ca3af';
   };
 
   return (
