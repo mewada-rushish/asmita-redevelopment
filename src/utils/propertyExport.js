@@ -27,7 +27,7 @@ const escapeCSV = (str) => {
 export const exportPropertiesToExcel = (properties) => {
     if (!properties || properties.length === 0) return false;
 
-    // Define all comprehensive headers
+    // Define all comprehensive headers including new fields
     const headers = [
         "Property ID", "Status", "Category", "Property/Building Name", "Locality", "Full Address",
         "Latitude", "Longitude", "PMC Name", "PMC Contact", "Assigned Manager ID", "Assigned Manager Name", "Assigned CP ID", "Assigned CP Name",
@@ -36,11 +36,12 @@ export const exportPropertiesToExcel = (properties) => {
         "Chairman Name", "Chairman Contact", "Secretary Name", "Secretary Contact", 
         "Treasurer Name", "Treasurer Contact", "Responsible Person Name", "Responsible Person Contact",
         "Has Approved Plan?", "Has OC?", "Has CC?", "Has Legal Dispute?", "Is Mortgaged?", 
-        "Redevelopment Interest?", "Flat Measurement Allowed?", "Physical Survey Status", 
+        "Redevelopment Interest?", "Physical Survey Allowed?", "Flat Measurement Allowed?", "Physical Survey Status", 
         "Physical Survey Records", "Banner Permission Allowed?", "Hoarding Date",
-        "Interest Letter Submitted?", "Architect Submitted?", "Interaction History", 
+        "Consent Route", "Interest Letter Submitted?", "Society Acknowledgement?", "Offer Letter Sent?",
+        "Architect Survey Status", "Sent to Architect?", "Interaction History", 
         "Offer Letter Status", "Offer Meeting Track", "Offer Acceptance Date", 
-        "SGM Completed?", "DA Agreement Status", "Created At", "Last Updated By"
+        "SGM Completed?", "DA Agreement Status", "On-Ground Progress", "Created At", "Last Updated By"
     ];
 
     // Map each property to a row matching the headers
@@ -58,11 +59,12 @@ export const exportPropertiesToExcel = (properties) => {
             chair.name, chair.contact, sec.name, sec.contact, 
             treas.name, treas.contact, resp.name, resp.contact,
             toYesNo(p.has_approved_plan), toYesNo(p.has_oc), toYesNo(p.has_cc), toYesNo(p.has_legal_dispute), toYesNo(p.is_mortgaged),
-            toYesNo(p.has_redevelopment_interest), toYesNo(p.flat_measure_allowed), p.physical_survey,
+            toYesNo(p.has_redevelopment_interest), toYesNo(p.physical_survey_allowed), toYesNo(p.flat_measure_allowed), p.physical_survey,
             p.physical_survey_records, toYesNo(p.banner_permission_allowed), p.hoarding_date,
-            toYesNo(p.has_interest_letter), toYesNo(p.architect_submitted), p.interaction_history,
+            p.consent_type, toYesNo(p.has_interest_letter), toYesNo(p.society_acknowledgement), toYesNo(p.offer_letter_sent), 
+            p.architect_survey_status, toYesNo(p.sent_to_architect), p.interaction_history,
             p.offer_letter_status, p.offer_meeting_track, p.offer_acceptance_date,
-            toYesNo(p.sgm_completed), p.da_agreement_status, p.created_at, (p.updated_by_name || p.updated_by_email || 'Unknown')
+            toYesNo(p.sgm_completed), p.da_agreement_status, (p.project_progress || 'Not Started'), p.created_at, (p.updated_by_name || p.updated_by_email || 'Unknown')
         ].map(escapeCSV); // Escape every field automatically
     });
 
