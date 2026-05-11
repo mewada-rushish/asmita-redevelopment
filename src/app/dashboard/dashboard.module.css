@@ -65,7 +65,7 @@
 .icon { width: 24px; font-size: 18px; }
 .sidebarFooter { padding: 20px; border-top: 1px solid #374151; }
 .userProfile { display: flex; align-items: center; gap: 12px; }
-.avatar { width: 36px; height: 36px; background-color: #1e4ec4; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; }
+.avatar { width: 36px; height: 36px; color: white; background-color: #1e4ec4; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; }
 .userInfo { display: flex; flex-direction: column; }
 .userName { font-size: 14px; font-weight: bold; color: white; }
 .logoutBtn { font-size: 12px; color: #9ca3af; background: transparent; border: none; cursor: pointer; text-align: left; padding: 0; }
