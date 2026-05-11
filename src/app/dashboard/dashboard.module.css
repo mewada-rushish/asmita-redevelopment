@@ -8,7 +8,8 @@
 
 /* --- SIDEBAR BASE --- */
 .sidebar { 
-  width: 450px; 
+  width: 100%;
+  max-width: 250px; 
   background-color: #1f2937; 
   color: white; 
   display: flex; 
