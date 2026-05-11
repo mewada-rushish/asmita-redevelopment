@@ -144,13 +144,22 @@ function InnerMap({ properties = [], mapStyle, onMarkerClick, lat, lng, onLocati
   }, [selectedProperty, properties, map]);
 
   const getStatusColor = (status) => {
-    const colors = {
-      'Approved': '#10b981',
-      'Interested Letter Sent': '#f59e0b',
-      'Meeting Finalized': '#f97316',
-      'Not Approached': '#ef4444'
+    const colors = { 
+      'Not Approached': '#ef4444', 
+      'Interest Letter Sent': '#f59e0b', 
+      'Interested Letter Sent': '#f59e0b', // Legacy handling
+      'Society Docs Received': '#8b5cf6', 
+      'Architect Survey Phase': '#3b82f6', 
+      'Offer Letter Sent': '#6366f1', 
+      'Offer Under Negotiation': '#a855f7', 
+      'Meeting Finalized': '#b45309', // Legacy handling
+      'Offer Accepted': '#10b981', 
+      'Approved': '#10b981', // Legacy handling
+      'Consent Phase': '#f97316', 
+      'DA Phase': '#ec4899', 
+      'Plan & CC Phase': '#14b8a6' 
     };
-    return colors[status] || '#1e4ec4';
+    return colors[status] || '#9ca3af';
   };
 
   return (
