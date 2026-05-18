@@ -28,19 +28,26 @@ export default function DashboardLayout({ children }) {
 
   const closeMenu = () => setIsMenuOpen(false);
 
-  // Base items available to ALL roles
+  // --- DYNAMIC RBAC MENU LOGIC ---
   const navItems = [
-    { name: 'Global Map', path: '/dashboard', icon: 'fa-globe' },
-    { name: 'Properties List', path: '/dashboard/list', icon: 'fa-list' },
+    { name: 'Global Map', path: '/dashboard', icon: 'fa-globe' }
   ];
-
-  // --- RBAC MENU LOGIC ---
 
   const canAddProperty = ['Super Admin', 'Admin', 'CRM', 'Sales', 'Field Executive'].includes(user.role);
   if (canAddProperty) {
-    navItems.splice(1, 0, { name: 'Add Property', path: '/dashboard/add', icon: 'fa-plus-circle' });
+    navItems.push({ name: 'Add Property', path: '/dashboard/add', icon: 'fa-plus-circle' });
   }
 
+  // Properties list is available to everyone who has dashboard access
+  navItems.push({ name: 'Properties List', path: '/dashboard/list', icon: 'fa-list' });
+
+  // Channel Partners directory is restricted to upper management and internal office teams
+  const canViewPartners = ['Super Admin', 'Admin', 'CRM', 'Sales'].includes(user.role);
+  if (canViewPartners) {
+    navItems.push({ name: 'Channel Partners', path: '/dashboard/partners', icon: 'fa-handshake-o' });
+  }
+
+  // User Management is restricted to Super Admin only
   const canManageUsers = ['Super Admin'].includes(user.role);
   if (canManageUsers) {
     navItems.push({ name: 'User Management', path: '/dashboard/users', icon: 'fa-users' });
