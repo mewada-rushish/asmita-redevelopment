@@ -17,6 +17,7 @@ const STATUS_FLOW = [
   'Interest Letter Sent',
   'Society Docs Received',
   'Architect Survey Phase',
+  'Architect Survey Completed',
   'Offer Letter Sent',
   'Offer Under Negotiation',
   'Offer Accepted',
@@ -515,15 +516,16 @@ export default function PropertiesList() {
 function getStatusColor(s) {
   const colors = { 
     'Not Approached': '#ef4444', 
-    'Interest Letter Sent': '#f59e0b', 
-    'Society Docs Received': '#8b5cf6', 
-    'Architect Survey Phase': '#3b82f6', 
-    'Offer Letter Sent': '#6366f1', 
+    'Interest Letter Sent': '#f97316', 
+    'Society Docs Received': '#eab308', 
+    'Architect Survey Phase': '#84cc16', 
+    'Architect Survey Completed': '#06b6d4', 
+    'Offer Letter Sent': '#3b82f6', 
     'Offer Under Negotiation': '#a855f7', 
-    'Offer Accepted': '#10b981', 
-    'Consent Phase': '#f97316', 
-    'DA Phase': '#ec4899', 
-    'Plan & CC Phase': '#14b8a6' 
+    'Offer Accepted': '#ec4899', 
+    'Consent Phase': '#14b8a6', 
+    'DA Phase': '#a0522d', 
+    'Plan & CC Phase': '#22c55e' 
   };
   return colors[s] || '#9ca3af';
 }
@@ -531,15 +533,16 @@ function getStatusColor(s) {
 function getStatusBgColor(s) {
   const bgs = { 
     'Not Approached': '#fef2f2', 
-    'Interest Letter Sent': '#fffbeb', 
-    'Society Docs Received': '#f5f3ff', 
-    'Architect Survey Phase': '#eff6ff', 
-    'Offer Letter Sent': '#e0e7ff', 
+    'Interest Letter Sent': '#fff7ed', 
+    'Society Docs Received': '#fefce8', 
+    'Architect Survey Phase': '#f7fee7', 
+    'Architect Survey Completed': '#ecfeff', 
+    'Offer Letter Sent': '#eff6ff', 
     'Offer Under Negotiation': '#faf5ff', 
-    'Offer Accepted': '#f0fdf4', 
-    'Consent Phase': '#fff7ed', 
-    'DA Phase': '#fdf2f8', 
-    'Plan & CC Phase': '#f0fdfa' 
+    'Offer Accepted': '#fdf2f8', 
+    'Consent Phase': '#f0fdfa', 
+    'DA Phase': '#f5ece3', 
+    'Plan & CC Phase': '#f0fdf4' 
   };
   return bgs[s] || '#f9fafb';
 }

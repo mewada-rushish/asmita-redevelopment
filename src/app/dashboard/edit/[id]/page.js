@@ -20,12 +20,13 @@ const STATUS_FLOW = [
   'Interest Letter Sent',       // 1
   'Society Docs Received',      // 2
   'Architect Survey Phase',     // 3
-  'Offer Letter Sent',          // 4
-  'Offer Under Negotiation',    // 5
-  'Offer Accepted',             // 6
-  'Consent Phase',              // 7
-  'DA Phase',                   // 8
-  'Plan & CC Phase'             // 9
+  'Architect Survey Completed', // 4
+  'Offer Letter Sent',          // 5
+  'Offer Under Negotiation',    // 6
+  'Offer Accepted',             // 7
+  'Consent Phase',              // 8
+  'DA Phase',                   // 9
+  'Plan & CC Phase'             // 10
 ];
 
 const YesNoToggle = ({ value, onChange }) => (
@@ -255,35 +256,6 @@ export default function EditPropertyPage() {
     fetchUsersData();
     fetchPropertyData();
   }, [fetchUsersData, fetchPropertyData]);
-
-  // SMART AUTO-UPGRADE STATUS LOGIC
-  useEffect(() => {
-    let maxIndex = 0;
-    
-    if (formData.has_approved_plan === 1 || formData.has_cc === 1 || formData.approved_plan_file || formData.cc_file) maxIndex = Math.max(maxIndex, 9);
-    else if (formData.da_agreement_status === 'In Process' || formData.da_agreement_status === 'Completed') maxIndex = Math.max(maxIndex, 8);
-    else if (formData.consent_79a_file || formData.consent_type === '100%') maxIndex = Math.max(maxIndex, 7);
-    else if (formData.offer_acceptance_letter_file || formData.offer_letter_status === 'Accepted') maxIndex = Math.max(maxIndex, 6);
-    else if (formData.offer_letter_status === 'Under Negotiation' || (Array.isArray(formData.activity_logs) && formData.activity_logs.some(l => l.category === 'Offer Negotiation'))) maxIndex = Math.max(maxIndex, 5);
-    else if ((Array.isArray(formData.offer_letter_files) && formData.offer_letter_files.length > 0) || formData.offer_letter_sent === 1) maxIndex = Math.max(maxIndex, 4);
-    else if (formData.architect_survey_status === 'Started' || formData.architect_survey_status === 'Completed' || formData.sent_to_architect === 1) maxIndex = Math.max(maxIndex, 3);
-    else if (formData.society_acknowledgement === 1) maxIndex = Math.max(maxIndex, 2);
-    else if (formData.interest_letter_file || formData.has_interest_letter === 1) maxIndex = Math.max(maxIndex, 1);
-
-    const currentStatusIndex = STATUS_FLOW.indexOf(formData.status);
-    
-    // Only upgrade, never downgrade automatically
-    if (maxIndex > currentStatusIndex) {
-      setFormData(prev => ({ ...prev, status: STATUS_FLOW[maxIndex] }));
-    }
-  }, [
-    formData.has_approved_plan, formData.has_cc, formData.approved_plan_file, formData.cc_file,
-    formData.da_agreement_status, formData.consent_79a_file, formData.consent_type,
-    formData.offer_acceptance_letter_file, formData.offer_letter_status, formData.activity_logs, 
-    formData.offer_letter_files, formData.offer_letter_sent, formData.architect_survey_status, 
-    formData.sent_to_architect, formData.society_acknowledgement, formData.interest_letter_file, 
-    formData.has_interest_letter, formData.status
-  ]);
 
   const checkDuplicates = async () => {
     if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
