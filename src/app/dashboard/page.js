@@ -10,6 +10,7 @@ const STATUS_FLOW = [
   'Interest Letter Sent',
   'Society Docs Received',
   'Architect Survey Phase',
+  'Architect Survey Completed',
   'Offer Letter Sent',
   'Offer Under Negotiation',
   'Offer Accepted',
@@ -20,16 +21,17 @@ const STATUS_FLOW = [
 
 const getStatusColor = (s) => {
   const colors = { 
-    'Not Approached': '#ef4444', 
-    'Interest Letter Sent': '#f59e0b', 
-    'Society Docs Received': '#8b5cf6', 
-    'Architect Survey Phase': '#3b82f6', 
-    'Offer Letter Sent': '#6366f1', 
-    'Offer Under Negotiation': '#a855f7', 
-    'Offer Accepted': '#10b981', 
-    'Consent Phase': '#f97316', 
-    'DA Phase': '#ec4899', 
-    'Plan & CC Phase': '#14b8a6' 
+    'Not Approached': '#ef4444',
+    'Interest Letter Sent': '#f97316',
+    'Society Docs Received': '#eab308',
+    'Architect Survey Phase': '#b45309',
+    'Architect Survey Completed': '#ec4899',
+    'Offer Letter Sent': '#a855f7',
+    'Offer Under Negotiation': '#3b82f6',
+    'Offer Accepted': '#0ea5e9',
+    'Consent Phase': '#14b8a6',
+    'DA Phase': '#6366f1',
+    'Plan & CC Phase': '#22c55e'
   };
   return colors[s] || '#9ca3af';
 };
@@ -74,12 +76,25 @@ export default function DashboardMapPage() {
     fetch('/api/properties')
       .then(res => res.json())
       .then(data => {
+        let fetchedProps = [];
         if (data && Array.isArray(data.properties)) {
-          setProperties(data.properties);
+          fetchedProps = data.properties;
         } else if (Array.isArray(data)) {
-          setProperties(data);
-        } else {
-          setProperties([]);
+          fetchedProps = data;
+        }
+        
+        setProperties(fetchedProps);
+
+        // Check URL for propertyId to automatically select it when coming from Partners page
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const pid = params.get('propertyId') || params.get('propId');
+          if (pid && fetchedProps.length > 0) {
+            const matchedProp = fetchedProps.find(p => String(p.id) === String(pid));
+            if (matchedProp) {
+              setSelectedProperty(matchedProp);
+            }
+          }
         }
       })
       .catch(err => {

@@ -9,9 +9,19 @@ const MIRA_ROAD_CENTER = { lat: 19.2813, lng: 72.8693 };
 const getStatusColor = (s) => {
   const colors = { 
     'Not Approached': '#ef4444', 
-    'Interested Letter Sent': '#f59e0b', 
-    'Meeting Finalized': '#f97316', 
-    'Approved': '#10b981' 
+    'Interest Letter Sent': '#f97316', 
+    'Interested Letter Sent': '#f97316', // Legacy handling
+    'Society Docs Received': '#eab308', 
+    'Architect Survey Phase': '#84cc16', 
+    'Architect Survey Completed': '#06b6d4', 
+    'Offer Letter Sent': '#3b82f6', 
+    'Offer Under Negotiation': '#a855f7', 
+    'Meeting Finalized': '#ec4899', // Legacy handling
+    'Offer Accepted': '#ec4899', 
+    'Consent Phase': '#14b8a6', 
+    'DA Phase': '#a0522d', 
+    'Plan & CC Phase': '#22c55e',
+    'Approved': '#22c55e' // Legacy handling
   };
   return colors[s] || '#6b7280';
 };
@@ -191,7 +201,7 @@ export default function MapLibreViewer({
         map.current = null;
       }
     };
-  }, []); 
+  }, [initialLat, initialLng, mapStyle, onLocationSelect]); 
 
   useEffect(() => {
     if (!map.current || !isMapReady) return;
