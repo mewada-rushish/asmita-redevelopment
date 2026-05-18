@@ -31,53 +31,6 @@ const sanitizeDate = (dateStr) => {
   return dateStr;
 };
 
-// AUTO-STATUS CALCULATION ENGINE
-const STATUS_FLOW = [
-  'Not Approached',
-  'Interest Letter Sent',
-  'Society Docs Received',
-  'Architect Survey Phase',
-  'Offer Letter Sent',
-  'Offer Under Negotiation',
-  'Offer Accepted',
-  'Consent Phase',
-  'DA Phase',
-  'Plan & CC Phase'
-];
-
-const calculateAutoStatus = (data, currentDbStatus = 'Not Approached') => {
-  let maxIndex = 0;
-
-  let logs = [];
-  try {
-    if (Array.isArray(data.activity_logs)) logs = data.activity_logs;
-    else if (typeof data.activity_logs === 'string') logs = JSON.parse(data.activity_logs);
-  } catch(e) {}
-
-  let offerFiles = [];
-  try {
-    if (Array.isArray(data.offer_letter_files)) offerFiles = data.offer_letter_files;
-    else if (typeof data.offer_letter_files === 'string') offerFiles = JSON.parse(data.offer_letter_files);
-  } catch(e) {}
-
-  if (data.has_approved_plan === 1 || data.has_cc === 1 || data.approved_plan_file || data.cc_file) maxIndex = 9;
-  else if (data.da_agreement_status === 'In Process' || data.da_agreement_status === 'Completed') maxIndex = 8;
-  else if (data.consent_79a_file || data.consent_type === '100%') maxIndex = 7;
-  else if (data.offer_acceptance_letter_file || data.offer_letter_status === 'Accepted') maxIndex = 6;
-  else if (data.offer_letter_status === 'Under Negotiation' || logs.some(l => l.category === 'Offer Negotiation')) maxIndex = 5;
-  else if ((offerFiles && offerFiles.length > 0) || data.offer_letter_sent === 1) maxIndex = 4;
-  else if (data.architect_survey_status === 'Started' || data.architect_survey_status === 'Completed' || data.sent_to_architect === 1) maxIndex = 3;
-  else if (data.society_acknowledgement === 1) maxIndex = 2;
-  else if (data.interest_letter_file || data.has_interest_letter === 1) maxIndex = 1;
-
-  const currentDbIndex = STATUS_FLOW.indexOf(currentDbStatus);
-  const incomingManualIndex = STATUS_FLOW.indexOf(data.status);
-  
-  const finalIndex = Math.max(maxIndex, currentDbIndex > -1 ? currentDbIndex : 0, incomingManualIndex > -1 ? incomingManualIndex : 0);
-  
-  return STATUS_FLOW[finalIndex] || 'Not Approached';
-};
-
 export async function GET(req, { params }) {
   try {
     const auth = await verifyAuth();
@@ -144,7 +97,7 @@ export async function PUT(req, { params }) {
     const oldStatus = existingRows[0].status || 'Not Approached';
     const newName = data.property_name && data.property_name.trim() !== '' ? data.property_name.trim() : 'Unnamed_Property';
 
-    const calculatedStatus = calculateAutoStatus(data, oldStatus);
+    const calculatedStatus = data.status || oldStatus;
 
     let finalInterestLetter = data.interest_letter_file || '';
     let finalChecklist = data.document_checklist || [];
