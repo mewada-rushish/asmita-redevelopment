@@ -16,6 +16,7 @@
     "@turf/helpers": "^7.3.5",
     "@vis.gl/react-google-maps": "^1.8.3",
     "bcryptjs": "^3.0.3",
+    "exceljs": "^4.4.0",
     "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.3",
     "maplibre-gl": "^5.23.0",
