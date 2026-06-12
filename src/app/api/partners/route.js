@@ -53,7 +53,7 @@ export async function GET() {
     const cpIds = partners.map(p => p.id);
     const placeholders = cpIds.map(() => '?').join(',');
     
-    // Removed 'category' as it does not exist in the actual properties table
+    // Fetching the 'status' column from the database
     const [properties] = await db.execute(`
       SELECT id, property_name, locality, address, status, assigned_cp_id
       FROM properties
@@ -68,7 +68,8 @@ export async function GET() {
           id: p.id,
           name: p.property_name || 'Unnamed Property',
           locality: p.locality || p.address || 'Location N/A',
-          type: 'Redevelopment' // Hardcoded since table doesn't have category/type column
+          type: 'Redevelopment',
+          status: p.status || 'Not Approached' // FIX: Mapped the status field here to send it to the frontend
         }));
 
       // Determine boolean status (status in users table is tinyint(1))
