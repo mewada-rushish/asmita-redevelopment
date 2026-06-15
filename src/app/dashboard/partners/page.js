@@ -56,8 +56,14 @@ const getStatusStyles = (status) => {
 
 export default function PartnersListingPage() {
   const router = useRouter();
+  
   const [partners, setPartners] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // State for search and pagination on Partners listing
+  const [partnerSearchQuery, setPartnerSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // State for the drawer
   const [selectedCP, setSelectedCP] = useState(null);
@@ -114,7 +120,21 @@ export default function PartnersListingPage() {
     window.open(`/api/properties/export?propertyId=${propertyId}`, '_blank');
   };
 
-  // Filter properties based on sticky search
+  // Filter partners based on primary search bar
+  const filteredPartners = partners ? partners.filter(cp => 
+    cp.id.toLowerCase().includes(partnerSearchQuery.toLowerCase()) ||
+    cp.name.toLowerCase().includes(partnerSearchQuery.toLowerCase()) ||
+    cp.company.toLowerCase().includes(partnerSearchQuery.toLowerCase()) ||
+    cp.contact.toLowerCase().includes(partnerSearchQuery.toLowerCase())
+  ) : [];
+
+  // Pagination computations for primary table
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentPartners = filteredPartners.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredPartners.length / itemsPerPage);
+
+  // Filter properties based on sticky search (inside Drawer)
   const filteredProperties = selectedCP?.properties.filter(prop => 
     prop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     prop.locality.toLowerCase().includes(searchQuery.toLowerCase())
@@ -148,60 +168,173 @@ export default function PartnersListingPage() {
         </button>
       </header>
 
+      {}
+      {/* Primary Partner Search Input */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
+          <i className="fa fa-search" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}></i>
+          <input 
+            type="text" 
+            placeholder="Search partners by ID, name, company, contact..." 
+            value={partnerSearchQuery}
+            onChange={(e) => { setPartnerSearchQuery(e.target.value); setCurrentPage(1); }}
+            style={{ 
+              width: '100%', 
+              padding: '12px 15px 12px 42px', 
+              border: '1px solid #cbd5e1', 
+              borderRadius: '8px', 
+              fontSize: '14px', 
+              outline: 'none', 
+              boxSizing: 'border-box',
+              background: '#ffffff'
+            }}
+          />
+        </div>
+      </div>
+
+      {}
       <div className={styles.tableCard}>
         {loading ? (
           <div className={styles.emptyState}>
             <i className="fa fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Loading partners...
           </div>
         ) : (
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>CP Code</th>
-                  <th>Partner Name</th>
-                  <th>Company</th>
-                  <th>Contact</th>
-                  <th>Status</th>
-                  <th>Properties Linked</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {partners?.map((cp) => (
-                  <tr key={cp.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{cp.id}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
-                        <i className="fa fa-user-circle-o" style={{ color: '#94a3b8', fontSize: '16px' }}></i>
-                        {cp.name}
-                      </div>
-                    </td>
-                    <td>{cp.company}</td>
-                    <td>{cp.contact}</td>
-                    <td>
-                      <span className={`${styles.badge} ${cp.status === 'Active' ? styles.badgeActive : styles.badgeInactive}`}>
-                        {cp.status}
-                      </span>
-                    </td>
-                    <td>{cp.properties.length} Properties</td>
-                    <td>
-                      <button 
-                        onClick={() => handleViewClick(cp)} 
-                        className={styles.viewBtn}
-                        aria-label={`View properties for ${cp.name}`}
-                      >
-                        <i className="fa fa-eye"></i> View
-                      </button>
-                    </td>
+          <>
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>CP Code</th>
+                    <th>Partner Name</th>
+                    <th>Company</th>
+                    <th>Contact</th>
+                    <th>Status</th>
+                    <th>Properties Linked</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {currentPartners.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+                        No channel partners matched your search query.
+                      </td>
+                    </tr>
+                  ) : (
+                    currentPartners.map((cp) => (
+                      <tr key={cp.id}>
+                        <td style={{ fontFamily: 'monospace', fontSize: '13px' }}>{cp.id}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+                            <i className="fa fa-user-circle-o" style={{ color: '#94a3b8', fontSize: '16px' }}></i>
+                            {cp.name}
+                          </div>
+                        </td>
+                        <td>{cp.company}</td>
+                        <td>{cp.contact}</td>
+                        <td>
+                          <span className={`${styles.badge} ${cp.status === 'Active' ? styles.badgeActive : styles.badgeInactive}`}>
+                            {cp.status}
+                          </span>
+                        </td>
+                        <td>{cp.properties.length} Properties</td>
+                        <td>
+                          <button 
+                            onClick={() => handleViewClick(cp)} 
+                            className={styles.viewBtn}
+                            aria-label={`View properties for ${cp.name}`}
+                          >
+                            <i className="fa fa-eye"></i> View
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {}
+            {/* Standard Pagination Controls Footer */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '16px 20px', 
+              borderTop: '1px solid #e2e8f0', 
+              background: '#f8fafc' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b' }}>
+                <span>Show</span>
+                <select 
+                  value={itemsPerPage} 
+                  onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} 
+                  style={{ 
+                    padding: '6px 10px', 
+                    borderRadius: '6px', 
+                    border: '1px solid #cbd5e1', 
+                    outline: 'none', 
+                    fontSize: '13px', 
+                    fontWeight: '600',
+                    color: '#1e293b',
+                    background: '#ffffff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span>per page</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', fontSize: '13px', color: '#475569' }}>
+                <button 
+                  disabled={currentPage === 1} 
+                  onClick={() => setCurrentPage(p => p - 1)} 
+                  style={{ 
+                    background: 'white', 
+                    border: '1px solid #cbd5e1', 
+                    width: '36px', 
+                    height: '36px', 
+                    borderRadius: '8px', 
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer', 
+                    opacity: currentPage === 1 ? 0.4 : 1, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center' 
+                  }}
+                  title="Previous Page"
+                >
+                  <i className="fa fa-chevron-left"></i>
+                </button>
+                <span>Page <strong>{currentPage}</strong> of {totalPages || 1}</span>
+                <button 
+                  disabled={currentPage === totalPages || totalPages === 0} 
+                  onClick={() => setCurrentPage(p => p + 1)} 
+                  style={{ 
+                    background: 'white', 
+                    border: '1px solid #cbd5e1', 
+                    width: '36px', 
+                    height: '36px', 
+                    borderRadius: '8px', 
+                    cursor: (currentPage === totalPages || totalPages === 0) ? 'not-allowed' : 'pointer', 
+                    opacity: (currentPage === totalPages || totalPages === 0) ? 0.4 : 1, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center' 
+                  }}
+                  title="Next Page"
+                >
+                  <i className="fa fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
+      {}
       {/* Drawer Overlay & Content for Linked Properties */}
       {selectedCP && (
         <div className={styles.drawerOverlay} onClick={closeDrawer}>

@@ -227,6 +227,38 @@ export async function PUT(req, { params }) {
   }
 }
 
+// INSTANT SINGLE-FIELD ACTIVITY LOG UPDATE PATCH METHOD
+export async function PATCH(req, { params }) {
+  try {
+    const auth = await verifyAuth();
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+
+    const { id } = await params;
+    if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
+
+    const { activity_logs } = await req.json();
+    if (!activity_logs) {
+      return NextResponse.json({ success: false, error: 'Missing activity_logs data parameter' }, { status: 400 });
+    }
+
+    const db = await getDbConnection();
+
+    // Verify property exists
+    const [existing] = await db.execute('SELECT id FROM properties WHERE id = ?', [id]);
+    if (existing.length === 0) {
+      return NextResponse.json({ error: "Property not found" }, { status: 404 });
+    }
+
+    const query = `UPDATE properties SET activity_logs = ?, updated_by_name = ? WHERE id = ?`;
+    await db.execute(query, [activity_logs, auth.email || 'Unknown User', id]);
+
+    return NextResponse.json({ success: true, message: "Activity logs instantly updated in DB" });
+  } catch (error) {
+    console.error('PATCH ERROR:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(req, { params }) {
   try {
     const auth = await verifyAuth();
