@@ -115,7 +115,50 @@
 }
 
 /* =========================================
-   Drawer / Side Panel (For Linked Properties)
+   Pagination Styles
+========================================= */
+.paginationFooter {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.paginationInfo {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.paginationControls {
+  display: flex;
+  gap: 8px;
+}
+
+.pageBtn {
+  padding: 6px 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.pageBtn:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.pageBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   Drawer / Side Panel
 ========================================= */
 .drawerOverlay {
   position: fixed;
@@ -172,7 +215,6 @@
   color: #0f172a;
 }
 
-/* Sticky Search Bar inside Drawer */
 .stickySearch {
   position: sticky;
   top: 0;
@@ -192,10 +234,6 @@
   height: 40px;
 }
 
-.searchBox svg {
-  color: #94a3b8;
-}
-
 .searchBox input {
   flex: 1;
   border: none;
@@ -206,7 +244,6 @@
   background: transparent;
 }
 
-/* Property List */
 .propertyList {
   flex: 1;
   overflow-y: auto;
@@ -258,13 +295,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.emptyState {
-  text-align: center;
-  padding: 40px 20px;
-  color: #64748b;
-  font-size: 14px;
 }
 
 /* Animations */

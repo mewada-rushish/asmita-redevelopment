@@ -7,7 +7,7 @@ import DuplicateAlertModal from '@/components/modals/DuplicateAlertModal';
 import { validatePropertyForm } from '@/utils/propertyForm';
 import { uploadPropertyDocument } from '@/utils/uploadsUtil';
 import toast from 'react-hot-toast';
-import styles from './edit.module.css'; // Make sure you have this CSS file synced with add.module.css
+import styles from './edit.module.css';
 
 const safeParse = (str) => {
   if (!str) return {};
@@ -389,7 +389,8 @@ export default function EditPropertyPage() {
     setFormData(prev => ({ ...prev, lat: c.lat, lng: c.lng }));
   }, []);
 
-  const handleAddLog = () => {
+  // INSTANT DATABASE SAVING ACTION FOR ACTIVITY LOG ENTRY
+  const handleAddLog = async () => {
     if (!logForm.note.trim()) return toast.error("Please enter a note.");
     const now = new Date();
     const newEntry = {
@@ -400,8 +401,31 @@ export default function EditPropertyPage() {
       category: logForm.category,
       note: logForm.note
     };
-    updateField('activity_logs', [newEntry, ...formData.activity_logs]);
-    setLogForm({ ...logForm, note: '' });
+
+    const updatedLogs = [newEntry, ...formData.activity_logs];
+
+    // Pipeline direct update call bypasses full form dirty validation
+    const savePromise = fetch(`/api/properties/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activity_logs: JSON.stringify(updatedLogs) })
+    }).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to commit log to Database");
+      }
+      return res.json();
+    });
+
+    toast.promise(savePromise, {
+      loading: 'Saving Log...',
+      success: () => {
+        updateField('activity_logs', updatedLogs);
+        setLogForm({ ...logForm, note: '' });
+        return 'Log Added!';
+      },
+      error: (err) => `Failed to save log: ${err.message}`
+    });
   };
 
   const filteredLogs = formData.activity_logs.filter(log => {

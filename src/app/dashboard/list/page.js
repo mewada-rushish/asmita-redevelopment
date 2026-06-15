@@ -1,10 +1,10 @@
 'use client';
+
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import Accordion from '@/components/accordion/Accordion';
 import styles from './list.module.css';
-import { exportPropertiesToExcel } from '@/utils/propertyExport';
 
 const safeParse = (data) => {
   if (!data) return {};
@@ -39,6 +39,9 @@ export default function PropertiesList() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  
+  // Custom Modal State for Safe Deletions
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
   // Table Scroll Sync & Drag States
   const topScrollRef = useRef(null);
@@ -107,8 +110,6 @@ export default function PropertiesList() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this property? This action cannot be undone.")) return;
-
     const deletePromise = fetch(`/api/properties/${id}`, {
       method: 'DELETE'
     }).then(async res => {
@@ -120,6 +121,7 @@ export default function PropertiesList() {
       loading: 'Deleting property...',
       success: () => {
         setProperties(prev => prev.filter(p => p.id !== id));
+        setDeleteConfirmId(null);
         return 'Property deleted successfully!';
       },
       error: 'Failed to delete property. Check permissions.'
@@ -143,10 +145,18 @@ export default function PropertiesList() {
     return matchesSearch && matchesFilter;
   }) : [];
 
+  // --- REUSED SECURE EXPORT LOGIC ---
   const handleExport = () => {
-    const success = exportPropertiesToExcel(filteredData);
-    if (success) toast.success("Exported to Excel successfully!");
-    else toast.error("No data available to export.");
+    if (filteredData.length === 0) {
+      toast.error("No data matching current search/filter available to export.");
+      return;
+    }
+    
+    toast.success("Generating highly styled Excel report...");
+    
+    // Convert current filtered property IDs to a query string
+    const filteredIds = filteredData.map(p => p.id).join(',');
+    window.open(`/api/properties/export?ids=${filteredIds}`, '_blank');
   };
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -314,6 +324,7 @@ export default function PropertiesList() {
                         style={{
                           borderColor: getStatusColor(p.status),
                           backgroundColor: getStatusBgColor(p.status),
+                          color: getStatusColor(p.status),
                           opacity: !canEdit ? 0.7 : 1,
                           cursor: !canEdit ? 'not-allowed' : 'pointer'
                         }}
@@ -343,7 +354,7 @@ export default function PropertiesList() {
                         <span className={styles.viewOnlyText}>View Only</span>
                       )}
                       {canDelete && (
-                        <button onClick={() => handleDelete(p.id)} className={styles.deleteBtn} title="Delete Property">
+                        <button onClick={() => setDeleteConfirmId(p.id)} className={styles.deleteBtn} title="Delete Property">
                           <i className="fa fa-trash"></i>
                         </button>
                       )}
@@ -461,7 +472,7 @@ export default function PropertiesList() {
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Interest Letter</span>
                     {selectedProperty.interest_letter_file ? (
-                      <a href={`/api/viewDoc?key=${encodeURIComponent(selectedProperty.interest_letter_file)}`} target="_blank" className={styles.docLink}>
+                      <a href={`/api/viewDoc?key=${encodeURIComponent(selectedProperty.interest_letter_file)}`} target="_blank" rel="noopener noreferrer" className={styles.docLink}>
                         <i className="fa fa-external-link"></i> View Document
                       </a>
                     ) : renderBool(selectedProperty.has_interest_letter)}
@@ -482,7 +493,7 @@ export default function PropertiesList() {
                            {renderBool(doc.value)}
                          </div>
                          {doc.file_name && (
-                           <a href={`/api/viewDoc?key=${encodeURIComponent(doc.file_name)}`} target="_blank" className={styles.docLinkSmall}>
+                           <a href={`/api/viewDoc?key=${encodeURIComponent(doc.file_name)}`} target="_blank" rel="noopener noreferrer" className={styles.docLinkSmall}>
                              View File
                            </a>
                          )}
@@ -504,6 +515,41 @@ export default function PropertiesList() {
                 </div>
               </Accordion>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- IFRAME SECURITY SHIELDED PORTAL CONFIRMATION DIALOG --- */}
+      {deleteConfirmId !== null && (
+        <div className={styles.modalOverlay} style={{ zIndex: 10000 }}>
+          <div className={styles.modalContent} style={{ maxWidth: '450px', background: '#fff' }}>
+            <div className={styles.modalHeader} style={{ borderBottom: 'none', paddingBottom: '10px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', color: '#ef4444' }}>
+                <i className="fa fa-exclamation-triangle" style={{ marginRight: '8px' }}></i> Delete Property
+              </h2>
+              <button onClick={() => setDeleteConfirmId(null)} className={styles.closeBtn}>&times;</button>
+            </div>
+            <div className={styles.modalBody} style={{ padding: '0 24px 24px' }}>
+              <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#475569', lineHeight: '1.5' }}>
+                Are you sure you want to delete this property? This action cannot be undone and will permanently remove this record from the database.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setDeleteConfirmId(null)} 
+                  style={{ padding: '10px 16px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => handleDelete(deleteConfirmId)} 
+                  style={{ padding: '10px 16px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Confirm Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
