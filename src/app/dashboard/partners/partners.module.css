@@ -297,6 +297,12 @@
   gap: 6px;
 }
 
+.emptyState{
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
