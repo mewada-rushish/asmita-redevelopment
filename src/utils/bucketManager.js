@@ -26,13 +26,13 @@ export async function promoteDraftFiles(draftFolderId, newPropertyId, propertyNa
         const oldKey = item.Key;
         const newKey = oldKey.replace(oldPrefix, newPrefix);
 
-        // STRICT ENCODING FOR DIGITALOCEAN: Encode everything but the slashes
         const sourceUrl = `${bucket}/${oldKey}`;
-        const encodedCopySource = encodeURIComponent(sourceUrl).replace(/%2F/g, '/');
 
+        // DO NOT manually encode. AWS SDK v3 handles URL encoding for CopySource automatically.
+        // Double-encoding causes "The provided preconditions are not valid" on DigitalOcean Spaces.
         await s3Client.send(new CopyObjectCommand({
             Bucket: bucket,
-            CopySource: encodedCopySource,
+            CopySource: sourceUrl,
             Key: newKey,
             ACL: 'public-read'
         }));
