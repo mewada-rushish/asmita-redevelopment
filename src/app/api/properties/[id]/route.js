@@ -114,24 +114,26 @@ export async function PUT(req, { params }) {
       const oldFolder = `${id} - ${safeOldName}`;
       const newFolder = `${id} - ${safeNewName}`;
 
-      await promoteDraftFiles(oldFolder, id, newName);
+      if (oldFolder !== newFolder) {
+        await promoteDraftFiles(oldFolder, id, newName);
 
-      if (finalInterestLetter) finalInterestLetter = finalInterestLetter.replace(oldFolder, newFolder);
-      if (finalOfferAcceptanceFile) finalOfferAcceptanceFile = finalOfferAcceptanceFile.replace(oldFolder, newFolder);
-      if (finalApprovedPlanFile) finalApprovedPlanFile = finalApprovedPlanFile.replace(oldFolder, newFolder);
-      if (finalCcFile) finalCcFile = finalCcFile.replace(oldFolder, newFolder);
-      if (finalConsent79aFile) finalConsent79aFile = finalConsent79aFile.replace(oldFolder, newFolder);
+        if (finalInterestLetter) finalInterestLetter = finalInterestLetter.replace(oldFolder, newFolder);
+        if (finalOfferAcceptanceFile) finalOfferAcceptanceFile = finalOfferAcceptanceFile.replace(oldFolder, newFolder);
+        if (finalApprovedPlanFile) finalApprovedPlanFile = finalApprovedPlanFile.replace(oldFolder, newFolder);
+        if (finalCcFile) finalCcFile = finalCcFile.replace(oldFolder, newFolder);
+        if (finalConsent79aFile) finalConsent79aFile = finalConsent79aFile.replace(oldFolder, newFolder);
 
-      if (Array.isArray(finalOfferLetterFiles)) {
-        finalOfferLetterFiles = finalOfferLetterFiles.map(f => f.replace(oldFolder, newFolder));
-      }
-
-      finalChecklist = finalChecklist.map(doc => {
-        if (doc.file_name) {
-          return { ...doc, file_name: doc.file_name.replace(oldFolder, newFolder) };
+        if (Array.isArray(finalOfferLetterFiles)) {
+          finalOfferLetterFiles = finalOfferLetterFiles.map(f => f.replace(oldFolder, newFolder));
         }
-        return doc;
-      });
+
+        finalChecklist = finalChecklist.map(doc => {
+          if (doc.file_name) {
+            return { ...doc, file_name: doc.file_name.replace(oldFolder, newFolder) };
+          }
+          return doc;
+        });
+      }
     }
 
     const query = `
@@ -223,6 +225,9 @@ export async function PUT(req, { params }) {
 
   } catch (error) {
     console.error('UPDATE ERROR:', error);
+    try {
+      require('fs').appendFileSync('error_log.txt', new Date().toISOString() + '\\n' + error.stack + '\\n\\n');
+    } catch(e) {}
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
