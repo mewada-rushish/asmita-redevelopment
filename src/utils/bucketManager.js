@@ -17,6 +17,8 @@ export async function promoteDraftFiles(draftFolderId, newPropertyId, propertyNa
     const oldPrefix = `asmita-redevelopment/${draftFolderId}/`;
     const newPrefix = `asmita-redevelopment/${newPropertyId} - ${safePropName}/`;
 
+    if (oldPrefix === newPrefix) return;
+
     const listCmd = new ListObjectsV2Command({ Bucket: bucket, Prefix: oldPrefix });
     const listRes = await s3Client.send(listCmd);
 
