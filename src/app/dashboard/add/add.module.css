@@ -757,6 +757,8 @@ textarea.input {
   gap: 8px;
   transition: background-color 0.2s;
   flex-shrink: 0;
+  margin: auto;
+  margin-bottom: 1rem;
 }
 
 .libraryBtn:hover {
