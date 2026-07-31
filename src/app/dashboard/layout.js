@@ -1,12 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { logoPath } from '@/assets/images';
 import styles from './dashboard.module.css';
 
-export default function DashboardLayout({ children }) {
+function DashboardLayoutContent({ children }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentType = searchParams.get('type') || 'All';
@@ -193,5 +193,13 @@ export default function DashboardLayout({ children }) {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({ children }) {
+  return (
+    <Suspense fallback={<div style={{ padding: '20px' }}>Loading Dashboard...</div>}>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </Suspense>
   );
 }
