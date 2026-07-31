@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
+import CustomSelect from '@/components/ui/CustomSelect';
 import MapViewer from '@/components/maps/MapViewer';
 import DuplicateAlertModal from '@/components/modals/DuplicateAlertModal';
 import { validatePropertyForm } from '@/utils/propertyForm';
@@ -118,7 +119,7 @@ export default function EditPropertyPage() {
   const [logForm, setLogForm] = useState({ category: 'General Note', note: '' });
 
   const [formData, setFormData] = useState({
-    type: 'MBMC', category: 'Direct',
+    type: '', category: '',
     category_redevelopment: 'Redevelopment', status: 'Not Approached',
     pmc_name: '', pmc_contact: '', 
     assigned_cp_id: '', assigned_admin_id: '',
@@ -731,10 +732,10 @@ export default function EditPropertyPage() {
 
           <div className={styles.card}>
             <label className={styles.label}>👤 Assign CP</label>
-            <select className={styles.input} value={formData.assigned_cp_id} onChange={e => updateField('assigned_cp_id', e.target.value)}>
+            <CustomSelect value={formData.assigned_cp_id} onChange={e => updateField('assigned_cp_id', e.target.value)}>
               <option value="">-- Select CP --</option>
               {executives.map(ex => <option key={ex.id} value={ex.id}>{ex.name} ({ex.role})</option>)}
-            </select>
+            </CustomSelect>
 
             {isAdmin && (
               <button 
@@ -749,9 +750,9 @@ export default function EditPropertyPage() {
 
           <div className={styles.card}>
             <label className={styles.label}>🏠 Overall Status *</label>
-            <select className={styles.input} value={formData.status} onChange={e => updateField('status', e.target.value)}>
+            <CustomSelect value={formData.status} onChange={e => updateField('status', e.target.value)}>
               {STATUS_FLOW.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            </CustomSelect>
           </div>
 
           <div className={styles.card}>
@@ -800,26 +801,26 @@ export default function EditPropertyPage() {
             <div className={styles.grid2}>
               <div className={styles.inputGroup}>
                 <label className={styles.label}>Property Type</label>
-                <select
-                  className={styles.input}
-                  value={formData.type || 'MBMC'}
+                <CustomSelect
+                  value={formData.type || ''}
                   onChange={(e) => updateField('type', e.target.value)}
                 >
+                  <option value="">Select Property Type</option>
                   <option value="MBMC">MBMC</option>
                   <option value="BMC">BMC</option>
-                </select>
+                </CustomSelect>
               </div>
 
               <div className={styles.inputGroup}>
                 <label className={styles.label}>Property Category</label>
-                <select
-                  className={styles.input}
-                  value={formData.category || 'Direct'}
+                <CustomSelect
+                  value={formData.category || ''}
                   onChange={(e) => updateField('category', e.target.value)}
                 >
+                  <option value="">Select Property Category</option>
                   <option value="Direct">Direct</option>
                   <option value="Tender">Tender Based</option>
-                </select>
+                </CustomSelect>
               </div>
             </div>
 
@@ -830,12 +831,12 @@ export default function EditPropertyPage() {
 
             <div className={styles.inputGroup}>
               <label className={styles.label}>Reporting Manager *</label>
-              <select className={styles.input} value={formData.assigned_admin_id} onChange={e => updateField('assigned_admin_id', e.target.value)} required>
+              <CustomSelect value={formData.assigned_admin_id} onChange={e => updateField('assigned_admin_id', e.target.value)} required>
                 <option value="">-- Select Reporting Manager --</option>
                 {admins.map(admin => (
                   <option key={admin.id} value={admin.id}>{admin.name}</option>
                 ))}
-              </select>
+              </CustomSelect>
             </div>
 
             <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 99 }}>
@@ -905,7 +906,7 @@ export default function EditPropertyPage() {
           <Accordion title="2. Land & Legal Details" icon="fa-balance-scale">
             <div className={styles.inputGroup}><label className={styles.label}>Land Owner / Society Name</label><input className={styles.input} value={formData.land_owner_name} onChange={e => updateField('land_owner_name', e.target.value)} /></div>
             <div className={styles.grid2}>
-              <div className={styles.inputGroup}><label className={styles.label}>Land Type</label><select className={styles.input} value={formData.land_type} onChange={e => updateField('land_type', e.target.value)}><option>Freehold</option><option>Leasehold</option></select></div>
+              <div className={styles.inputGroup}><label className={styles.label}>Land Type</label><CustomSelect value={formData.land_type} onChange={e => updateField('land_type', e.target.value)}><option>Freehold</option><option>Leasehold</option></CustomSelect></div>
               <div className={styles.inputGroup}><label className={styles.label}>CTS / Survey No.</label><input className={styles.input} value={formData.cts_survey_no} onChange={e => updateField('cts_survey_no', e.target.value)} /></div>
             </div>
           </Accordion>
@@ -1003,9 +1004,9 @@ export default function EditPropertyPage() {
             
             <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
               <label className={styles.label}>Physical Survey Status</label>
-              <select className={styles.input} value={formData.physical_survey} onChange={e => updateField('physical_survey', e.target.value)}>
+              <CustomSelect value={formData.physical_survey} onChange={e => updateField('physical_survey', e.target.value)}>
                 <option>Not Started</option><option>In Progress</option><option>Completed</option>
-              </select>
+              </CustomSelect>
             </div>
 
             <div className={styles.inputGroup} style={{ marginBottom: '15px' }}>
@@ -1167,9 +1168,9 @@ export default function EditPropertyPage() {
 
             <div className={styles.inputGroup}>
               <label className={styles.label}>Offer Letter Status</label>
-              <select className={styles.input} value={formData.offer_letter_status} onChange={e => updateField('offer_letter_status', e.target.value)}>
+              <CustomSelect value={formData.offer_letter_status} onChange={e => updateField('offer_letter_status', e.target.value)}>
                 <option>Not Sent</option><option>Offer Sent</option><option>Under Negotiation</option><option>Accepted</option>
-              </select>
+              </CustomSelect>
             </div>
 
             <div className={styles.inputGroup}>
@@ -1232,7 +1233,7 @@ export default function EditPropertyPage() {
                           <span className={styles.mappingFilename}>
                             {pf.file.name}
                           </span>
-                          <select 
+                          <CustomSelect 
                             className={styles.mappingSelect}
                             value={pf.label} 
                             onChange={(e) => {
@@ -1243,7 +1244,7 @@ export default function EditPropertyPage() {
                           >
                             <option value="">-- Unassigned (Bulk) --</option>
                             {optionsForThisFile.map(l => <option key={l} value={l}>{l}</option>)}
-                          </select>
+                          </CustomSelect>
                         </div>
                       );
                     })}
@@ -1355,9 +1356,9 @@ export default function EditPropertyPage() {
             <div className={styles.architectSection} style={{ marginTop: 0, borderTop: 'none', paddingTop: 0 }}>
               <div className={styles.inputGroup}>
                 <label className={styles.label}>Architect Survey Status</label>
-                <select className={styles.input} value={formData.architect_survey_status} onChange={e => updateField('architect_survey_status', e.target.value)}>
+                <CustomSelect value={formData.architect_survey_status} onChange={e => updateField('architect_survey_status', e.target.value)}>
                   <option>Not Started</option><option>Started</option><option>Completed</option>
-                </select>
+                </CustomSelect>
               </div>
               
               <div className={styles.checkRow}>
@@ -1375,19 +1376,19 @@ export default function EditPropertyPage() {
 
             <div className={styles.inputGroup} style={{ marginTop: '15px' }}>
               <label className={styles.label}>DA (Development Agreement) Status</label>
-              <select className={styles.input} value={formData.da_agreement_status} onChange={e => updateField('da_agreement_status', e.target.value)}>
+              <CustomSelect value={formData.da_agreement_status} onChange={e => updateField('da_agreement_status', e.target.value)}>
                 <option>Not Started</option><option>In Process</option><option>Completed</option>
-              </select>
+              </CustomSelect>
             </div>
 
             <div className={styles.inputGroup}>
               <label className={styles.label}>On-Ground Project Progress</label>
-              <select className={styles.input} value={formData.project_progress} onChange={e => updateField('project_progress', e.target.value)}>
+              <CustomSelect value={formData.project_progress} onChange={e => updateField('project_progress', e.target.value)}>
                 <option>Not Started</option>
                 <option>Vacant</option>
                 <option>Work Started</option>
                 <option>Completed</option>
-              </select>
+              </CustomSelect>
             </div>
           </Accordion>
 
@@ -1395,7 +1396,7 @@ export default function EditPropertyPage() {
             <div className={styles.grid2}>
               <div className={styles.inputGroup}>
                 <label className={styles.label}>Category</label>
-                <select className={styles.input} value={logForm.category} onChange={e => setLogForm({...logForm, category: e.target.value})}>
+                <CustomSelect value={logForm.category} onChange={e => setLogForm({...logForm, category: e.target.value})}>
                   <option>Physical Survey</option>
                   <option>Offer Negotiation</option>
                   <option>Society Meeting</option>
@@ -1403,7 +1404,7 @@ export default function EditPropertyPage() {
                   <option>Document Retrieval</option>
                   <option>Liaison/Legal</option>
                   <option>General Note</option>
-                </select>
+                </CustomSelect>
               </div>
             </div>
             
