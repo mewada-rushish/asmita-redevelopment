@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Accordion from '@/components/accordion/Accordion';
 import styles from './list.module.css';
@@ -31,6 +32,10 @@ export default function PropertiesList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
+  
+  const searchParams = useSearchParams();
+  const typeFilter = searchParams.get('type') || 'All';
+  
   const [updatingId, setUpdatingId] = useState(null);
   const [userRole, setUserRole] = useState('');
 
@@ -142,7 +147,9 @@ export default function PropertiesList() {
     const matchesSearch = (p.property_name || '').toLowerCase().includes(search.toLowerCase()) ||
       (p.locality || '').toLowerCase().includes(search.toLowerCase());
     const matchesFilter = filter === 'All' || p.status === filter;
-    return matchesSearch && matchesFilter;
+    const pType = p.type || 'MBMC'; // default to MBMC for existing
+    const matchesType = typeFilter === 'All' || pType === typeFilter;
+    return matchesSearch && matchesFilter && matchesType;
   }) : [];
 
   // --- REUSED SECURE EXPORT LOGIC ---
@@ -224,7 +231,7 @@ export default function PropertiesList() {
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.titleGroup}>
-          <h1>Properties</h1>
+          <h1>{typeFilter === 'All' ? 'All Properties' : `${typeFilter} Properties`}</h1>
           <p>{filteredData.length} entries match your filters</p>
         </div>
         <div className={styles.actionBtns}>

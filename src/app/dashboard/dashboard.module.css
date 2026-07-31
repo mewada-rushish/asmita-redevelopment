@@ -61,6 +61,30 @@
 .navMenu { padding: 20px 10px; flex-grow: 1; display: flex; flex-direction: column; gap: 5px; }
 .navLink { display: flex; align-items: center; padding: 12px 15px; color: #d1d5db; text-decoration: none; border-radius: 6px; font-size: 15px; transition: all 0.2s; }
 .navLink:hover { background-color: #374151; color: white; }
+
+.subMenu {
+  display: flex;
+  flex-direction: column;
+  padding-left: 20px;
+  margin-top: 5px;
+  margin-bottom: 10px;
+}
+.subNavLink {
+  display: flex;
+  align-items: center;
+  padding: 8px 15px;
+  color: #9ca3af;
+  text-decoration: none;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.subNavLink:hover {
+  color: white;
+}
+.activeSubNavLink {
+  color: white;
+  font-weight: 600;
+}
 .activeLink { background-color: #1e4ec4; color: white; }
 .icon { width: 24px; font-size: 18px; }
 .sidebarFooter { padding: 20px; border-top: 1px solid #374151; }

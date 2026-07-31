@@ -145,6 +145,7 @@ export async function PUT(req, { params }) {
         has_approved_plan = ?, has_oc = ?, has_cc = ?, has_legal_dispute = ?, is_mortgaged = ?, has_redevelopment_interest = ?,
         physical_survey_allowed = ?, flat_measure_allowed = ?, physical_survey = ?, physical_survey_records = ?, 
         banner_permission_allowed = ?, hoarding_date = ?,
+        type = ?, category = ?,
         consent_type = ?, consent_79a_file = ?,
         document_checklist = ?, document_remarks = ?, 
         interest_letter_file = ?, has_interest_letter = ?, society_acknowledgement = ?, 
@@ -173,6 +174,8 @@ export async function PUT(req, { params }) {
 
       data.physical_survey_allowed ? 1 : 0, data.flat_measure_allowed ? 1 : 0, data.physical_survey || 'Not Started', data.physical_survey_records || '',
       data.banner_permission_allowed ? 1 : 0, sanitizeDate(data.hoarding_date),
+
+      data.type || 'MBMC', data.category || 'Direct',
 
       data.consent_type || '', finalConsent79aFile,
 

@@ -2,14 +2,21 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { logoPath } from '@/assets/images';
 import styles from './dashboard.module.css';
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentType = searchParams.get('type') || 'All';
   const [user, setUser] = useState({ name: 'Loading...', role: '' });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState({});
+
+  const toggleSubMenu = (path) => {
+    setExpandedMenus(prev => ({ ...prev, [path]: !prev[path] }));
+  };
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -39,7 +46,16 @@ export default function DashboardLayout({ children }) {
   }
 
   // Properties list is available to everyone who has dashboard access
-  navItems.push({ name: 'Properties List', path: '/dashboard/list', icon: 'fa-list' });
+  navItems.push({ 
+    name: 'Properties List', 
+    path: '/dashboard/list', 
+    icon: 'fa-list',
+    subMenu: [
+      { name: 'All Properties', path: '/dashboard/list?type=All', type: 'All' },
+      { name: 'BMC', path: '/dashboard/list?type=BMC', type: 'BMC' },
+      { name: 'MBMC', path: '/dashboard/list?type=MBMC', type: 'MBMC' }
+    ]
+  });
 
   // Channel Partners directory is restricted to upper management and internal office teams
   const canViewPartners = ['Super Admin', 'Admin', 'CRM', 'Sales'].includes(user.role);
@@ -105,15 +121,49 @@ export default function DashboardLayout({ children }) {
 
         <nav className={styles.navMenu}>
           {navItems.map((item) => (
-            <Link
-              href={item.path}
-              key={item.path}
-              onClick={closeMenu}
-              className={`${styles.navLink} ${pathname === item.path ? styles.activeLink : ''}`}
-            >
-              <i className={`fa ${item.icon} ${styles.icon}`}></i>
-              {item.name}
-            </Link>
+            <div key={item.path}>
+              {item.subMenu ? (
+                <div
+                  onClick={() => toggleSubMenu(item.path)}
+                  className={`${styles.navLink} ${pathname === item.path ? styles.activeLink : ''}`}
+                  style={{ cursor: 'pointer', justifyContent: 'space-between' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <i className={`fa ${item.icon} ${styles.icon}`}></i>
+                    {item.name}
+                  </div>
+                  <i className={`fa ${expandedMenus[item.path] ? 'fa-chevron-down' : 'fa-chevron-right'}`} style={{ fontSize: '13px', fontWeight: 'bold' }}></i>
+                </div>
+              ) : (
+                <Link
+                  href={item.path}
+                  onClick={closeMenu}
+                  className={`${styles.navLink} ${pathname === item.path ? styles.activeLink : ''}`}
+                >
+                  <i className={`fa ${item.icon} ${styles.icon}`}></i>
+                  {item.name}
+                </Link>
+              )}
+              
+              {item.subMenu && expandedMenus[item.path] && (
+                <div className={styles.subMenu}>
+                  {item.subMenu.map(subItem => {
+                    const isActiveSub = pathname === item.path && currentType === subItem.type;
+                    return (
+                      <Link
+                        key={subItem.path}
+                        href={subItem.path}
+                        onClick={closeMenu}
+                        className={`${styles.subNavLink} ${isActiveSub ? styles.activeSubNavLink : ''}`}
+                      >
+                        <i className="fa fa-angle-right" style={{ marginRight: '8px', fontSize: '13px', fontWeight: 'bold' }}></i>
+                        {subItem.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           ))}
         </nav>
 
