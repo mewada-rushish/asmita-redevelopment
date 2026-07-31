@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -680,9 +680,9 @@ function PropertiesListContent() {
 
 export default function PropertiesListPage() {
   return (
-    <React.Suspense fallback={<div style={{ padding: '20px' }}>Loading Properties...</div>}>
+    <Suspense fallback={<div style={{ padding: '20px' }}>Loading Properties...</div>}>
       <PropertiesListContent />
-    </React.Suspense>
+    </Suspense>
   );
 }
 
