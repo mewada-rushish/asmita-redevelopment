@@ -43,3 +43,6 @@ next-env.d.ts
 #testing
 src/app/api/schema/
 src/app/test/
+
+# agents
+.agents/
