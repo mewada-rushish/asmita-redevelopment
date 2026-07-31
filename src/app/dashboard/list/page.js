@@ -62,7 +62,7 @@ const STATUS_FLOW = [
   'Plan & CC Phase'
 ];
 
-export default function PropertiesList() {
+function PropertiesListContent() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -675,6 +675,14 @@ export default function PropertiesList() {
       </div>
     </div>
     </>
+  );
+}
+
+export default function PropertiesListPage() {
+  return (
+    <React.Suspense fallback={<div style={{ padding: '20px' }}>Loading Properties...</div>}>
+      <PropertiesListContent />
+    </React.Suspense>
   );
 }
 
