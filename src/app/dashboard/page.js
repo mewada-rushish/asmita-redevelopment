@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import MapViewer from '@/components/maps/MapViewer';
 import { logoPath } from '@/assets/images';
@@ -57,11 +58,13 @@ const safeJSONParse = (data, fallback = null) => {
 };
 
 export default function DashboardMapPage() {
+  const router = useRouter();
   const [properties, setProperties] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedStatus, setExpandedStatus] = useState(null);
   const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
   const [currentStyle, setCurrentStyle] = useState('satellite');
+  const [propertyType, setPropertyType] = useState('All');
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [userRole, setUserRole] = useState('');
 
@@ -106,10 +109,19 @@ export default function DashboardMapPage() {
 
   const getFilteredProperties = (status) => {
     if (!Array.isArray(properties)) return [];
-    return properties.filter(p =>
-      p.status === status && (p.property_name || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    return properties.filter(p => {
+      const statusMatch = p.status === status;
+      const searchMatch = (p.property_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const typeMatch = propertyType === 'All' || p.type === propertyType;
+      return statusMatch && searchMatch && typeMatch;
+    });
   };
+
+  const mapProperties = useMemo(() => {
+    if (!Array.isArray(properties)) return [];
+    if (propertyType === 'All') return properties;
+    return properties.filter(p => p.type === propertyType);
+  }, [properties, propertyType]);
 
   const linkedProperties = useMemo(() => {
     if (!selectedProperty || !selectedProperty.club_id || !Array.isArray(properties)) return [];
@@ -125,6 +137,7 @@ export default function DashboardMapPage() {
   const canViewOffers = ['super admin', 'admin', 'crm', 'sales', 'view only'].includes(roleStr);
   const canViewAdvancedDetails = !isFieldExec;
   const canViewSystemInfo = ['super admin', 'admin', 'view only'].includes(roleStr);
+  const canEditProperty = ['super admin', 'admin', 'crm team', 'crm'].includes(roleStr);
 
   const buildCommitteeList = () => {
     if (!selectedProperty) return null;
@@ -344,7 +357,7 @@ export default function DashboardMapPage() {
       <div className={styles.wrapper} style={{ borderRadius: '12px', overflow: 'hidden' }}>
         <div className={styles.mapContainer}>
         <MapViewer 
-          properties={properties} 
+          properties={mapProperties} 
           mapStyle={currentStyle} 
           onMarkerClick={setSelectedProperty} 
           selectedProperty={selectedProperty}
@@ -357,15 +370,22 @@ export default function DashboardMapPage() {
         {selectedProperty && (
           <>
             <div className={styles.sidebarHeader}>
-              <button className={styles.closeBtn} onClick={() => setSelectedProperty(null)}>
-                <i className="fa fa-times"></i>
-              </button>
               <div className={styles.headerInfo}>
                 <span className={styles.subLabel}>PROPERTY DETAIL</span>
                 <div className={styles.titleRow}>
                   <Image src={logoPath} alt="AsmitA Logo" width={38} height={38} className={styles.sidebarLogo} priority />
                   <h2>{selectedProperty.property_name}</h2>
                 </div>
+              </div>
+              <div className={styles.headerActions}>
+                {canEditProperty && (
+                  <button className={styles.editBtn} onClick={() => router.push(`/dashboard/edit/${selectedProperty.id}`)} title="Edit Property">
+                    <i className="fa fa-pencil"></i>
+                  </button>
+                )}
+                <button className={styles.closeBtn} onClick={() => setSelectedProperty(null)} title="Close">
+                  <i className="fa fa-times"></i>
+                </button>
               </div>
             </div>
 
@@ -609,12 +629,22 @@ export default function DashboardMapPage() {
         )}
       </div>
 
-      <div className={styles.styleSwitcher}>
-        {['streets', 'satellite'].map(style => (
-          <button key={style} className={`${styles.styleBtn} ${currentStyle === style ? styles.activeStyle : ''}`} onClick={() => setCurrentStyle(style)}>
-            {style === 'satellite' ? 'SATELLITE' : 'STREETS'}
-          </button>
-        ))}
+      <div className={styles.mapControlsWrapper}>
+        <div className={styles.styleSwitcher} style={{ position: 'static' }}>
+          {['All', 'MBMC', 'BMC'].map(type => (
+            <button key={type} className={`${styles.styleBtn} ${propertyType === type ? styles.activeStyle : ''}`} onClick={() => setPropertyType(type)}>
+              {type}
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.styleSwitcher} style={{ position: 'static' }}>
+          {['streets', 'satellite'].map(style => (
+            <button key={style} className={`${styles.styleBtn} ${currentStyle === style ? styles.activeStyle : ''}`} onClick={() => setCurrentStyle(style)}>
+              {style === 'satellite' ? 'SATELLITE' : 'STREETS'}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
     </div>
