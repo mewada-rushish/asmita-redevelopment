@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
 import MapViewer from '@/components/maps/MapViewer';
@@ -8,6 +8,7 @@ import { validatePropertyForm } from '@/utils/propertyForm';
 import { uploadPropertyDocument } from '@/utils/uploadsUtil';
 import toast from 'react-hot-toast';
 import styles from './add.module.css';
+import dashboardStyles from '../dashboard.module.css';
 
 const safeParse = (str) => {
   if (!str) return {};
@@ -640,16 +641,32 @@ export default function AddPropertyPage() {
   ];
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h1><i className="fa fa-edit"></i> Add Property</h1>
-        <button onClick={handleSave} className={styles.saveBtn} disabled={loading}>
+    <>
+      <header className={dashboardStyles.topHeader}>
+        <h1 style={{ fontFamily: 'var(--font-montserrat)', fontSize: '24px', fontWeight: 800, margin: 0, color: '#111827' }}>
+          <i className="fa fa-edit"></i> Add Property
+        </h1>
+        <button onClick={handleSave} className={styles.saveBtn} disabled={loading} style={{
+          padding: '10px 20px',
+          background: '#1e4ec4',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontWeight: 600,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '14px'
+        }}>
           {loading ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>} Save Property
         </button>
       </header>
 
-      <div className={styles.mainGrid}>
-        <aside className={styles.sidebar}>
+      <div className={dashboardStyles.pageContent}>
+        <div className={styles.container} style={{ paddingTop: 0 }}>
+          <div className={styles.mainGrid}>
+            <aside className={styles.sidebar}>
           <div className={styles.card}>
             <label className={styles.label}>📍 Map Location</label>
             <MapViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={handleLocationSelect} mapStyle="satellite" />
@@ -786,7 +803,7 @@ export default function AddPropertyPage() {
 
             <div className={styles.linkGroup}>
               <h3 className={styles.linkGroupTitle}>
-                  <i className="fa fa-link"></i> Property Grouping (Clubbed Redevelopment)
+                  <i className="fa fa-link"></i> Link a Property
               </h3>
               <div className={styles.inputGroup} style={{ position: 'relative', zIndex: 98 }}>
                 <label className={styles.label}>Link Nearby Properties</label>
@@ -1430,6 +1447,8 @@ export default function AddPropertyPage() {
         matchedProperty={duplicateMatch} 
         onContinue={() => setShowDuplicateModal(false)} 
       />
+      </div>
     </div>
+    </>
   );
 }

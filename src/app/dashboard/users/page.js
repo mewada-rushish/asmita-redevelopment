@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from './users.module.css';
+import dashboardStyles from '../dashboard.module.css';
 
 export default function UsersPage() {
     const [users, setUsers] = useState([]);
@@ -186,16 +187,21 @@ export default function UsersPage() {
         tableWrapperRef.current.scrollLeft = scrollLeftState - walk;
     };
 
-    return (
-        <div className={styles.container}>
-            <header className={styles.header}>
-                <h1><i className="fa fa-users"></i> User Management</h1>
+  return (
+        <>
+            <header className={dashboardStyles.topHeader}>
+                <h1 style={{ fontFamily: 'var(--font-montserrat)', fontSize: '24px', fontWeight: 800, margin: 0, color: '#111827' }}>
+                    <i className="fa fa-users"></i> User Management
+                </h1>
                 {isAdmin && (
                     <Link href="/dashboard/users/add" className={styles.addBtn}>
                         <i className="fa fa-user-plus"></i> Add New User
                     </Link>
                 )}
             </header>
+
+            <div className={dashboardStyles.pageContent}>
+                <div className={styles.container} style={{ paddingTop: 0 }}>
 
             <div className={styles.filterBar}>
                 <div className={styles.searchWrapper}>
@@ -449,6 +455,8 @@ export default function UsersPage() {
                     </div>
                 </div>
             )}
+            </div>
         </div>
+        </>
     );
 }

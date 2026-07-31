@@ -187,9 +187,11 @@ export default function DashboardLayout({ children }) {
         </div>
       </aside>
 
-      <main className={styles.mainContent}>
-        {children}
-      </main>
+      <div className={styles.mainWrapper}>
+        <main className={styles.mainContent}>
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
