@@ -112,7 +112,8 @@ export default function AddPropertyPage() {
   const [logForm, setLogForm] = useState({ category: 'General Note', note: '' });
 
   const [formData, setFormData] = useState({
-    category: 'Redevelopment', status: 'Not Approached',
+    type: 'MBMC', category: 'Direct',
+    category_redevelopment: 'Redevelopment', status: 'Not Approached',
     pmc_name: '', pmc_contact: '', 
     assigned_cp_id: '', assigned_admin_id: '',
     property_name: '', locality: 'Mira Road East', address: '',
@@ -721,6 +722,32 @@ export default function AddPropertyPage() {
                 onChange={e => updateField('property_name', e.target.value)} 
                 onBlur={checkDuplicates} 
               />
+            </div>
+
+            <div className={styles.grid2}>
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Property Type</label>
+                <select
+                  className={styles.input}
+                  value={formData.type || 'MBMC'}
+                  onChange={(e) => updateField('type', e.target.value)}
+                >
+                  <option value="MBMC">MBMC</option>
+                  <option value="BMC">BMC</option>
+                </select>
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.label}>Property Category</label>
+                <select
+                  className={styles.input}
+                  value={formData.category || 'Direct'}
+                  onChange={(e) => updateField('category', e.target.value)}
+                >
+                  <option value="Direct">Direct</option>
+                  <option value="Tender">Tender Based</option>
+                </select>
+              </div>
             </div>
 
             <div className={styles.grid2}>
