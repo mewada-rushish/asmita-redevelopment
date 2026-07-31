@@ -6,11 +6,46 @@ import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Accordion from '@/components/accordion/Accordion';
 import styles from './list.module.css';
+import dashboardStyles from '../dashboard.module.css';
+
+const extractLocationStr = (address) => {
+  if (!address) return 'N/A';
+  
+  const parts = address.split(',').map(p => p.trim());
+  let locationParts = [];
+  
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i].toLowerCase();
+    // Skip country, state, and any part that contains a pincode
+    if (p === 'india' || p.match(/\b\d{6}\b/) || p === 'maharashtra' || p === 'maharastra') {
+      continue;
+    }
+    locationParts.unshift(parts[i]);
+  }
+  
+  if (locationParts.length > 0) {
+    // Return just the last 1-2 parts (typically Sublocality and Locality)
+    return locationParts.slice(-2).join(', ');
+  }
+  
+  // Fallback: strip pincode from the original string
+  let noPin = address.replace(/\b\d{6}\b/g, '').replace(/,\s*,/g, ',').trim();
+  if (noPin.endsWith(',')) noPin = noPin.slice(0, -1);
+  return noPin.length > 30 ? noPin.substring(0, 30) + '...' : noPin;
+};
 
 const safeParse = (data) => {
   if (!data) return {};
   if (typeof data === 'object') return data;
   try { return JSON.parse(data); } catch { return {}; }
+};
+
+const getCategoryIcon = (opt) => {
+  switch (opt) {
+    case 'Direct': return 'fa-handshake-o';
+    case 'Tender Based': return 'fa-gavel';
+    default: return 'fa-list-ul';
+  }
 };
 
 const STATUS_FLOW = [
@@ -32,6 +67,12 @@ export default function PropertiesList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
+
+  const [categoryFilter, setCategoryFilter] = useState('All Categories');
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef(null);
   
   const searchParams = useSearchParams();
   const typeFilter = searchParams.get('type') || 'All';
@@ -58,6 +99,7 @@ export default function PropertiesList() {
   const [scrollLeftState, setScrollLeftState] = useState(0);
 
   const filterOptions = ['All', ...STATUS_FLOW];
+  const categoryOptions = ['All Categories', 'Direct', 'Tender Based'];
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -69,6 +111,19 @@ export default function PropertiesList() {
       .catch(err => console.error(err));
 
     fetchProperties();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterDropdownOpen(false);
+      }
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchProperties = async () => {
@@ -149,7 +204,9 @@ export default function PropertiesList() {
     const matchesFilter = filter === 'All' || p.status === filter;
     const pType = p.type || 'MBMC'; // default to MBMC for existing
     const matchesType = typeFilter === 'All' || pType === typeFilter;
-    return matchesSearch && matchesFilter && matchesType;
+    const pCategory = p.category || 'Direct'; // default to Direct
+    const matchesCategory = categoryFilter === 'All Categories' || pCategory === categoryFilter;
+    return matchesSearch && matchesFilter && matchesType && matchesCategory;
   }) : [];
 
   // --- REUSED SECURE EXPORT LOGIC ---
@@ -228,11 +285,15 @@ export default function PropertiesList() {
   );
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
+    <>
+      <header className={dashboardStyles.topHeader}>
         <div className={styles.titleGroup}>
-          <h1>{typeFilter === 'All' ? 'All Properties' : `${typeFilter} Properties`}</h1>
-          <p>{filteredData.length} entries match your filters</p>
+          <h1 style={{ fontFamily: 'var(--font-montserrat)', fontSize: '24px', fontWeight: 800, margin: 0, color: '#111827' }}>
+            {typeFilter === 'All' ? 'All Properties' : `${typeFilter} Properties`}
+          </h1>
+          <p style={{ color: '#4b5563', fontSize: '14px', fontWeight: 500, margin: '4px 0 0 0' }}>
+            {filteredData.length} entries match your filters
+          </p>
         </div>
         <div className={styles.actionBtns}>
           {canExport && (
@@ -246,19 +307,9 @@ export default function PropertiesList() {
         </div>
       </header>
 
-      <div className={styles.filterBar}>
-        <div className={styles.pills}>
-          {filterOptions.map(opt => (
-            <button
-              key={opt}
-              className={`${styles.pill} ${filter === opt ? styles.activePill : ''}`}
-              onClick={() => { setFilter(opt); setCurrentPage(1); }}
-            >
-              <span className={styles.dot} style={{ background: getStatusColor(opt) }}></span>
-              {opt}
-            </button>
-          ))}
-        </div>
+      <div className={dashboardStyles.pageContent}>
+        <div className={styles.container} style={{ paddingTop: 0 }}>
+          <div className={styles.filterBar}>
         <div className={styles.searchWrapper}>
           <i className="fa fa-search"></i>
           <input
@@ -267,6 +318,65 @@ export default function PropertiesList() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
           />
+        </div>
+        <div style={{ display: 'flex', gap: '15px' }}>
+          {/* Status (Stage) Dropdown */}
+          <div className={styles.filterDropdownContainer} ref={filterDropdownRef}>
+            <button 
+              className={styles.filterDropdownToggle} 
+              onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={styles.dot} style={{ background: getStatusColor(filter) }}></span>
+                {filter}
+              </div>
+              <i className={`fa fa-chevron-${isFilterDropdownOpen ? 'up' : 'down'}`} style={{ fontSize: '12px' }}></i>
+            </button>
+            
+            {isFilterDropdownOpen && (
+              <div className={styles.filterDropdownMenu}>
+                {filterOptions.map(opt => (
+                  <div
+                    key={opt}
+                    className={`${styles.filterDropdownItem} ${filter === opt ? styles.activeFilterDropdownItem : ''}`}
+                    onClick={() => { setFilter(opt); setCurrentPage(1); setIsFilterDropdownOpen(false); }}
+                  >
+                    <span className={styles.dot} style={{ background: getStatusColor(opt) }}></span>
+                    {opt}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Category Dropdown */}
+          <div className={styles.filterDropdownContainer} ref={categoryDropdownRef}>
+            <button 
+              className={styles.filterDropdownToggle} 
+              onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className={`fa ${getCategoryIcon(categoryFilter)}`} style={{ color: '#1e4ec4', width: '14px', textAlign: 'center' }}></i>
+                {categoryFilter}
+              </div>
+              <i className={`fa fa-chevron-${isCategoryDropdownOpen ? 'up' : 'down'}`} style={{ fontSize: '12px' }}></i>
+            </button>
+            
+            {isCategoryDropdownOpen && (
+              <div className={styles.filterDropdownMenu}>
+                {categoryOptions.map(opt => (
+                  <div
+                    key={opt}
+                    className={`${styles.filterDropdownItem} ${categoryFilter === opt ? styles.activeFilterDropdownItem : ''}`}
+                    onClick={() => { setCategoryFilter(opt); setCurrentPage(1); setIsCategoryDropdownOpen(false); }}
+                  >
+                    <i className={`fa ${getCategoryIcon(opt)}`} style={{ color: categoryFilter === opt ? '#1e4ec4' : '#6b7280', width: '14px', textAlign: 'center' }}></i>
+                    {opt}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -320,7 +430,7 @@ export default function PropertiesList() {
                       <strong>{p.property_name}</strong>
                     </div>
                   </td>
-                  <td><span className={styles.areaText}>{p.locality || p.address}</span></td>
+                  <td><span className={styles.areaText}>{extractLocationStr(p.address)}</span></td>
                   <td>
                     <div className={styles.statusWrapper}>
                       <select
@@ -394,8 +504,8 @@ export default function PropertiesList() {
 
       {/* --- VIEW PROPERTY MODAL --- */}
       {isModalOpen && selectedProperty && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalContent}>
+        <div className={styles.modalOverlay} onClick={closeModal}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.modalTitleBox}>
                 <span className={styles.idBadge}>#{selectedProperty.id}</span>
@@ -562,7 +672,9 @@ export default function PropertiesList() {
         </div>
       )}
 
+      </div>
     </div>
+    </>
   );
 }
 

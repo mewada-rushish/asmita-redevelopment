@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./partners.module.css";
+import dashboardStyles from "../dashboard.module.css";
 import toast from "react-hot-toast";
 
 // Standardized color engine matching your global dashboard map precisely
@@ -141,12 +142,12 @@ export default function PartnersListingPage() {
   ) || [];
 
   return (
-    <div className={styles.container}>
+    <>
       {/* Header with Global Export Button */}
-      <header className={styles.header} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <header className={dashboardStyles.topHeader}>
         <div>
-          <h1>Channel Partners</h1>
-          <p>Manage and view all registered channel partners and their linked properties.</p>
+          <h1 style={{ fontFamily: 'var(--font-montserrat)', fontSize: '24px', fontWeight: 800, margin: 0, color: '#111827' }}>Channel Partners</h1>
+          <p style={{ color: '#4b5563', fontSize: '14px', fontWeight: 500, margin: '4px 0 0 0' }}>Manage and view all registered channel partners and their linked properties.</p>
         </div>
         <button 
           onClick={handleGlobalExport} 
@@ -168,7 +169,8 @@ export default function PartnersListingPage() {
         </button>
       </header>
 
-      {}
+      <div className={dashboardStyles.pageContent}>
+        <div className={styles.container} style={{ paddingTop: 0 }}>
       {/* Primary Partner Search Input */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '16px', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
@@ -447,6 +449,8 @@ export default function PartnersListingPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
+    </>
   );
 }

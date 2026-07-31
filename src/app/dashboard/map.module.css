@@ -4,7 +4,7 @@
 .wrapper {
   position: relative;
   width: 100%;
-  height: calc(100dvh - 64px); /* Updated to dvh for mobile */
+  height: 100%; /* Fill the container completely */
   overflow: hidden;
   background-color: #f3f4f6;
 }

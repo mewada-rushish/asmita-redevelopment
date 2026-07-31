@@ -4,6 +4,7 @@ import Image from 'next/image';
 import MapViewer from '@/components/maps/MapViewer';
 import { logoPath } from '@/assets/images';
 import styles from './map.module.css';
+import dashboardStyles from './dashboard.module.css';
 
 const STATUS_FLOW = [
   'Not Approached',
@@ -339,8 +340,9 @@ export default function DashboardMapPage() {
   const isSearching = searchTerm.trim().length > 0;
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.mapContainer}>
+    <div className={dashboardStyles.pageContent} style={{ height: '100%', boxSizing: 'border-box' }}>
+      <div className={styles.wrapper} style={{ borderRadius: '12px', overflow: 'hidden' }}>
+        <div className={styles.mapContainer}>
         <MapViewer 
           properties={properties} 
           mapStyle={currentStyle} 
@@ -614,6 +616,7 @@ export default function DashboardMapPage() {
           </button>
         ))}
       </div>
+    </div>
     </div>
   );
 }
