@@ -205,7 +205,7 @@ function PropertiesListContent() {
     const pType = p.type || 'MBMC'; // default to MBMC for existing
     const matchesType = typeFilter === 'All' || pType === typeFilter;
     const pCategory = p.category || 'Direct'; // default to Direct
-    const matchesCategory = categoryFilter === 'All Categories' || pCategory === categoryFilter;
+    const matchesCategory = categoryFilter === 'All Categories' || pCategory === categoryFilter || (categoryFilter === 'Tender Based' && pCategory === 'Tender');
     return matchesSearch && matchesFilter && matchesType && matchesCategory;
   }) : [];
 
