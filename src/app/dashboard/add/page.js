@@ -88,6 +88,8 @@ export default function AddPropertyPage() {
   const [executives, setExecutives] = useState([]);
   const [admins, setAdmins] = useState([]); 
   
+  const checkedDuplicateNamesRef = useRef(new Set());
+  
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState('');
   const [currentUserName, setCurrentUserName] = useState('');
@@ -230,6 +232,8 @@ export default function AddPropertyPage() {
 
   const checkDuplicates = async () => {
     if (!formData.property_name && (!formData.address || formData.address.length < 5)) return;
+    
+    if (formData.property_name && checkedDuplicateNamesRef.current.has(formData.property_name.trim().toLowerCase())) return;
 
     try {
       const res = await fetch('/api/properties/check-duplicate', {
@@ -242,6 +246,9 @@ export default function AddPropertyPage() {
       });
       const data = await res.json();
       if (data.isDuplicate) {
+        if (formData.property_name) {
+          checkedDuplicateNamesRef.current.add(formData.property_name.trim().toLowerCase());
+        }
         setDuplicateMatch(data.matchedProperty);
         setShowDuplicateModal(true);
       }
@@ -671,7 +678,13 @@ export default function AddPropertyPage() {
             <aside className={styles.sidebar}>
           <div className={styles.card}>
             <label className={styles.label}>📍 Map Location</label>
-            <MapViewer initialLat={formData.lat} initialLng={formData.lng} onLocationSelect={handleLocationSelect} mapStyle="satellite" />
+            <MapViewer 
+              initialLat={formData.lat} 
+              initialLng={formData.lng} 
+              onLocationSelect={handleLocationSelect} 
+              mapStyle="satellite" 
+              selectedProperty={formData}
+            />
             <div className={styles.coords}>Current Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
           </div>
 
