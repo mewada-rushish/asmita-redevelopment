@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Loader from '@/components/ui/Loader';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './editusers.module.css';
@@ -124,8 +125,7 @@ export default function EditUserPage() {
     if (checkingAuth || fetching) {
         return (
             <div className={styles.container} style={{ textAlign: 'center', padding: '50px' }}>
-                <i className="fa fa-spinner fa-spin fa-2x"></i>
-                <p>Loading user data...</p>
+                <Loader />
             </div>
         );
     }

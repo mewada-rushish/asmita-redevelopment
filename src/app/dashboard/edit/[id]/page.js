@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useCallback, useEffect } from 'react';
+import Loader from '@/components/ui/Loader';
 import { useRouter, useParams } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
 import CustomSelect from '@/components/ui/CustomSelect';
@@ -680,7 +681,7 @@ export default function EditPropertyPage() {
   if (checkingAuth || initialLoading) {
     return (
       <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '250px' }}>
-        <div><i className="fa fa-spinner fa-spin fa-2x"></i> Loading property data...</div>
+        <Loader />
       </div>
     );
   }

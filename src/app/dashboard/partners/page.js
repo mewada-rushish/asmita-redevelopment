@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Loader from "@/components/ui/Loader";
 import { useRouter } from "next/navigation";
 import styles from "./partners.module.css";
 import dashboardStyles from "../dashboard.module.css";
@@ -198,7 +199,7 @@ export default function PartnersListingPage() {
       <div className={styles.tableCard}>
         {loading ? (
           <div className={styles.emptyState}>
-            <i className="fa fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Loading partners...
+            <Loader />
           </div>
         ) : (
           <>
