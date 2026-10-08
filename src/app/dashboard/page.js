@@ -60,6 +60,7 @@ const safeJSONParse = (data, fallback = null) => {
 export default function DashboardMapPage() {
   const router = useRouter();
   const [properties, setProperties] = useState([]);
+  const [propertyGroups, setPropertyGroups] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedStatus, setExpandedStatus] = useState(null);
   const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
@@ -105,6 +106,15 @@ export default function DashboardMapPage() {
         console.error("Failed to fetch properties:", err);
         setProperties([]);
       });
+
+    fetch('/api/groups')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setPropertyGroups(data);
+        }
+      })
+      .catch(err => console.error("Failed to fetch groups:", err));
   }, []);
 
   const getFilteredProperties = (status) => {
@@ -119,9 +129,30 @@ export default function DashboardMapPage() {
 
   const mapProperties = useMemo(() => {
     if (!Array.isArray(properties)) return [];
-    if (propertyType === 'All') return properties;
-    return properties.filter(p => p.type === propertyType);
-  }, [properties, propertyType]);
+    
+    let filtered = properties;
+    
+    if (propertyType !== 'All') {
+      filtered = filtered.filter(p => p.type === propertyType);
+    }
+    
+    if (expandedStatus) {
+      filtered = filtered.filter(p => p.status === expandedStatus);
+    }
+
+    if (selectedProperty) {
+      const alwaysVisible = [selectedProperty];
+      if (selectedProperty.club_id) {
+        alwaysVisible.push(...properties.filter(p => p.club_id === selectedProperty.club_id && p.id !== selectedProperty.id));
+      }
+      
+      const filteredIds = new Set(filtered.map(p => p.id));
+      const toAdd = alwaysVisible.filter(p => !filteredIds.has(p.id));
+      filtered = [...filtered, ...toAdd];
+    }
+    
+    return filtered;
+  }, [properties, propertyType, expandedStatus, selectedProperty]);
 
   const linkedProperties = useMemo(() => {
     if (!selectedProperty || !selectedProperty.club_id || !Array.isArray(properties)) return [];
@@ -358,6 +389,7 @@ export default function DashboardMapPage() {
         <div className={styles.mapContainer}>
         <MapViewer 
           properties={mapProperties} 
+          propertyGroups={propertyGroups}
           mapStyle={currentStyle} 
           onMarkerClick={setSelectedProperty} 
           selectedProperty={selectedProperty}

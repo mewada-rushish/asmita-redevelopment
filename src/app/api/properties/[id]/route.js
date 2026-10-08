@@ -57,7 +57,7 @@ export async function GET(req, { params }) {
     // Fetch sibling properties if part of a club
     if (property.club_id) {
         const [siblings] = await db.execute(
-            `SELECT id, property_name, address FROM properties WHERE club_id = ? AND id != ?`,
+            `SELECT id, property_name, address, lat, lng, status FROM properties WHERE club_id = ? AND id != ?`,
             [property.club_id, id]
         );
         clubbed_properties = siblings;
