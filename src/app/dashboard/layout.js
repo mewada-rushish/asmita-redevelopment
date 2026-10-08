@@ -11,7 +11,7 @@ function DashboardLayoutContent({ children }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentType = searchParams.get('type') || 'All';
-  const [user, setUser] = useState({ name: 'Loading...', role: '' });
+  const [user, setUser] = useState({ name: '', role: '' });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState({});
 
@@ -81,8 +81,8 @@ function DashboardLayoutContent({ children }) {
     }
   };
 
-  const firstName = user.name !== 'Loading...' ? user.name.split(' ')[0] : 'Loading...';
-  const initial = user.name !== 'Loading...' ? user.name.charAt(0).toUpperCase() : 'A';
+  const firstName = user.name ? user.name.split(' ')[0] : <i className="fa fa-spinner fa-spin"></i>;
+  const initial = user.name ? user.name.charAt(0).toUpperCase() : <i className="fa fa-spinner fa-spin" style={{ fontSize: '14px' }}></i>;
 
   return (
     <div className={styles.layoutContainer}>
