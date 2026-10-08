@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
+import Loader from '@/components/ui/Loader';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -409,7 +410,7 @@ function PropertiesListContent() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="6" className={styles.loadingCell}>Loading...</td></tr>
+                <tr><td colSpan="6" className={styles.loadingCell}><Loader /></td></tr>
               ) : currentItems.length === 0 ? (
                 <tr>
                   <td colSpan="6" className={styles.emptyCell}>
@@ -680,7 +681,7 @@ function PropertiesListContent() {
 
 export default function PropertiesListPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '20px' }}>Loading Properties...</div>}>
+    <Suspense fallback={<Loader />}>
       <PropertiesListContent />
     </Suspense>
   );

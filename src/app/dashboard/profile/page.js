@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Loader from '@/components/ui/Loader';
 import styles from './profile.module.css';
 
 export default function ProfilePage() {
@@ -85,7 +86,7 @@ export default function ProfilePage() {
         setSavingPass(false);
     };
 
-    if (loading) return <div className={styles.loader}><i className="fa fa-spinner fa-spin fa-2x"></i></div>;
+    if (loading) return <Loader />;
 
     const isAdmin = user.role === 'Super Admin' || user.role === 'Admin';
 

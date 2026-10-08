@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, Suspense } from 'react';
+import Loader from '@/components/ui/Loader';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -198,7 +199,7 @@ function DashboardLayoutContent({ children }) {
 
 export default function DashboardLayout({ children }) {
   return (
-    <Suspense fallback={<div style={{ padding: '20px' }}>Loading Dashboard...</div>}>
+    <Suspense fallback={<Loader />}>
       <DashboardLayoutContent>{children}</DashboardLayoutContent>
     </Suspense>
   );

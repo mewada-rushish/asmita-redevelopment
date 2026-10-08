@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import Loader from '@/components/ui/Loader';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from './users.module.css';
@@ -219,8 +220,7 @@ export default function UsersPage() {
             <div className={styles.tableContainer}>
                 {loading && users.length === 0 ? (
                     <div className={styles.emptyState}>
-                        <i className="fa fa-spinner fa-spin fa-2x"></i>
-                        <p>Loading staff records...</p>
+                        <Loader />
                     </div>
                 ) : currentUsers.length === 0 ? (
                     <div className={styles.emptyState}>
