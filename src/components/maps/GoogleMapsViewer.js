@@ -257,9 +257,40 @@ export default function GoogleMapsViewer({
   selectedProperty
 }) {
   const containerHeight = onLocationSelect ? '400px' : '100%';
+  const [authError, setAuthError] = useState(false);
+
+  useEffect(() => {
+    window.gm_authFailure = () => {
+      setAuthError(true);
+    };
+  }, []);
+
+  if (authError) {
+    return (
+      <div style={{
+        height: containerHeight, width: '100%',
+        borderRadius: '8px', overflow: 'hidden',
+        backgroundColor: '#f8d7da', border: '1px solid #f5c6cb',
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', alignItems: 'center',
+        color: '#721c24', padding: '20px', textAlign: 'center'
+      }}>
+        <i className="fa fa-map-marker" style={{ fontSize: '3rem', marginBottom: '10px', opacity: 0.5 }}></i>
+        <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>Map Unavailable</h3>
+        <p style={{ margin: 0, fontSize: '0.9rem' }}>
+          This server is not authorized to use the Google Maps API key.<br/>
+          (RefererNotAllowedMapError)
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GMAP_KEY} libraries={['places']}>
+    <APIProvider 
+      apiKey={process.env.NEXT_PUBLIC_GMAP_KEY} 
+      libraries={['places']}
+      onError={() => setAuthError(true)}
+    >
       <div style={{
         height: containerHeight, width: '100%',
         borderRadius: '8px', overflow: 'hidden',
