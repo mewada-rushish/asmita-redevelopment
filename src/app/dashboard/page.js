@@ -63,6 +63,8 @@ export default function DashboardMapPage() {
   const [propertyGroups, setPropertyGroups] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedStatus, setExpandedStatus] = useState(null);
+  const [expandedGroup, setExpandedGroup] = useState(null);
+  const [legendTab, setLegendTab] = useState('status');
   const [isLegendCollapsed, setIsLegendCollapsed] = useState(false);
   const [currentStyle, setCurrentStyle] = useState('satellite');
   const [propertyType, setPropertyType] = useState('All');
@@ -617,46 +619,114 @@ export default function DashboardMapPage() {
               <i className="fa fa-search"></i>
               <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            <div className={styles.statusSections}>
-              {legendStatuses.map(status => {
-                const list = getFilteredProperties(status);
-                
-                // If user is searching, hide empty statuses. If not searching, hide empty legacy statuses.
-                if (isSearching && list.length === 0) return null;
-                if (!isSearching && list.length === 0 && !STATUS_FLOW.includes(status)) return null;
 
-                // Auto-expand categories if a search is active, otherwise rely on manual toggle state
-                const isOpen = isSearching || expandedStatus === status;
-
-                return (
-                  <div key={status} className={styles.section}>
-                    <button 
-                      className={styles.sectionToggle} 
-                      onClick={() => {
-                        // Allow manual toggling only if not currently searching
-                        if (!isSearching) setExpandedStatus(isOpen ? null : status);
-                      }}
-                      style={{ cursor: isSearching ? 'default' : 'pointer' }}
-                    >
-                      <div className={styles.statusLabel}>
-                        <span className={styles.dot} style={{ background: getStatusColor(status) }}></span>
-                        {status}
-                      </div>
-                      <span className={styles.countBadge}>{list.length}</span>
-                    </button>
-                    {isOpen && (
-                      <ul className={styles.propertyList}>
-                        {list.map(p => (
-                          <li key={p.id} className={styles.propertyItem} onClick={() => setSelectedProperty(p)} style={{ cursor: 'pointer' }}>
-                            {p.property_name}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
+            <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+              <button 
+                onClick={() => setLegendTab('status')}
+                style={{ flex: 1, padding: '6px', background: legendTab === 'status' ? '#3b82f6' : '#f1f5f9', color: legendTab === 'status' ? '#fff' : '#64748b', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', transition: 'all 0.2s' }}
+              >By Status</button>
+              <button 
+                onClick={() => setLegendTab('groups')}
+                style={{ flex: 1, padding: '6px', background: legendTab === 'groups' ? '#3b82f6' : '#f1f5f9', color: legendTab === 'groups' ? '#fff' : '#64748b', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', transition: 'all 0.2s' }}
+              >By Group</button>
             </div>
+
+            {legendTab === 'status' ? (
+              <div className={styles.statusSections}>
+                {legendStatuses.map(status => {
+                  const list = getFilteredProperties(status);
+                  
+                  // If user is searching, hide empty statuses. If not searching, hide empty legacy statuses.
+                  if (isSearching && list.length === 0) return null;
+                  if (!isSearching && list.length === 0 && !STATUS_FLOW.includes(status)) return null;
+
+                  // Auto-expand categories if a search is active, otherwise rely on manual toggle state
+                  const isOpen = isSearching || expandedStatus === status;
+
+                  return (
+                    <div key={status} className={styles.section}>
+                      <button 
+                        className={styles.sectionToggle} 
+                        onClick={() => {
+                          // Allow manual toggling only if not currently searching
+                          if (!isSearching) setExpandedStatus(isOpen ? null : status);
+                        }}
+                        style={{ cursor: isSearching ? 'default' : 'pointer' }}
+                      >
+                        <div className={styles.statusLabel}>
+                          <span className={styles.dot} style={{ background: getStatusColor(status) }}></span>
+                          {status}
+                        </div>
+                        <span className={styles.countBadge}>{list.length}</span>
+                      </button>
+                      {isOpen && (
+                        <ul className={styles.propertyList}>
+                          {list.map(p => (
+                            <li key={p.id} className={styles.propertyItem} onClick={() => setSelectedProperty(p)} style={{ cursor: 'pointer' }}>
+                              {p.property_name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={styles.statusSections}>
+                {(() => {
+                  const groupedMap = {};
+                  const filteredProps = propertyType === 'All' ? properties : properties.filter(p => p.type === propertyType);
+                  
+                  filteredProps.forEach(p => {
+                    if (p.club_id) {
+                      if (!groupedMap[p.club_id]) groupedMap[p.club_id] = [];
+                      groupedMap[p.club_id].push(p);
+                    }
+                  });
+                  
+                  const groupEntries = Object.entries(groupedMap).filter(([_, list]) => list.length > 0);
+                  
+                  if (groupEntries.length === 0) {
+                    return <p style={{fontSize: '12px', color: '#64748b', padding: '10px', textAlign: 'center'}}>No grouped properties found.</p>;
+                  }
+
+                  return groupEntries.map(([clubId, list]) => {
+                    const searchMatch = isSearching && list.some(p => (p.property_name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+                    if (isSearching && !searchMatch) return null;
+
+                    const savedGroup = propertyGroups.find(g => g.id === clubId);
+                    const groupName = savedGroup?.name || `Group of ${list.length}`;
+                    const isOpen = isSearching || expandedGroup === clubId;
+
+                    return (
+                      <div key={clubId} className={styles.section}>
+                        <button 
+                          className={styles.sectionToggle} 
+                          onClick={() => { if (!isSearching) setExpandedGroup(isOpen ? null : clubId); }}
+                          style={{ cursor: isSearching ? 'default' : 'pointer' }}
+                        >
+                          <div className={styles.statusLabel}>
+                            <i className="fa fa-link" style={{ color: '#3b82f6' }}></i>
+                            {groupName}
+                          </div>
+                          <span className={styles.countBadge}>{list.length}</span>
+                        </button>
+                        {isOpen && (
+                          <ul className={styles.propertyList}>
+                            {list.map(p => (
+                              <li key={p.id} className={styles.propertyItem} onClick={() => setSelectedProperty(p)} style={{ cursor: 'pointer' }}>
+                                {p.property_name}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
           </div>
         )}
       </div>
