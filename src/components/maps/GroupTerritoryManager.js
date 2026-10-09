@@ -193,6 +193,7 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [] 
       const handlePathEdit = () => {
         if (isDrawing) return;
         const path = polygonRef.current.getPath();
+        if (!path) return;
         const newCoords = [];
         for (let i = 0; i < path.getLength(); i++) {
           const xy = path.getAt(i);
@@ -210,10 +211,12 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [] 
 
     // Update paths carefully to avoid loops
     const currentPath = polygonRef.current.getPath();
+    const currentLength = currentPath ? currentPath.getLength() : 0;
+    
     let isDifferent = false;
-    if (currentPath.getLength() !== coords.length) {
+    if (currentLength !== coords.length) {
       isDifferent = true;
-    } else {
+    } else if (currentPath) {
       for (let i = 0; i < coords.length; i++) {
         const pt = currentPath.getAt(i);
         if (pt.lat() !== coords[i].lat || pt.lng() !== coords[i].lng) {
