@@ -14,7 +14,7 @@ import { getClubBoundary } from '@/utils/geoUtils';
 
 const MIRA_ROAD_COORDS = { lat: 19.2813, lng: 72.8693 };
 
-function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClick, lat, lng, onLocationSelect, selectedProperty }) {
+function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClick, lat, lng, onLocationSelect, selectedProperty, expandedGroup }) {
   const map = useMap();
   const apiIsLoaded = useApiIsLoaded();
   const [activeOverlay, setActiveOverlay] = useState(null);
@@ -132,6 +132,25 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       }
     }
   }, [selectedProperty, map, onLocationSelect, groupedProperties]);
+
+  // Pan to expanded group
+  useEffect(() => {
+    if (!map || !expandedGroup || !window.google) return;
+    
+    const groupProps = properties.filter(p => p.club_id === expandedGroup && p.lat && p.lng);
+    if (groupProps.length === 0) return;
+
+    if (groupProps.length === 1) {
+      map.panTo({ lat: parseFloat(groupProps[0].lat), lng: parseFloat(groupProps[0].lng) });
+      map.setZoom(18);
+    } else {
+      const groupBounds = new window.google.maps.LatLngBounds();
+      groupProps.forEach(p => {
+        groupBounds.extend({ lat: parseFloat(p.lat), lng: parseFloat(p.lng) });
+      });
+      map.fitBounds(groupBounds, { padding: 50 });
+    }
+  }, [expandedGroup, map, properties]);
 
   const handleRecenter = useCallback(() => {
     if (!map) return;
@@ -554,7 +573,8 @@ export default function GoogleMapsViewer({
   initialLat = 19.2813,
   initialLng = 72.8693,
   onLocationSelect,
-  selectedProperty
+  selectedProperty,
+  expandedGroup
 }) {
   const containerHeight = onLocationSelect ? '400px' : '100%';
   const [authError, setAuthError] = useState(false);
@@ -605,6 +625,7 @@ export default function GoogleMapsViewer({
           lng={Number(initialLng)}
           onLocationSelect={onLocationSelect}
           selectedProperty={selectedProperty}
+          expandedGroup={expandedGroup}
         />
       </div>
     </APIProvider>
