@@ -624,14 +624,14 @@ export default function DashboardMapPage() {
               <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
 
-            <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+            <div className={styles.tabContainer}>
               <button 
                 onClick={() => setLegendTab('status')}
-                style={{ flex: 1, padding: '6px', background: legendTab === 'status' ? '#3b82f6' : '#f1f5f9', color: legendTab === 'status' ? '#fff' : '#64748b', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', transition: 'all 0.2s' }}
+                className={`${styles.tabButton} ${legendTab === 'status' ? styles.active : ''}`}
               >By Status</button>
               <button 
                 onClick={() => setLegendTab('groups')}
-                style={{ flex: 1, padding: '6px', background: legendTab === 'groups' ? '#3b82f6' : '#f1f5f9', color: legendTab === 'groups' ? '#fff' : '#64748b', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold', transition: 'all 0.2s' }}
+                className={`${styles.tabButton} ${legendTab === 'groups' ? styles.active : ''}`}
               >By Group</button>
             </div>
 
