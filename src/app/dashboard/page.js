@@ -138,8 +138,12 @@ export default function DashboardMapPage() {
       filtered = filtered.filter(p => p.type === propertyType);
     }
     
-    if (expandedStatus) {
+    if (legendTab === 'status' && expandedStatus) {
       filtered = filtered.filter(p => p.status === expandedStatus);
+    }
+
+    if (legendTab === 'groups' && expandedGroup) {
+      filtered = filtered.filter(p => p.club_id === expandedGroup);
     }
 
     if (selectedProperty) {
@@ -154,7 +158,7 @@ export default function DashboardMapPage() {
     }
     
     return filtered;
-  }, [properties, propertyType, expandedStatus, selectedProperty]);
+  }, [properties, propertyType, expandedStatus, expandedGroup, legendTab, selectedProperty]);
 
   const linkedProperties = useMemo(() => {
     if (!selectedProperty || !selectedProperty.club_id || !Array.isArray(properties)) return [];
