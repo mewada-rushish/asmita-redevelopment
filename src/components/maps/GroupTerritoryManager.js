@@ -185,13 +185,12 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [] 
           strokeWeight: 2,
           strokeColor: polyColor,
           clickable: true,
-          editable: !isDrawing,
+          editable: true,
           zIndex: 1,
           map: map
         });
 
       const handlePathEdit = () => {
-        if (isDrawing) return;
         const path = polygonRef.current.getPath();
         if (!path) return;
         const newCoords = [];
@@ -206,7 +205,7 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [] 
       window.google.maps.event.addListener(polygonRef.current.getPath(), 'insert_at', handlePathEdit);
       window.google.maps.event.addListener(polygonRef.current.getPath(), 'remove_at', handlePathEdit);
     } else {
-      polygonRef.current.setOptions({ editable: !isDrawing });
+      polygonRef.current.setOptions({ editable: true });
     }
 
     // Update paths carefully to avoid loops
