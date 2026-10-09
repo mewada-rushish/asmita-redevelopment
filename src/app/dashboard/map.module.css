@@ -109,6 +109,37 @@
   border-color: #3b82f6;
 }
 
+.tabContainer {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  margin: 0 10px 10px 10px;
+}
+
+.tabButton {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tabButton:hover:not(.active) {
+  color: #334155;
+}
+
+.tabButton.active {
+  background: white;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .statusSections {
   overflow-y: auto;
   overflow-x: hidden;
