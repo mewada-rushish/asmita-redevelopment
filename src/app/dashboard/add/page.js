@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Accordion from '@/components/accordion/Accordion';
 import CustomSelect from '@/components/ui/CustomSelect';
