@@ -24,13 +24,14 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
   const groupedProperties = useMemo(() => {
     const groups = {};
     properties.forEach(p => {
+      if (expandedGroup && p.club_id !== expandedGroup) return;
       if (!p.lat || !p.lng) return;
       const key = `${parseFloat(p.lat).toFixed(5)},${parseFloat(p.lng).toFixed(5)}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(p);
     });
     return groups;
-  }, [properties]);
+  }, [properties, expandedGroup]);
 
   const bounds = useMemo(() => {
     if (!apiIsLoaded || typeof window === 'undefined' || !window.google || properties.length === 0) return null;
@@ -192,6 +193,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       // 1. Draw ALL saved territories globally
       if (propertyGroups && propertyGroups.length > 0) {
         propertyGroups.forEach(group => {
+          if (expandedGroup && group.id !== expandedGroup) return;
           if (!group.territory) return;
           
           let boundaryPaths = null;
@@ -253,7 +255,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       }
 
       // 2. Draw dynamic territory ONLY for the selected property if it's not already drawn
-      if (selectedProperty && selectedProperty.club_id && !drawnClubIds.has(selectedProperty.club_id)) {
+      if (selectedProperty && selectedProperty.club_id && !drawnClubIds.has(selectedProperty.club_id) && (!expandedGroup || selectedProperty.club_id === expandedGroup)) {
         const clubProps = properties.filter(p => p.club_id === selectedProperty.club_id && p.lat && p.lng);
         if (clubProps.length > 0) {
           const boundaryPaths = await getClubBoundary(clubProps);
@@ -325,7 +327,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProperty, properties, propertyGroups, map]);
+  }, [selectedProperty, properties, propertyGroups, map, expandedGroup]);
 
   const getStatusColor = (status) => {
     const colors = { 
