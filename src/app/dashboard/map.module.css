@@ -135,8 +135,8 @@
 }
 
 .tabButton.active {
-  background: white;
-  color: #0f172a;
+  background: #0f172a;
+  color: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
