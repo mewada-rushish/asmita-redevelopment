@@ -399,6 +399,7 @@ export default function DashboardMapPage() {
           mapStyle={currentStyle} 
           onMarkerClick={setSelectedProperty} 
           selectedProperty={selectedProperty}
+          expandedGroup={expandedGroup}
           center={selectedProperty ? { lat: Number(selectedProperty.lat), lng: Number(selectedProperty.lng) } : undefined}
           zoom={selectedProperty ? 18 : undefined}
         />
