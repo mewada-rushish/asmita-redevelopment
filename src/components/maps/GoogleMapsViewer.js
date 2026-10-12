@@ -422,11 +422,11 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
         style={{ width: '100%', height: '100%' }}
         defaultZoom={onLocationSelect ? 19 : 15}
         defaultCenter={onLocationSelect && lat && lng ? { lat: Number(lat), lng: Number(lng) } : MIRA_ROAD_COORDS}
-        mapTypeId={mapStyle === 'satellite' ? (activeGroupId ? 'satellite' : 'hybrid') : 'roadmap'}
+        mapTypeId={mapStyle === 'satellite' ? 'satellite' : 'roadmap'}
         gestureHandling={'cooperative'}
         disableDefaultUI={true}
         mapId={process.env.NEXT_PUBLIC_GMAP_ID}
-        clickableIcons={!activeGroupId}
+        clickableIcons={false}
         onClick={(e) => {
           if (onLocationSelect && e.detail.latLng) {
             onLocationSelect({

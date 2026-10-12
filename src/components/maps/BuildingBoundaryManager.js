@@ -7,7 +7,15 @@ import { logoPath } from '@/assets/images';
 import { getStatusColor } from '@/utils/geoUtils';
 import styles from './BuildingBoundaryManager.module.css';
 
-function BuildingDrawingMap({ initialBoundary, onPolygonChange, pinLat, pinLng, status = 'Not Approached' }) {
+function BuildingDrawingMap({ 
+  initialBoundary, 
+  onPolygonChange, 
+  pinLat, 
+  pinLng, 
+  propertyName = 'Property', 
+  status = 'Not Approached', 
+  linkedProperties = [] 
+}) {
   const statusColor = getStatusColor(status);
   const map = useMap();
   const apiIsLoaded = useApiIsLoaded();
@@ -190,19 +198,65 @@ function BuildingDrawingMap({ initialBoundary, onPolygonChange, pinLat, pinLng, 
 
   return (
     <>
-      {/* Property Pin for visual reference */}
+      {/* Current Property Custom Marker */}
       {pinLat && pinLng && (
         <AdvancedMarker position={{ lat: Number(pinLat), lng: Number(pinLng) }} zIndex={100}>
-          <div style={{
-            width: '32px', height: '32px', backgroundColor: statusColor,
-            borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)',
-            border: '2px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Image src={logoPath} alt="L" width={18} height={18} style={{ transform: 'rotate(45deg)', filter: 'brightness(0) invert(1)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
+              padding: '4px 12px 4px 8px', borderRadius: '50px',
+              border: `3px solid ${statusColor}`,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)', gap: '8px', whiteSpace: 'nowrap'
+            }}>
+              <div style={{
+                width: '20px', height: '20px', backgroundColor: statusColor,
+                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Image src={logoPath} alt="L" width={13} height={13} style={{ filter: 'brightness(0) invert(1)' }} />
+              </div>
+              <span style={{ color: '#0f172a', fontSize: '13px', fontWeight: '700', fontFamily: 'var(--font-montserrat)' }}>
+                {propertyName}
+              </span>
+            </div>
+            <div style={{
+              width: 0, height: 0, borderLeft: '7px solid transparent',
+              borderRight: '7px solid transparent', borderTop: `7px solid ${statusColor}`,
+              marginTop: '-1px'
+            }} />
           </div>
         </AdvancedMarker>
       )}
+
+      {/* Linked Group Properties Custom Markers */}
+      {linkedProperties && linkedProperties.filter(p => p.lat && p.lng && (Math.abs(Number(p.lat) - Number(pinLat)) > 0.00001 || Math.abs(Number(p.lng) - Number(pinLng)) > 0.00001)).map(p => {
+        const pStatusColor = getStatusColor(p.status);
+        return (
+          <AdvancedMarker 
+            key={`linked-${p.id || p.property_name}`}
+            position={{ lat: Number(p.lat), lng: Number(p.lng) }}
+            zIndex={70}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.9 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
+                padding: '4px 10px 4px 6px', borderRadius: '50px',
+                border: `2px solid ${pStatusColor}`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.18)', gap: '6px', whiteSpace: 'nowrap'
+              }}>
+                <Image src={logoPath} alt="L" width={16} height={16} />
+                <span style={{ color: '#334155', fontSize: '12px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>
+                  {p.property_name}
+                </span>
+              </div>
+              <div style={{
+                width: 0, height: 0, borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent', borderTop: `6px solid ${pStatusColor}`,
+                marginTop: '-1px'
+              }} />
+            </div>
+          </AdvancedMarker>
+        );
+      })}
     </>
   );
 }
@@ -213,6 +267,7 @@ export default function BuildingBoundaryManager({
   lng,
   propertyName = 'Property',
   status = 'Not Approached',
+  linkedProperties = [],
   onSave,
   onClose
 }) {
@@ -282,7 +337,8 @@ export default function BuildingBoundaryManager({
               defaultZoom={20}
               mapId={process.env.NEXT_PUBLIC_GMAP_ID || "DEMO_MAP_ID"}
               disableDefaultUI={true}
-              mapTypeId="hybrid"
+              mapTypeId="satellite"
+              clickableIcons={false}
               gestureHandling="cooperative"
               style={{ width: '100%', height: '100%' }}
             >
@@ -291,7 +347,9 @@ export default function BuildingBoundaryManager({
                 onPolygonChange={setBoundary}
                 pinLat={lat}
                 pinLng={lng}
+                propertyName={propertyName}
                 status={status}
+                linkedProperties={linkedProperties}
               />
             </Map>
           </APIProvider>

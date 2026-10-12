@@ -1518,6 +1518,7 @@ export default function AddPropertyPage() {
           lng={formData.lng}
           propertyName={formData.property_name || 'Property'}
           status={formData.status}
+          linkedProperties={[]}
           onSave={(newBoundary) => updateField('building_boundary', newBoundary)}
           onClose={() => setShowBoundaryModal(false)}
         />

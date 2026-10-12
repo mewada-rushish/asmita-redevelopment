@@ -80,12 +80,22 @@
 }
 
 .label {
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: #4b5563;
-  display: block;
-  margin: 8px auto !important;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px 0 !important;
+}
+
+.label i {
+  font-size: 14px;
+  color: #1e4ec4;
+  width: 16px;
+  text-align: center;
 }
 
 .input {

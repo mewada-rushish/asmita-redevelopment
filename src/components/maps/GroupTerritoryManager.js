@@ -256,30 +256,36 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
     </div>
 
     {(isDrawing || coords.length > 0) ? (
-      currentProp && currentProp.lat && currentProp.lng && (
-        <AdvancedMarker 
-          key={`current-${currentProp.id || currentProp.property_name || 'curr'}`} 
-          position={{ lat: parseFloat(currentProp.lat), lng: parseFloat(currentProp.lng) }}
-          zIndex={100}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
-              padding: '4px 12px 4px 8px', borderRadius: '50px',
-              border: `3px solid ${getStatusColor(currentProp.status)}`,
-              boxShadow: '0 4px 10px rgba(0,0,0,0.15)', gap: '8px', whiteSpace: 'nowrap'
-            }}>
-              <Image src={logoPath} alt="L" width={22} height={22} />
-              <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>{currentProp.property_name}</span>
+      clubbedProperties.filter(p => p.lat && p.lng).map(p => {
+        const isCurrent = currentPropertyId && String(p.id) === String(currentPropertyId);
+        const pStatusColor = getStatusColor(p.status);
+        return (
+          <AdvancedMarker 
+            key={`group-prop-${p.id || p.property_name}`} 
+            position={{ lat: parseFloat(p.lat), lng: parseFloat(p.lng) }} 
+            zIndex={isCurrent ? 100 : 70}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
+                padding: '4px 12px 4px 8px', borderRadius: '50px',
+                border: `3px solid ${pStatusColor}`,
+                boxShadow: '0 4px 10px rgba(0,0,0,0.2)', gap: '8px', whiteSpace: 'nowrap'
+              }}>
+                <Image src={logoPath} alt="L" width={20} height={20} />
+                <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>
+                  {p.property_name} {isCurrent ? '(Current)' : ''}
+                </span>
+              </div>
+              <div style={{
+                width: 0, height: 0, borderLeft: '7px solid transparent',
+                borderRight: '7px solid transparent', borderTop: `7px solid ${pStatusColor}`,
+                marginTop: '-1px'
+              }} />
             </div>
-            <div style={{
-              width: 0, height: 0, borderLeft: '7px solid transparent',
-              borderRight: '7px solid transparent', borderTop: `7px solid ${getStatusColor(currentProp.status)}`,
-              marginTop: '-1px'
-            }} />
-          </div>
-        </AdvancedMarker>
-      )
+          </AdvancedMarker>
+        );
+      })
     ) : (
       Object.entries(groupedProperties).map(([key, groupProps]) => {
         const centerLat = parseFloat(groupProps[0].lat);
@@ -493,7 +499,8 @@ export default function GroupTerritoryManager({
               defaultZoom={15}
               mapId={process.env.NEXT_PUBLIC_GMAP_ID || "DEMO_MAP_ID"}
               disableDefaultUI={true}
-              mapTypeId="hybrid"
+              mapTypeId="satellite"
+              clickableIcons={false}
               gestureHandling="cooperative"
               style={{ width: '100%', height: '100%' }}
             >

@@ -1616,6 +1616,7 @@ export default function EditPropertyPage() {
               lng={formData.lng}
               propertyName={formData.property_name || 'Property'}
               status={formData.status}
+              linkedProperties={clubbedProperties}
               onSave={(newBoundary) => updateField('building_boundary', newBoundary)}
               onClose={() => setShowBoundaryModal(false)}
             />
