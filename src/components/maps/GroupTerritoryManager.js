@@ -340,44 +340,6 @@ function DrawingMap({
 
   return (
     <>
-    <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 10, background: 'white', padding: '8px 16px', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-      <span style={{ color: '#334155' }}>{isDrawing ? (coords.length > 2 ? 'Click the red starting point to complete the circuit.' : 'Click on the map to place points.') : 'Drag the vertices to edit. Right-click a vertex to remove it.'}</span>
-      <div style={{ display: 'flex', gap: '8px', borderLeft: '1px solid #e2e8f0', paddingLeft: '15px' }}>
-        <button 
-          onClick={(e) => { e.preventDefault(); undo(); }} 
-          disabled={historyIndex === 0} 
-          title="Undo"
-          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: historyIndex === 0 ? '#f1f5f9' : '#f8fafc', color: historyIndex === 0 ? '#94a3b8' : '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: historyIndex === 0 ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 7v6h6"></path>
-            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
-          </svg>
-        </button>
-        <button 
-          onClick={(e) => { e.preventDefault(); redo(); }} 
-          disabled={historyIndex === history.length - 1} 
-          title="Redo"
-          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: historyIndex === history.length - 1 ? '#f1f5f9' : '#f8fafc', color: historyIndex === history.length - 1 ? '#94a3b8' : '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: historyIndex === history.length - 1 ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 7v6h-6"></path>
-            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
-          </svg>
-        </button>
-        <button 
-          onClick={(e) => { e.preventDefault(); clear(); }} 
-          title="Clear Map"
-          style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fee2e2', color: '#ef4444', border: '1px solid #f87171', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-
     {(isDrawing || coords.length > 0) ? (
       clubbedProperties.filter(p => p.lat && p.lng).map(p => {
         const isCurrent = currentPropertyId && String(p.id) === String(currentPropertyId);
@@ -671,7 +633,7 @@ export default function GroupTerritoryManager({
             </span>
           </div>
 
-          <div className={styles.toolbarActions}>
+          <div className={styles.actions}>
             {/* UNDO BUTTON */}
             <button
               type="button"

@@ -150,7 +150,8 @@
   flex-shrink: 0;
 }
 
-.actions {
+.actions,
+.toolbarActions {
   display: flex;
   align-items: center;
   gap: 8px;
