@@ -43,14 +43,14 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
-  color: #7c3aed;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e4ec4;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 5px rgba(124, 58, 237, 0.08);
+  box-shadow: 0 2px 5px rgba(30, 78, 196, 0.08);
 }
 
 .modalHeader h2 {
@@ -114,13 +114,13 @@
 
 .textInput:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #1e4ec4;
+  box-shadow: 0 0 0 3px rgba(30, 78, 196, 0.1);
 }
 
 .saveBtn {
   padding: 0 24px;
-  background: #7c3aed;
+  background: #1e4ec4;
   color: white;
   border: none;
   border-radius: 8px;
@@ -134,13 +134,13 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 2px 6px rgba(30, 78, 196, 0.25);
 }
 
 .saveBtn:hover:not(:disabled) {
-  background: #6d28d9;
+  background: #163a94;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 4px 12px rgba(30, 78, 196, 0.35);
 }
 
 .saveBtn:disabled {
@@ -214,9 +214,9 @@
 }
 
 .connectBtn {
-  background: #f5f3ff;
-  color: #7c3aed;
-  border: 1.5px solid #ddd6fe;
+  background: #eff6ff;
+  color: #1e4ec4;
+  border: 1.5px solid #bfdbfe;
   padding: 8px 14px;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -230,7 +230,7 @@
 }
 
 .connectBtn:hover {
-  background: #ede9fe;
+  background: #dbeafe;
   transform: translateY(-1px);
 }
 

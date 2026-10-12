@@ -1086,7 +1086,7 @@ export default function EditPropertyPage() {
                     {clubbedProperties.length > 0 && formData.club_id && (
                       <button
                         className={styles.addBtn}
-                        style={{ marginTop: '15px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#4f46e5', color: 'white', width: 'fit-content', borderRadius: '8px', padding: '9px 16px', fontWeight: 600, boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)' }}
+                        style={{ marginTop: '15px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#1e4ec4', color: 'white', width: 'fit-content', borderRadius: '8px', padding: '9px 16px', fontWeight: 600, boxShadow: '0 2px 6px rgba(30, 78, 196, 0.25)', border: 'none', cursor: 'pointer' }}
                         onClick={(e) => { e.preventDefault(); setShowGroupManager(true); }}
                       >
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

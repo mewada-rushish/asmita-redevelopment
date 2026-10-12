@@ -134,7 +134,7 @@ function DrawingMap({
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
             scale: 9,
-            fillColor: '#7c3aed',
+            fillColor: '#1e4ec4',
             fillOpacity: 1,
             strokeColor: 'white',
             strokeWeight: 2.5,
