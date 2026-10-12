@@ -701,15 +701,13 @@ export default function AddPropertyPage() {
             <aside className={styles.sidebar}>
           <div className={styles.card}>
             <div className={styles.cardHeader}>
-              <div className={styles.cardHeaderLeft}>
-                <div className={styles.headerIconWrap} style={{ background: '#eff6ff', borderColor: '#bfdbfe', color: '#2563eb' }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                </div>
-                <span className={styles.headerTitleText}>Map Location</span>
+              <div className={styles.headerIconWrap} style={{ background: '#eff6ff', borderColor: '#bfdbfe', color: '#2563eb' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
               </div>
+              <span className={styles.headerTitleText}>Map Location</span>
               <span className={styles.headerBadge}>Satellite</span>
             </div>
             <MapViewer 
