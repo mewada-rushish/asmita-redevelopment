@@ -96,8 +96,8 @@
   padding: 12px 24px;
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 16px;
+  flex-wrap: nowrap;
 }
 
 .instruction {
@@ -107,6 +107,8 @@
   align-items: center;
   gap: 10px;
   font-weight: 500;
+  flex: 1;
+  min-width: 0;
 }
 
 .instructionIcon {
@@ -120,6 +122,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .toolBtn {
@@ -135,6 +139,7 @@
   justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
 }
 
 .toolBtn:hover:not(:disabled) {
@@ -157,20 +162,21 @@
   height: 24px;
   background-color: #e2e8f0;
   margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .connectBtn {
   border: 1.5px solid transparent;
-  padding: 8px 14px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
 }
 
 .connectBtn:hover {
@@ -182,16 +188,16 @@
   background: #ffffff;
   border: 1.5px solid #fecaca;
   color: #ef4444;
-  padding: 8px 16px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
 }
 
 .clearBtn:hover {
@@ -206,22 +212,28 @@
   background: #0284c7;
   border: 1px solid transparent;
   color: #ffffff;
-  padding: 8px 20px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
 
-.saveBtn:hover {
+.saveBtn:hover:not(:disabled) {
   filter: brightness(1.08);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.saveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .mapWrapper {
