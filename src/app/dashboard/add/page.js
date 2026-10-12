@@ -719,14 +719,14 @@ export default function AddPropertyPage() {
             />
             <div className={styles.coords}>Current Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
             
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
               <button
                 type="button"
                 onClick={() => setShowBoundaryModal(true)}
                 className={styles.boundaryBtn}
                 style={{
-                  borderColor: formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? `${getStatusColor(formData.status)}60` : '#e2e8f0',
-                  background: formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? `linear-gradient(135deg, ${getStatusColor(formData.status)}0d 0%, #ffffff 100%)` : '#ffffff',
+                  borderColor: formData.building_boundary && Array.isArray(formData.building_boundary) && formData.building_boundary.length > 2 ? `${getStatusColor(formData.status)}50` : '#e2e8f0',
+                  background: formData.building_boundary && Array.isArray(formData.building_boundary) && formData.building_boundary.length > 2 ? `linear-gradient(135deg, ${getStatusColor(formData.status)}08 0%, #ffffff 100%)` : '#ffffff',
                 }}
               >
                 <div className={styles.boundaryBtnLeft}>
@@ -738,7 +738,7 @@ export default function AddPropertyPage() {
                       border: `1px solid ${getStatusColor(formData.status)}30`
                     }}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="3 3"></rect>
                       <circle cx="3" cy="3" r="2" fill="currentColor"></circle>
                       <circle cx="21" cy="3" r="2" fill="currentColor"></circle>
@@ -746,36 +746,33 @@ export default function AddPropertyPage() {
                       <circle cx="3" cy="21" r="2" fill="currentColor"></circle>
                     </svg>
                   </div>
-                  <span style={{ color: formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? getStatusColor(formData.status) : '#0f172a' }}>
-                    {formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? 'Edit Building Border' : 'Mark Building Border'}
+                  <span className={styles.boundaryBtnText} style={{ color: '#0f172a' }}>
+                    {formData.building_boundary && Array.isArray(formData.building_boundary) && formData.building_boundary.length > 2 ? 'Edit Building Border' : 'Mark Building Border'}
                   </span>
                 </div>
 
                 {formData.building_boundary && Array.isArray(formData.building_boundary) && formData.building_boundary.length > 2 ? (
-                  <span style={{
-                    fontSize: '11px',
-                    padding: '3px 8px',
-                    borderRadius: '20px',
-                    backgroundColor: `${getStatusColor(formData.status)}18`,
-                    color: getStatusColor(formData.status),
-                    border: `1px solid ${getStatusColor(formData.status)}30`,
-                    fontWeight: '700',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <span 
+                    className={styles.boundaryBadge}
+                    style={{
+                      backgroundColor: `${getStatusColor(formData.status)}15`,
+                      color: getStatusColor(formData.status),
+                      border: `1px solid ${getStatusColor(formData.status)}30`,
+                    }}
+                  >
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                     {formData.building_boundary.length} pts
                   </span>
                 ) : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                     <polyline points="9 18 15 12 9 6"></polyline>
                   </svg>
                 )}
               </button>
-              {formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) && (
+
+              {formData.building_boundary && Array.isArray(formData.building_boundary) && formData.building_boundary.length > 2 && (
                 <button
                   type="button"
                   onClick={() => updateField('building_boundary', null)}

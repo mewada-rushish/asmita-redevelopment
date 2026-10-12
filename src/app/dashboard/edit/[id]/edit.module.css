@@ -124,50 +124,78 @@
 
 .boundaryBtn {
   flex: 1;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 10px;
+  min-width: 0;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 8px;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
   color: #0f172a;
   font-family: var(--font-montserrat), sans-serif;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
 }
 
 .boundaryBtn:hover {
   background: #f8fafc;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   transform: translateY(-1px);
 }
 
 .boundaryBtnLeft {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+.boundaryBtnText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
 }
 
 .boundaryBtnIcon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
+.boundaryBadge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
 .boundaryClearBtn {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   border: 1.5px solid #fecaca;
   background: #ffffff;
   color: #ef4444;
@@ -185,7 +213,7 @@
   border-color: #f87171;
   color: #dc2626;
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.18);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.15);
 }
 
 .label {
