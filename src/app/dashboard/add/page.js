@@ -657,8 +657,14 @@ export default function AddPropertyPage() {
   return (
     <>
       <header className={dashboardStyles.topHeader}>
-        <h1 style={{ fontFamily: 'var(--font-montserrat)', fontSize: '24px', fontWeight: 800, margin: 0, color: '#111827' }}>
-          <i className="fa fa-edit"></i> Add Property
+        <h1 style={{ fontFamily: 'var(--font-montserrat)', fontSize: '24px', fontWeight: 800, margin: 0, color: '#111827', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e4ec4' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </div>
+          Add Property
         </h1>
         <button onClick={handleSave} className={styles.saveBtn} disabled={loading} style={{
           padding: '10px 20px',
@@ -671,9 +677,21 @@ export default function AddPropertyPage() {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          fontSize: '14px'
+          fontSize: '14px',
+          boxShadow: '0 2px 6px rgba(30, 78, 196, 0.25)'
         }}>
-          {loading ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>} Save Property
+          {loading ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="fa-spin">
+              <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="16" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          )}
+          Save Property
         </button>
       </header>
 
@@ -682,7 +700,18 @@ export default function AddPropertyPage() {
           <div className={styles.mainGrid}>
             <aside className={styles.sidebar}>
           <div className={styles.card}>
-            <label className={styles.label}><i className="fa fa-map-marker"></i> Map Location</label>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardHeaderLeft}>
+                <div className={styles.headerIconWrap} style={{ background: '#eff6ff', borderColor: '#bfdbfe', color: '#2563eb' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                </div>
+                <span className={styles.headerTitleText}>Map Location</span>
+              </div>
+              <span className={styles.headerBadge}>Satellite</span>
+            </div>
             <MapViewer 
               initialLat={formData.lat} 
               initialLng={formData.lng} 
@@ -692,52 +721,88 @@ export default function AddPropertyPage() {
             />
             <div className={styles.coords}>Current Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
             
-            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
               <button
                 type="button"
                 onClick={() => setShowBoundaryModal(true)}
+                className={styles.boundaryBtn}
                 style={{
-                  flex: 1,
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: `1px solid ${getStatusColor(formData.status)}`,
-                  background: formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? `${getStatusColor(formData.status)}18` : '#ffffff',
-                  color: getStatusColor(formData.status),
-                  fontWeight: '700',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s'
+                  borderColor: formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? `${getStatusColor(formData.status)}60` : '#e2e8f0',
+                  background: formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? `linear-gradient(135deg, ${getStatusColor(formData.status)}0d 0%, #ffffff 100%)` : '#ffffff',
                 }}
               >
-                <i className="fa fa-pencil-square-o"></i>
-                {formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? 'Edit Building Border' : 'Mark Building Border'}
+                <div className={styles.boundaryBtnLeft}>
+                  <div 
+                    className={styles.boundaryBtnIcon}
+                    style={{
+                      backgroundColor: `${getStatusColor(formData.status)}15`,
+                      color: getStatusColor(formData.status),
+                      border: `1px solid ${getStatusColor(formData.status)}30`
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="3 3"></rect>
+                      <circle cx="3" cy="3" r="2" fill="currentColor"></circle>
+                      <circle cx="21" cy="3" r="2" fill="currentColor"></circle>
+                      <circle cx="21" cy="21" r="2" fill="currentColor"></circle>
+                      <circle cx="3" cy="21" r="2" fill="currentColor"></circle>
+                    </svg>
+                  </div>
+                  <span style={{ color: formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? getStatusColor(formData.status) : '#0f172a' }}>
+                    {formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? 'Edit Building Border' : 'Mark Building Border'}
+                  </span>
+                </div>
+
+                {formData.building_boundary && Array.isArray(formData.building_boundary) && formData.building_boundary.length > 2 ? (
+                  <span style={{
+                    fontSize: '11px',
+                    padding: '3px 8px',
+                    borderRadius: '20px',
+                    backgroundColor: `${getStatusColor(formData.status)}18`,
+                    color: getStatusColor(formData.status),
+                    border: `1px solid ${getStatusColor(formData.status)}30`,
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    {formData.building_boundary.length} pts
+                  </span>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                )}
               </button>
               {formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) && (
                 <button
                   type="button"
                   onClick={() => updateField('building_boundary', null)}
                   title="Clear Building Border"
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #fca5a5',
-                    background: '#ffffff',
-                    color: '#ef4444',
-                    cursor: 'pointer'
-                  }}
+                  className={styles.boundaryClearBtn}
                 >
-                  <i className="fa fa-trash"></i>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
                 </button>
               )}
             </div>
           </div>
 
           <div className={styles.card}>
-            <label className={styles.label}><i className="fa fa-user"></i> Assign CP</label>
+            <div className={styles.cardHeader}>
+              <div className={styles.headerIconWrap} style={{ background: '#f5f3ff', borderColor: '#ddd6fe', color: '#7c3aed' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+              </div>
+              <span className={styles.headerTitleText}>Assign CP</span>
+            </div>
             <CustomSelect value={formData.assigned_cp_id} onChange={e => updateField('assigned_cp_id', e.target.value)}>
               <option value="">-- Select CP --</option>
               {executives.map(ex => <option key={ex.id} value={ex.id}>{ex.name} ({ex.role})</option>)}
@@ -749,20 +814,41 @@ export default function AddPropertyPage() {
                 onClick={() => setShowExecModal(true)} 
                 className={styles.quickAddBtn}
               >
-                <i className="fa fa-plus-circle"></i> Add New CP
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="16" />
+                  <line x1="8" y1="12" x2="16" y2="12" />
+                </svg>
+                Add New CP
               </button>
             )}
           </div>
 
           <div className={styles.card}>
-            <label className={styles.label}><i className="fa fa-home"></i> Overall Status *</label>
+            <div className={styles.cardHeader}>
+              <div className={styles.headerIconWrap} style={{ background: '#ecfdf5', borderColor: '#a7f3d0', color: '#059669' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+              </div>
+              <span className={styles.headerTitleText}>Overall Status *</span>
+            </div>
             <CustomSelect value={formData.status} onChange={e => updateField('status', e.target.value)}>
               {STATUS_FLOW.map(s => <option key={s} value={s}>{s}</option>)}
             </CustomSelect>
           </div>
 
           <div className={styles.card}>
-            <label className={styles.label}><i className="fa fa-history"></i> Activity Log Trail</label>
+            <div className={styles.cardHeader}>
+              <div className={styles.headerIconWrap} style={{ background: '#fffbeb', borderColor: '#fde68a', color: '#d97706' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+              <span className={styles.headerTitleText}>Activity Log Trail</span>
+            </div>
             <div className={styles.inputGroup}>
               <input 
                 type="date" 

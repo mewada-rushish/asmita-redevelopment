@@ -235,7 +235,10 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
           title="Undo"
           style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: historyIndex === 0 ? '#f1f5f9' : '#f8fafc', color: historyIndex === 0 ? '#94a3b8' : '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: historyIndex === 0 ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
         >
-          <i className="fa fa-undo"></i>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 7v6h6"></path>
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+          </svg>
         </button>
         <button 
           onClick={(e) => { e.preventDefault(); redo(); }} 
@@ -243,14 +246,20 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
           title="Redo"
           style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: historyIndex === history.length - 1 ? '#f1f5f9' : '#f8fafc', color: historyIndex === history.length - 1 ? '#94a3b8' : '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: historyIndex === history.length - 1 ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
         >
-          <i className="fa fa-repeat"></i>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 7v6h-6"></path>
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"></path>
+          </svg>
         </button>
         <button 
           onClick={(e) => { e.preventDefault(); clear(); }} 
           title="Clear Map"
           style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fee2e2', color: '#ef4444', border: '1px solid #f87171', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
         >
-          <i className="fa fa-trash"></i>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
         </button>
       </div>
     </div>
@@ -401,7 +410,12 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
                   <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: '800', fontFamily: 'var(--font-montserrat)' }}>
                     {groupProps.length} Properties
                   </span>
-                  <i className="fa fa-expand" style={{ color: '#ffffff', fontSize: '12px' }}></i>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <polyline points="9 21 3 21 3 15"></polyline>
+                    <line x1="21" y1="3" x2="14" y2="10"></line>
+                    <line x1="3" y1="21" x2="10" y2="14"></line>
+                  </svg>
                 </div>
                 <div style={{
                   width: 0, height: 0, borderLeft: '7px solid transparent',
@@ -461,8 +475,22 @@ export default function GroupTerritoryManager({
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h2>Manage Group Territory & Identity</h2>
-          <button onClick={onClose} className={styles.closeBtn}><i className="fa fa-times"></i></button>
+          <div className={styles.headerTitleRow}>
+            <div className={styles.headerIconBadge}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+            </div>
+            <h2>Manage Group Territory &amp; Identity</h2>
+          </div>
+          <button onClick={onClose} className={styles.closeBtn} title="Close">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         
         <div className={styles.formRow}>
@@ -481,12 +509,20 @@ export default function GroupTerritoryManager({
             onClick={handleSave}
             disabled={isSaving}
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
             {isSaving ? 'Saving...' : 'Save Group'}
           </button>
         </div>
 
         <div className={styles.mapInstruction}>
-          <i className="fa fa-info-circle"></i> Click on the map to place vertices and draw your custom territory. You can drag existing vertices to edit the shape!
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>Click on the map to place vertices and draw your custom territory. You can drag existing vertices to edit the shape!</span>
         </div>
 
         <div className={styles.mapWrapper}>

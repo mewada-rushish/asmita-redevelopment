@@ -590,7 +590,12 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                     <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: '800', fontFamily: 'var(--font-montserrat)' }}>
                       {groupProps.length} Properties
                     </span>
-                    <i className="fa fa-expand" style={{ color: '#ffffff', fontSize: '12px' }}></i>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <polyline points="9 21 3 21 3 15"></polyline>
+                      <line x1="21" y1="3" x2="14" y2="10"></line>
+                      <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
                   </div>
                   <div style={{
                     width: 0, height: 0, borderLeft: '7px solid transparent',
@@ -630,15 +635,22 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
 
       <button
         onClick={handleRecenter}
+        title="Recenter Map"
         style={{
           position: 'absolute', bottom: '20px', right: '20px',
           width: '40px', height: '40px', backgroundColor: 'white',
-          border: 'none', borderRadius: '8px', boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+          border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 10
+          zIndex: 10, transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
-        <i className="fa fa-crosshairs" style={{ fontSize: '18px', color: '#1e4ec4' }}></i>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1e4ec4" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="22" y1="12" x2="18" y2="12"></line>
+          <line x1="6" y1="12" x2="2" y2="12"></line>
+          <line x1="12" y1="6" x2="12" y2="2"></line>
+          <line x1="12" y1="22" x2="12" y2="18"></line>
+        </svg>
       </button>
     </div>
   );
@@ -675,7 +687,10 @@ export default function GoogleMapsViewer({
         justifyContent: 'center', alignItems: 'center',
         color: '#721c24', padding: '20px', textAlign: 'center'
       }}>
-        <i className="fa fa-map-marker" style={{ fontSize: '3rem', marginBottom: '10px', opacity: 0.5 }}></i>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#721c24" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '10px', opacity: 0.5 }}>
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
         <h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem' }}>Map Unavailable</h3>
         <p style={{ margin: 0, fontSize: '0.9rem' }}>
           This server is not authorized to use the Google Maps API key.<br/>
