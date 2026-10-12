@@ -57,7 +57,7 @@ export async function GET(req, { params }) {
     // Fetch sibling properties if part of a club
     if (property.club_id) {
         const [siblings] = await db.execute(
-            `SELECT id, property_name, address, lat, lng, status FROM properties WHERE club_id = ? AND id != ?`,
+            `SELECT id, property_name, address, lat, lng, status, building_boundary FROM properties WHERE club_id = ? AND id != ?`,
             [property.club_id, id]
         );
         clubbed_properties = siblings;
@@ -193,7 +193,15 @@ export async function PUT(req, { params }) {
       data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started', data.project_progress || 'Not Started', 
       
       data.activity_logs || '[]', auth.email || 'Unknown User',
-      data.building_boundary ? (typeof data.building_boundary === 'string' ? data.building_boundary : JSON.stringify(data.building_boundary)) : null,
+      (() => {
+        if (!data.building_boundary) return null;
+        try {
+          const parsed = typeof data.building_boundary === 'string' ? JSON.parse(data.building_boundary) : data.building_boundary;
+          return Array.isArray(parsed) && parsed.length >= 3 ? JSON.stringify(parsed) : null;
+        } catch (e) {
+          return null;
+        }
+      })(),
       id
     ];
 
@@ -237,7 +245,7 @@ export async function PUT(req, { params }) {
   }
 }
 
-// INSTANT SINGLE-FIELD ACTIVITY LOG UPDATE PATCH METHOD
+// INSTANT SINGLE-FIELD UPDATE PATCH METHOD (activity_logs, building_boundary)
 export async function PATCH(req, { params }) {
   try {
     const auth = await verifyAuth();
@@ -246,9 +254,11 @@ export async function PATCH(req, { params }) {
     const { id } = await params;
     if (!id) return NextResponse.json({ error: "No ID provided" }, { status: 400 });
 
-    const { activity_logs } = await req.json();
-    if (!activity_logs) {
-      return NextResponse.json({ success: false, error: 'Missing activity_logs data parameter' }, { status: 400 });
+    const body = await req.json();
+    const { activity_logs, building_boundary } = body;
+
+    if (activity_logs === undefined && building_boundary === undefined) {
+      return NextResponse.json({ success: false, error: 'Missing activity_logs or building_boundary parameter' }, { status: 400 });
     }
 
     const db = await getDbConnection();
@@ -259,10 +269,24 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
-    const query = `UPDATE properties SET activity_logs = ?, updated_by_name = ? WHERE id = ?`;
-    await db.execute(query, [activity_logs, auth.email || 'Unknown User', id]);
+    if (building_boundary !== undefined) {
+      const boundaryVal = (building_boundary && Array.isArray(building_boundary) && building_boundary.length >= 3)
+        ? JSON.stringify(building_boundary)
+        : (typeof building_boundary === 'string' && building_boundary.trim() !== '' && building_boundary !== '[]' ? building_boundary : null);
 
-    return NextResponse.json({ success: true, message: "Activity logs instantly updated in DB" });
+      const query = `UPDATE properties SET building_boundary = ?, updated_by_name = ? WHERE id = ?`;
+      await db.execute(query, [boundaryVal, auth.email || 'Unknown User', id]);
+
+      return NextResponse.json({ success: true, message: "Building boundary updated in DB" });
+    }
+
+    if (activity_logs !== undefined) {
+      const logsVal = typeof activity_logs === 'string' ? activity_logs : JSON.stringify(activity_logs || []);
+      const query = `UPDATE properties SET activity_logs = ?, updated_by_name = ? WHERE id = ?`;
+      await db.execute(query, [logsVal, auth.email || 'Unknown User', id]);
+
+      return NextResponse.json({ success: true, message: "Activity logs instantly updated in DB" });
+    }
   } catch (error) {
     console.error('PATCH ERROR:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

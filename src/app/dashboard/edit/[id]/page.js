@@ -247,7 +247,15 @@ export default function EditPropertyPage() {
         document_checklist: mergedChecklist,
         lat: Number(data.lat) || 19.2813,
         lng: Number(data.lng) || 72.8693,
-        building_boundary: data.building_boundary ? safeParse(data.building_boundary) : null,
+        building_boundary: (() => {
+          try {
+            const raw = data.building_boundary;
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            return Array.isArray(parsed) && parsed.length >= 3 ? parsed : null;
+          } catch (e) {
+            return null;
+          }
+        })(),
         hoarding_date: data.hoarding_date ? data.hoarding_date.split('T')[0] : '',
         offer_letter_files: Array.isArray(parsedOfferLetters) ? parsedOfferLetters : [],
         activity_logs: Array.isArray(parsedActivityLogs) ? parsedActivityLogs : [],
@@ -419,6 +427,22 @@ export default function EditPropertyPage() {
   const handleLocationSelect = useCallback((c) => {
     setFormData(prev => ({ ...prev, lat: c.lat, lng: c.lng }));
   }, []);
+
+  const handleClearBoundary = async () => {
+    updateField('building_boundary', null);
+    if (id) {
+      try {
+        await fetch(`/api/properties/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ building_boundary: null })
+        });
+        toast.success("Building border cleared");
+      } catch (e) {
+        console.error("Failed to clear boundary on server", e);
+      }
+    }
+  };
 
   // INSTANT DATABASE SAVING ACTION FOR ACTIVITY LOG ENTRY
   const handleAddLog = async () => {
@@ -851,7 +875,7 @@ export default function EditPropertyPage() {
                   {formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) && (
                     <button
                       type="button"
-                      onClick={() => updateField('building_boundary', null)}
+                      onClick={handleClearBoundary}
                       title="Clear Building Border"
                       className={styles.boundaryClearBtn}
                     >
@@ -1706,6 +1730,7 @@ export default function EditPropertyPage() {
               propertyName={formData.property_name || 'Property'}
               status={formData.status}
               linkedProperties={clubbedProperties}
+              propertyId={formData.id || id}
               onSave={(newBoundary) => updateField('building_boundary', newBoundary)}
               onClose={() => setShowBoundaryModal(false)}
             />

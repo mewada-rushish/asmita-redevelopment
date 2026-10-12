@@ -205,7 +205,15 @@ export async function POST(req) {
       data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started', data.project_progress || 'Not Started', 
       
       data.activity_logs || '[]', auth.email || 'Unknown User',
-      data.building_boundary ? (typeof data.building_boundary === 'string' ? data.building_boundary : JSON.stringify(data.building_boundary)) : null
+      (() => {
+        if (!data.building_boundary) return null;
+        try {
+          const parsed = typeof data.building_boundary === 'string' ? JSON.parse(data.building_boundary) : data.building_boundary;
+          return Array.isArray(parsed) && parsed.length >= 3 ? JSON.stringify(parsed) : null;
+        } catch (e) {
+          return null;
+        }
+      })()
     ];
 
     const [result] = await db.execute(query, values);

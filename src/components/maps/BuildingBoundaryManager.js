@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { APIProvider, Map, useMap, useApiIsLoaded, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { logoPath } from '@/assets/images';
 import { getStatusColor } from '@/utils/geoUtils';
+import toast from 'react-hot-toast';
 import styles from './BuildingBoundaryManager.module.css';
 
 function BuildingDrawingMap({ 
@@ -152,23 +153,8 @@ function BuildingDrawingMap({
         zIndex: 50,
         map: map
       });
-
-      const handlePathEdit = () => {
-        const path = polygonRef.current.getPath();
-        if (!path) return;
-        const newCoords = [];
-        for (let i = 0; i < path.getLength(); i++) {
-          const xy = path.getAt(i);
-          newCoords.push({ lat: xy.lat(), lng: xy.lng() });
-        }
-        updateCoords(newCoords);
-      };
-
-      window.google.maps.event.addListener(polygonRef.current.getPath(), 'set_at', handlePathEdit);
-      window.google.maps.event.addListener(polygonRef.current.getPath(), 'insert_at', handlePathEdit);
-      window.google.maps.event.addListener(polygonRef.current.getPath(), 'remove_at', handlePathEdit);
     } else {
-      polygonRef.current.setOptions({ editable: true });
+      polygonRef.current.setOptions({ editable: true, strokeColor: strokeCol, fillColor: fillCol });
     }
 
     const currentPath = polygonRef.current.getPath();
@@ -191,10 +177,40 @@ function BuildingDrawingMap({
       polygonRef.current.setPaths(coords);
     }
 
+    const activePath = polygonRef.current.getPath();
+    const listeners = [];
+    if (activePath) {
+      const handlePathEdit = () => {
+        const path = polygonRef.current.getPath();
+        if (!path) return;
+        const newCoords = [];
+        for (let i = 0; i < path.getLength(); i++) {
+          const xy = path.getAt(i);
+          newCoords.push({ lat: xy.lat(), lng: xy.lng() });
+        }
+        updateCoords(newCoords);
+      };
+
+      listeners.push(window.google.maps.event.addListener(activePath, 'set_at', handlePathEdit));
+      listeners.push(window.google.maps.event.addListener(activePath, 'insert_at', handlePathEdit));
+      listeners.push(window.google.maps.event.addListener(activePath, 'remove_at', handlePathEdit));
+    }
+
+    // Allow right click on vertex to remove it
+    const clickListener = window.google.maps.event.addListener(polygonRef.current, 'rightclick', (e) => {
+      if (e.vertex !== undefined) {
+        const path = polygonRef.current.getPath();
+        if (path && path.getLength() > 0) {
+          path.removeAt(e.vertex);
+        }
+      }
+    });
+    listeners.push(clickListener);
+
     return () => {
-      // Keep polygon on unmount of effect
+      listeners.forEach(l => window.google.maps.event.removeListener(l));
     };
-  }, [apiIsLoaded, map, coords, updateCoords]);
+  }, [apiIsLoaded, map, coords, statusColor, updateCoords]);
 
   return (
     <>
@@ -268,18 +284,50 @@ export default function BuildingBoundaryManager({
   propertyName = 'Property',
   status = 'Not Approached',
   linkedProperties = [],
+  propertyId = null,
   onSave,
   onClose
 }) {
   const statusColor = getStatusColor(status);
   const [boundary, setBoundary] = useState(initialBoundary);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    onSave(boundary);
-    onClose();
+  const handleClear = () => {
+    setBoundary([]);
+    setResetKey(prev => prev + 1);
+  };
+
+  const handleSave = async () => {
+    const validBoundary = boundary && Array.isArray(boundary) && boundary.length >= 3 ? boundary : null;
+
+    if (boundary && Array.isArray(boundary) && boundary.length > 0 && boundary.length < 3) {
+      toast.error("A building boundary requires at least 3 points to outline a building. Please add more points.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (propertyId) {
+        const res = await fetch(`/api/properties/${propertyId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ building_boundary: validBoundary })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to save to database');
+        }
+        toast.success("Building border saved successfully!");
+      }
+      onSave(validBoundary);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast.error("Error saving building border: " + err.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const centerCoords = {
@@ -313,7 +361,7 @@ export default function BuildingBoundaryManager({
             </div>
             <p>Click corners around the building footprint to draw the rooftop boundary. Drag vertices to fine-tune.</p>
           </div>
-          <button onClick={onClose} className={styles.closeBtn} title="Close">
+          <button onClick={onClose} className={styles.closeBtn} title="Close" disabled={isSaving}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -332,7 +380,7 @@ export default function BuildingBoundaryManager({
             </div>
             <span>
               {boundary && boundary.length > 2
-                ? `Boundary marked with ${boundary.length} vertices. You can drag any vertex point to adjust.`
+                ? `Boundary marked with ${boundary.length} vertices. You can drag any vertex point to adjust or right-click to delete.`
                 : 'Click 3 or more points around the building rooftop/edges to complete the outline.'}
             </span>
           </div>
@@ -340,8 +388,9 @@ export default function BuildingBoundaryManager({
             <button
               type="button"
               className={styles.clearBtn}
-              onClick={() => setBoundary([])}
+              onClick={handleClear}
               title="Clear Boundary"
+              disabled={isSaving}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -354,11 +403,12 @@ export default function BuildingBoundaryManager({
               className={styles.saveBtn}
               style={{ backgroundColor: statusColor, borderColor: statusColor, boxShadow: `0 2px 8px ${statusColor}40` }}
               onClick={handleSave}
+              disabled={isSaving}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
-              Save Building Border
+              {isSaving ? 'Saving...' : 'Save Building Border'}
             </button>
           </div>
         </div>
@@ -379,7 +429,8 @@ export default function BuildingBoundaryManager({
               style={{ width: '100%', height: '100%' }}
             >
               <BuildingDrawingMap
-                initialBoundary={initialBoundary}
+                key={`draw-map-${resetKey}`}
+                initialBoundary={boundary}
                 onPolygonChange={setBoundary}
                 pinLat={lat}
                 pinLng={lng}
