@@ -109,20 +109,54 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
     };
   }, [map, selectedProperty, onLocationSelect]);
 
-  // Do not zoom in or change zoom level when a singular property is selected
+  // Zoom in to focus on selected property and center on map screen
   useEffect(() => {
-    if (!map) return;
-    
-    if (selectedProperty && selectedProperty.lat && selectedProperty.lng) {
-      // Auto-spiderfy if the selected property is clustered
-      const key = `${parseFloat(selectedProperty.lat).toFixed(5)},${parseFloat(selectedProperty.lng).toFixed(5)}`;
-      if (groupedProperties[key] && groupedProperties[key].length > 1) {
-        setSpiderfiedCoords(key);
-      }
+    if (!map || !selectedProperty || !selectedProperty.lat || !selectedProperty.lng || !window.google) return;
+
+    let targetCenter = { lat: parseFloat(selectedProperty.lat), lng: parseFloat(selectedProperty.lng) };
+
+    // If the building has boundary coordinates, center on the boundary centroid
+    if (selectedProperty.building_boundary) {
+      try {
+        const bCoords = typeof selectedProperty.building_boundary === 'string'
+          ? JSON.parse(selectedProperty.building_boundary)
+          : selectedProperty.building_boundary;
+        if (Array.isArray(bCoords) && bCoords.length >= 3) {
+          const bBounds = new window.google.maps.LatLngBounds();
+          bCoords.forEach(pt => {
+            const ptLat = pt.lat !== undefined ? pt.lat : pt[0];
+            const ptLng = pt.lng !== undefined ? pt.lng : pt[1];
+            if (ptLat && ptLng) bBounds.extend({ lat: parseFloat(ptLat), lng: parseFloat(ptLng) });
+          });
+          if (!bBounds.isEmpty()) {
+            const bCenter = bBounds.getCenter();
+            targetCenter = { lat: bCenter.lat(), lng: bCenter.lng() };
+          }
+        }
+      } catch (e) {}
     }
+
+    // Auto-spiderfy if the selected property is clustered
+    const key = `${parseFloat(selectedProperty.lat).toFixed(5)},${parseFloat(selectedProperty.lng).toFixed(5)}`;
+    if (groupedProperties[key] && groupedProperties[key].length > 1) {
+      setSpiderfiedCoords(key);
+    }
+
+    // Firmly zoom in and center on the selected property in the map screen
+    map.setZoom(19);
+    map.setCenter(targetCenter);
+    map.panTo(targetCenter);
+
+    const timeoutId = setTimeout(() => {
+      if (map) {
+        map.panTo(targetCenter);
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
   }, [selectedProperty, map, groupedProperties]);
 
-  // Pan to active group
+  // Zoom in to focus on active group and center on map screen
   useEffect(() => {
     if (!map || !activeGroupId || !window.google) return;
     
@@ -130,19 +164,55 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
     if (selectedProperty && selectedProperty.lat && selectedProperty.lng) return;
 
     const groupProps = properties.filter(p => String(p.club_id) === String(activeGroupId) && p.lat && p.lng);
-    if (groupProps.length === 0) return;
+    const savedGroup = propertyGroups.find(g => String(g.id) === String(activeGroupId));
 
-    if (groupProps.length === 1) {
-      map.panTo({ lat: parseFloat(groupProps[0].lat), lng: parseFloat(groupProps[0].lng) });
-      map.setZoom(18);
-    } else {
-      const groupBounds = new window.google.maps.LatLngBounds();
-      groupProps.forEach(p => {
-        groupBounds.extend({ lat: parseFloat(p.lat), lng: parseFloat(p.lng) });
-      });
-      map.fitBounds(groupBounds, { padding: 50 });
+    const groupBounds = new window.google.maps.LatLngBounds();
+
+    // Include saved territory polygon in group bounds if present
+    if (savedGroup && savedGroup.territory) {
+      try {
+        const boundaryPaths = typeof savedGroup.territory === 'string' ? JSON.parse(savedGroup.territory) : savedGroup.territory;
+        if (Array.isArray(boundaryPaths) && boundaryPaths.length > 0) {
+          boundaryPaths.forEach(pt => {
+            const ptLat = pt.lat !== undefined ? pt.lat : pt[0];
+            const ptLng = pt.lng !== undefined ? pt.lng : pt[1];
+            if (ptLat && ptLng) groupBounds.extend({ lat: parseFloat(ptLat), lng: parseFloat(ptLng) });
+          });
+        }
+      } catch (e) {}
     }
-  }, [activeGroupId, selectedProperty, map, properties]);
+
+    // Include all group properties
+    groupProps.forEach(p => {
+      groupBounds.extend({ lat: parseFloat(p.lat), lng: parseFloat(p.lng) });
+    });
+
+    if (groupBounds.isEmpty()) {
+      if (groupProps.length === 1) {
+        const pos = { lat: parseFloat(groupProps[0].lat), lng: parseFloat(groupProps[0].lng) };
+        map.setZoom(18);
+        map.setCenter(pos);
+        map.panTo(pos);
+      }
+      return;
+    }
+
+    const groupCenter = groupBounds.getCenter();
+
+    // Fit bounds and center group directly on map screen
+    map.fitBounds(groupBounds, { padding: 80 });
+
+    const listener = google.maps.event.addListenerOnce(map, 'idle', () => {
+      map.setCenter(groupCenter);
+      map.panTo(groupCenter);
+      if (map.getZoom() > 18) map.setZoom(18);
+      if (map.getZoom() < 16 && groupProps.length <= 3) map.setZoom(17);
+    });
+
+    return () => {
+      if (listener) google.maps.event.removeListener(listener);
+    };
+  }, [activeGroupId, selectedProperty, map, properties, propertyGroups]);
 
 
   const handleRecenter = useCallback(() => {
