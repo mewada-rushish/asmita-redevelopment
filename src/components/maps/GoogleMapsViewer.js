@@ -223,15 +223,18 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
 
           const territoryColor = group.color || getGroupColor(group.id, groupIdx);
           const isSelected = activeGroupId && String(activeGroupId) === String(group.id);
+          // Very translucent territory fill so singular properties and buildings stand out clearly
+          const baseFillOpacity = (isSelected && selectedProperty) ? 0.05 : (isSelected ? 0.08 : 0.05);
 
           normalizedPaths.forEach(pathCoords => {
             const polygon = new window.google.maps.Polygon({
               paths: pathCoords,
               strokeColor: territoryColor,
-              strokeOpacity: isSelected ? 1 : 0.7,
-              strokeWeight: isSelected ? 3 : 2,
+              strokeOpacity: isSelected ? 0.9 : 0.65,
+              strokeWeight: isSelected ? 2.5 : 1.8,
               fillColor: territoryColor,
-              fillOpacity: isSelected ? 0.3 : 0.15,
+              fillOpacity: baseFillOpacity,
+              zIndex: 10,
               clickable: true,
               map: map
             });
@@ -241,11 +244,11 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
             });
 
             polygon.addListener('mouseover', () => {
-              polygon.setOptions({ fillOpacity: isSelected ? 0.4 : 0.25 });
+              polygon.setOptions({ fillOpacity: isSelected ? 0.13 : 0.09 });
             });
 
             polygon.addListener('mouseout', () => {
-              polygon.setOptions({ fillOpacity: isSelected ? 0.3 : 0.15 });
+              polygon.setOptions({ fillOpacity: baseFillOpacity });
             });
 
             polygonInstances.push(polygon);
@@ -290,21 +293,31 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
             }
 
             const territoryColor = selectedProperty.group_color || getGroupColor(selectedProperty.club_id);
+            const baseFillOpacity = selectedProperty ? 0.05 : 0.08;
 
             normalizedPaths.forEach(pathCoords => {
               const polygon = new window.google.maps.Polygon({
                 paths: pathCoords,
                 strokeColor: territoryColor,
-                strokeOpacity: 1,
-                strokeWeight: 2,
+                strokeOpacity: 0.9,
+                strokeWeight: 2.5,
                 fillColor: territoryColor,
-                fillOpacity: 0.25,
+                fillOpacity: baseFillOpacity,
+                zIndex: 10,
                 clickable: true,
                 map: map
               });
 
               polygon.addListener('click', () => {
                 onGroupSelect?.(selectedProperty.club_id);
+              });
+
+              polygon.addListener('mouseover', () => {
+                polygon.setOptions({ fillOpacity: 0.13 });
+              });
+
+              polygon.addListener('mouseout', () => {
+                polygon.setOptions({ fillOpacity: baseFillOpacity });
               });
 
               polygonInstances.push(polygon);
@@ -364,11 +377,30 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
           paths: bCoords,
           strokeColor: statusCol,
           strokeOpacity: 1.0,
-          strokeWeight: isSelectedBuilding ? 3 : 2,
+          strokeWeight: isSelectedBuilding ? 4.5 : 2,
           fillColor: statusCol,
-          fillOpacity: isSelectedBuilding ? 0.35 : 0.2,
-          zIndex: isSelectedBuilding ? 60 : 30,
+          fillOpacity: isSelectedBuilding ? 0.55 : 0.22,
+          zIndex: isSelectedBuilding ? 120 : 40,
+          clickable: true,
           map: map
+        });
+
+        buildingPoly.addListener('click', () => {
+          onMarkerClick?.(p);
+        });
+
+        buildingPoly.addListener('mouseover', () => {
+          buildingPoly.setOptions({
+            fillOpacity: isSelectedBuilding ? 0.7 : 0.38,
+            strokeWeight: isSelectedBuilding ? 5 : 3
+          });
+        });
+
+        buildingPoly.addListener('mouseout', () => {
+          buildingPoly.setOptions({
+            fillOpacity: isSelectedBuilding ? 0.55 : 0.22,
+            strokeWeight: isSelectedBuilding ? 4.5 : 2
+          });
         });
 
         polygonInstances.push(buildingPoly);
@@ -473,6 +505,8 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
 
           if (groupProps.length === 1) {
             const p = groupProps[0];
+            const isSelected = selectedProperty && String(selectedProperty.id) === String(p.id);
+            const statusColor = getStatusColor(p.status);
             return (
               <AdvancedMarker
                 key={p.id}
@@ -481,21 +515,36 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                   onMarkerClick?.(p);
                   setSpiderfiedCoords(null);
                 }}
-                zIndex={selectedProperty?.id === p.id ? 100 : 1}
+                zIndex={isSelected ? 200 : 50}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', transition: 'all 0.3s' }}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer',
+                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                }}>
                   <div style={{
                     display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
-                    padding: '4px 12px 4px 8px', borderRadius: '50px',
-                    border: `3px solid ${getStatusColor(p.status)}`,
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.15)', gap: '8px', whiteSpace: 'nowrap'
+                    padding: isSelected ? '5px 14px 5px 10px' : '4px 12px 4px 8px', borderRadius: '50px',
+                    border: isSelected ? '3.5px solid #1e4ec4' : `3px solid ${statusColor}`,
+                    boxShadow: isSelected 
+                      ? '0 0 0 4px rgba(30, 78, 196, 0.4), 0 8px 24px rgba(0,0,0,0.35)' 
+                      : '0 4px 10px rgba(0,0,0,0.15)',
+                    gap: '8px', whiteSpace: 'nowrap'
                   }}>
-                    <Image src={logoPath} alt="L" width={22} height={22} />
-                    <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>{p.property_name}</span>
+                    <Image src={logoPath} alt="L" width={isSelected ? 24 : 22} height={isSelected ? 24 : 22} />
+                    <span style={{ 
+                      color: isSelected ? '#0f172a' : '#1e293b', 
+                      fontSize: isSelected ? '14.5px' : '14px', 
+                      fontWeight: isSelected ? '800' : '600', 
+                      fontFamily: 'var(--font-montserrat)' 
+                    }}>
+                      {p.property_name}
+                    </span>
                   </div>
                   <div style={{
                     width: 0, height: 0, borderLeft: '7px solid transparent',
-                    borderRight: '7px solid transparent', borderTop: `7px solid ${getStatusColor(p.status)}`,
+                    borderRight: '7px solid transparent',
+                    borderTop: `7px solid ${isSelected ? '#1e4ec4' : statusColor}`,
                     marginTop: '-1px'
                   }} />
                 </div>
@@ -515,13 +564,14 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
               const length = Math.sqrt(xOffset * xOffset + yOffset * yOffset);
               const angleDeg = angleRad * (180 / Math.PI);
               const color = getStatusColor(p.status);
+              const isSelectedSpider = selectedProperty && String(selectedProperty.id) === String(p.id);
               
               return (
                 <AdvancedMarker
                   key={`${p.id}-spider`}
                   position={{ lat: centerLat, lng: centerLng }}
                   onClick={() => onMarkerClick?.(p)}
-                  zIndex={100}
+                  zIndex={isSelectedSpider ? 200 : 100}
                 >
                   <div style={{ width: 0, height: 0, position: 'relative' }}>
                     {/* The spider leg */}
@@ -531,10 +581,10 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                       left: 0,
                       width: `${length}px`,
                       height: '3px',
-                      backgroundColor: color,
+                      backgroundColor: isSelectedSpider ? '#1e4ec4' : color,
                       transformOrigin: '0 50%',
                       transform: `rotate(${angleDeg}deg)`,
-                      opacity: 0.7,
+                      opacity: isSelectedSpider ? 0.95 : 0.7,
                       pointerEvents: 'none'
                     }} />
                     
@@ -543,17 +593,28 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                       position: 'absolute',
                       top: `${yOffset}px`,
                       left: `${xOffset}px`,
-                      transform: 'translate(-50%, -50%) scale(0.9)',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer'
+                      transform: isSelectedSpider ? 'translate(-50%, -50%) scale(1.08)' : 'translate(-50%, -50%) scale(0.9)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer',
+                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
                     }}>
                       <div style={{
                         display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
-                        padding: '4px 12px 4px 8px', borderRadius: '50px',
-                        border: `3px solid ${color}`,
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)', gap: '8px', whiteSpace: 'nowrap'
+                        padding: isSelectedSpider ? '5px 14px 5px 10px' : '4px 12px 4px 8px', borderRadius: '50px',
+                        border: isSelectedSpider ? '3.5px solid #1e4ec4' : `3px solid ${color}`,
+                        boxShadow: isSelectedSpider 
+                          ? '0 0 0 4px rgba(30, 78, 196, 0.4), 0 8px 24px rgba(0,0,0,0.35)' 
+                          : '0 4px 10px rgba(0,0,0,0.15)',
+                        gap: '8px', whiteSpace: 'nowrap'
                       }}>
-                        <Image src={logoPath} alt="L" width={20} height={20} />
-                        <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>{p.property_name}</span>
+                        <Image src={logoPath} alt="L" width={isSelectedSpider ? 22 : 20} height={isSelectedSpider ? 22 : 20} />
+                        <span style={{ 
+                          color: isSelectedSpider ? '#0f172a' : '#1e293b', 
+                          fontSize: isSelectedSpider ? '13.5px' : '13px', 
+                          fontWeight: isSelectedSpider ? '800' : '600', 
+                          fontFamily: 'var(--font-montserrat)' 
+                        }}>
+                          {p.property_name}
+                        </span>
                       </div>
                     </div>
                   </div>

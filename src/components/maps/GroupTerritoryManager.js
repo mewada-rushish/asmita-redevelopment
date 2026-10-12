@@ -189,7 +189,7 @@ function DrawingMap({
     if (!apiIsLoaded || !map || !window.google) return;
 
     const polyColor = getGroupColor(clubId); // Distinct color matching group map territory
-    const fillOpacity = isConnected ? 0.3 : 0;
+    const fillOpacity = isConnected ? 0.08 : 0;
 
     if (!polygonRef.current) {
       polygonRef.current = new window.google.maps.Polygon({
