@@ -80,9 +80,34 @@ function DrawingMap({
   }, [historyIndex, history.length]);
 
   const clear = useCallback(() => {
+    if (polygonRef.current) {
+      polygonRef.current.setPaths([]);
+      const path = polygonRef.current.getPath();
+      if (path) path.clear();
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    if (firstMarkerRef.current) {
+      firstMarkerRef.current.setMap(null);
+      firstMarkerRef.current = null;
+    }
     updateCoords([]);
     setIsDrawing(true);
   }, [updateCoords]);
+
+  // Clean up overlays on unmount
+  useEffect(() => {
+    return () => {
+      if (polygonRef.current) {
+        polygonRef.current.setMap(null);
+        polygonRef.current = null;
+      }
+      if (firstMarkerRef.current) {
+        firstMarkerRef.current.setMap(null);
+        firstMarkerRef.current = null;
+      }
+    };
+  }, []);
 
   const connect = useCallback(() => {
     if (coords.length >= 3) {
@@ -188,6 +213,17 @@ function DrawingMap({
   // Sync coords to Polygon and handle edits & double click removal
   useEffect(() => {
     if (!apiIsLoaded || !map || !window.google) return;
+
+    if (coords.length === 0) {
+      if (polygonRef.current) {
+        polygonRef.current.setPaths([]);
+        const path = polygonRef.current.getPath();
+        if (path) path.clear();
+        polygonRef.current.setMap(null);
+        polygonRef.current = null;
+      }
+      return;
+    }
 
     const polyColor = getGroupColor(clubId); // Distinct color matching group map territory
     const fillOpacity = isConnected ? 0.08 : 0;

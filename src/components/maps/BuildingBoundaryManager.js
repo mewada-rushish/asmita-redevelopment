@@ -62,9 +62,34 @@ function BuildingDrawingMap({
   }, [historyIndex, history.length]);
 
   const clear = useCallback(() => {
+    if (polygonRef.current) {
+      polygonRef.current.setPaths([]);
+      const path = polygonRef.current.getPath();
+      if (path) path.clear();
+      polygonRef.current.setMap(null);
+      polygonRef.current = null;
+    }
+    if (firstMarkerRef.current) {
+      firstMarkerRef.current.setMap(null);
+      firstMarkerRef.current = null;
+    }
     updateCoords([]);
     setIsDrawing(true);
   }, [updateCoords]);
+
+  // Clean up overlays on unmount
+  useEffect(() => {
+    return () => {
+      if (polygonRef.current) {
+        polygonRef.current.setMap(null);
+        polygonRef.current = null;
+      }
+      if (firstMarkerRef.current) {
+        firstMarkerRef.current.setMap(null);
+        firstMarkerRef.current = null;
+      }
+    };
+  }, []);
 
   const connect = useCallback(() => {
     if (coords.length >= 3) {
@@ -177,6 +202,17 @@ function BuildingDrawingMap({
   // Sync coords to Polygon and handle edits & double-click removal
   useEffect(() => {
     if (!apiIsLoaded || !map || !window.google) return;
+
+    if (coords.length === 0) {
+      if (polygonRef.current) {
+        polygonRef.current.setPaths([]);
+        const path = polygonRef.current.getPath();
+        if (path) path.clear();
+        polygonRef.current.setMap(null);
+        polygonRef.current = null;
+      }
+      return;
+    }
 
     const strokeCol = statusColor;
     const fillCol = statusColor;
@@ -383,7 +419,6 @@ export default function BuildingBoundaryManager({
 }) {
   const statusColor = getStatusColor(status);
   const [boundary, setBoundary] = useState(initialBoundary);
-  const [resetKey, setResetKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const drawingControllerRef = useRef(null);
   const [drawingState, setDrawingState] = useState({
@@ -398,7 +433,6 @@ export default function BuildingBoundaryManager({
       drawingControllerRef.current.clear();
     }
     setBoundary([]);
-    setResetKey(prev => prev + 1);
   };
 
   // Keyboard shortcuts for Undo and Redo
@@ -610,7 +644,6 @@ export default function BuildingBoundaryManager({
               style={{ width: '100%', height: '100%' }}
             >
               <BuildingDrawingMap
-                key={`draw-map-${resetKey}`}
                 initialBoundary={boundary}
                 onPolygonChange={setBoundary}
                 pinLat={lat}
