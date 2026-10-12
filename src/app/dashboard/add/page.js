@@ -12,6 +12,7 @@ import styles from './add.module.css';
 import dashboardStyles from '../dashboard.module.css';
 import BuildingBoundaryManager from '@/components/maps/BuildingBoundaryManager';
 import { getStatusColor } from '@/utils/geoUtils';
+import Loader from '@/components/ui/Loader';
 
 const safeParse = (str) => {
   if (!str) return {};
@@ -118,6 +119,9 @@ export default function AddPropertyPage() {
   const [logForm, setLogForm] = useState({ category: 'General Note', note: '' });
 
   const [showBoundaryModal, setShowBoundaryModal] = useState(false);
+  const [draftStatus, setDraftStatus] = useState(null);
+  const isDraftRestoredRef = useRef(false);
+  const draftTimerRef = useRef(null);
 
   const [formData, setFormData] = useState({
     type: '', category: '',
@@ -201,6 +205,72 @@ export default function AddPropertyPage() {
   useEffect(() => {
     fetchUsersData();
   }, [fetchUsersData]);
+
+  // Restore draft from localStorage on initial load
+  useEffect(() => {
+    if (checkingAuth) return;
+    if (isDraftRestoredRef.current) return;
+    isDraftRestoredRef.current = true;
+
+    try {
+      const savedDraftRaw = localStorage.getItem('asmita_property_add_draft');
+      if (savedDraftRaw) {
+        const draft = JSON.parse(savedDraftRaw);
+        if (draft && draft.formData) {
+          setFormData(prev => ({
+            ...prev,
+            ...draft.formData,
+            activity_logs: Array.isArray(draft.formData.activity_logs) ? draft.formData.activity_logs : []
+          }));
+          if (Array.isArray(draft.clubbedProperties)) {
+            setClubbedProperties(draft.clubbedProperties);
+          }
+          setDraftStatus('saved');
+          toast.success("Restored unsaved property draft", { id: 'draft-restored', duration: 3000 });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to restore draft:", e);
+    }
+  }, [checkingAuth]);
+
+  // Debounced auto-save draft to localStorage (1s)
+  useEffect(() => {
+    if (checkingAuth || !isDraftRestoredRef.current) return;
+
+    const hasContent = Boolean(
+      (formData.property_name && formData.property_name.trim()) ||
+      (formData.address && formData.address.trim()) ||
+      (formData.pmc_name && formData.pmc_name.trim()) ||
+      (formData.land_owner_name && formData.land_owner_name.trim()) ||
+      (clubbedProperties && clubbedProperties.length > 0)
+    );
+
+    if (!hasContent) return;
+
+    setDraftStatus('saving');
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+
+    draftTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          'asmita_property_add_draft',
+          JSON.stringify({
+            formData,
+            clubbedProperties,
+            savedAt: new Date().toISOString()
+          })
+        );
+        setDraftStatus('saved');
+      } catch (err) {
+        console.error("Failed to save draft:", err);
+      }
+    }, 1000);
+
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [formData, clubbedProperties, checkingAuth]);
 
   // SMART AUTO-UPGRADE STATUS LOGIC
   useEffect(() => {
@@ -621,6 +691,9 @@ export default function AddPropertyPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        try {
+          localStorage.removeItem('asmita_property_add_draft');
+        } catch (e) {}
         toast.success("Property pipeline successfully saved!");
         setTimeout(() => {
           router.push('/dashboard/list');
@@ -634,10 +707,21 @@ export default function AddPropertyPage() {
     setLoading(false);
   };
 
+  const handleClearDraft = () => {
+    if (window.confirm("Are you sure you want to discard this unsaved draft?")) {
+      try {
+        localStorage.removeItem('asmita_property_add_draft');
+      } catch (e) {}
+      setDraftStatus(null);
+      toast.success("Draft cleared");
+      window.location.reload();
+    }
+  };
+
   if (checkingAuth) {
     return (
       <div className={styles.container} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '250px' }}>
-        <div><i className="fa fa-spinner fa-spin fa-2x"></i> Checking permissions...</div>
+        <Loader />
       </div>
     );
   }
@@ -666,33 +750,82 @@ export default function AddPropertyPage() {
           </div>
           Add Property
         </h1>
-        <button onClick={handleSave} className={styles.saveBtn} disabled={loading} style={{
-          padding: '10px 20px',
-          background: '#1e4ec4',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          fontSize: '14px',
-          boxShadow: '0 2px 6px rgba(30, 78, 196, 0.25)'
-        }}>
-          {loading ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="fa-spin">
-              <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="16" />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          {draftStatus && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: draftStatus === 'saving' ? '#6b7280' : '#16a34a',
+              background: draftStatus === 'saving' ? '#f3f4f6' : '#f0fdf4',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              border: `1px solid ${draftStatus === 'saving' ? '#e5e7eb' : '#bbf7d0'}`,
+              transition: 'all 0.2s ease-in-out'
+            }}>
+              {draftStatus === 'saving' && (
+                <>
+                  <Loader size={14} inline={true} color="#6b7280" />
+                  <span>Auto-saving draft...</span>
+                </>
+              )}
+              {draftStatus === 'saved' && (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span>Draft saved</span>
+                  <button
+                    type="button"
+                    onClick={handleClearDraft}
+                    title="Discard unsaved draft"
+                    style={{
+                      marginLeft: '6px',
+                      background: 'none',
+                      border: 'none',
+                      color: '#9ca3af',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '11px',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
+            </div>
           )}
-          Save Property
-        </button>
+          <button onClick={handleSave} className={styles.saveBtn} disabled={loading} style={{
+            padding: '10px 20px',
+            background: '#1e4ec4',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '14px',
+            boxShadow: '0 2px 6px rgba(30, 78, 196, 0.25)'
+          }}>
+            {loading ? (
+              <Loader size={16} inline={true} color="#ffffff" />
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+            )}
+            Save Property
+          </button>
+        </div>
       </header>
 
       <div className={dashboardStyles.pageContent}>
