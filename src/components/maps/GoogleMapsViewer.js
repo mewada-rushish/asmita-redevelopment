@@ -222,16 +222,24 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
           const firstProp = groupProps.length > 0 ? groupProps[0] : (properties.length > 0 ? properties[0] : null);
 
           const territoryColor = group.color || getGroupColor(group.id, groupIdx);
-          const isSelected = activeGroupId && String(activeGroupId) === String(group.id);
-          // Very translucent territory fill so singular properties and buildings stand out clearly
-          const baseFillOpacity = (isSelected && selectedProperty) ? 0.05 : (isSelected ? 0.08 : 0.05);
+          const isSelectedGroup = activeGroupId && String(activeGroupId) === String(group.id);
+          const isPropInThisGroupSelected = Boolean(
+            selectedProperty && (
+              String(selectedProperty.club_id) === String(group.id) ||
+              groupProps.some(p => String(p.id) === String(selectedProperty.id))
+            )
+          );
+
+          // If a singular property in this group is selected, lighten the group background significantly (0.02 - 0.03)
+          // Otherwise, show a pleasant visible group tint (0.18 when group selected, 0.10 default)
+          const baseFillOpacity = isPropInThisGroupSelected ? 0.025 : (isSelectedGroup ? 0.18 : 0.10);
 
           normalizedPaths.forEach(pathCoords => {
             const polygon = new window.google.maps.Polygon({
               paths: pathCoords,
               strokeColor: territoryColor,
-              strokeOpacity: isSelected ? 0.9 : 0.65,
-              strokeWeight: isSelected ? 2.5 : 1.8,
+              strokeOpacity: isSelectedGroup ? 0.9 : 0.7,
+              strokeWeight: isSelectedGroup ? 2.5 : 2,
               fillColor: territoryColor,
               fillOpacity: baseFillOpacity,
               zIndex: 10,
@@ -244,7 +252,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
             });
 
             polygon.addListener('mouseover', () => {
-              polygon.setOptions({ fillOpacity: isSelected ? 0.13 : 0.09 });
+              polygon.setOptions({ fillOpacity: isPropInThisGroupSelected ? 0.08 : (isSelectedGroup ? 0.24 : 0.16) });
             });
 
             polygon.addListener('mouseout', () => {
@@ -273,7 +281,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
               lng: (minLng + maxLng) / 2,
               text: groupName,
               color: territoryColor,
-              isSelected: !!isSelected
+              isSelected: !!isSelectedGroup
             });
           }
           drawnClubIds.add(group.id);
@@ -293,7 +301,8 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
             }
 
             const territoryColor = selectedProperty.group_color || getGroupColor(selectedProperty.club_id);
-            const baseFillOpacity = selectedProperty ? 0.05 : 0.08;
+            // Singular property selected -> lighten dynamic group bg
+            const baseFillOpacity = 0.025;
 
             normalizedPaths.forEach(pathCoords => {
               const polygon = new window.google.maps.Polygon({
@@ -313,7 +322,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
               });
 
               polygon.addListener('mouseover', () => {
-                polygon.setOptions({ fillOpacity: 0.13 });
+                polygon.setOptions({ fillOpacity: 0.08 });
               });
 
               polygon.addListener('mouseout', () => {
@@ -376,11 +385,11 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
         const buildingPoly = new window.google.maps.Polygon({
           paths: bCoords,
           strokeColor: statusCol,
-          strokeOpacity: 1.0,
-          strokeWeight: isSelectedBuilding ? 4.5 : 2,
+          strokeOpacity: isSelectedBuilding ? 1.0 : 0.85,
+          strokeWeight: isSelectedBuilding ? 3.5 : 2,
           fillColor: statusCol,
-          fillOpacity: isSelectedBuilding ? 0.55 : 0.22,
-          zIndex: isSelectedBuilding ? 120 : 40,
+          fillOpacity: isSelectedBuilding ? 0.38 : 0, // Highlighted with bg ONLY on selection, otherwise NO bg!
+          zIndex: isSelectedBuilding ? 120 : 35,
           clickable: true,
           map: map
         });
@@ -391,15 +400,15 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
 
         buildingPoly.addListener('mouseover', () => {
           buildingPoly.setOptions({
-            fillOpacity: isSelectedBuilding ? 0.7 : 0.38,
-            strokeWeight: isSelectedBuilding ? 5 : 3
+            fillOpacity: isSelectedBuilding ? 0.5 : 0.15,
+            strokeWeight: isSelectedBuilding ? 4 : 2.5
           });
         });
 
         buildingPoly.addListener('mouseout', () => {
           buildingPoly.setOptions({
-            fillOpacity: isSelectedBuilding ? 0.55 : 0.22,
-            strokeWeight: isSelectedBuilding ? 4.5 : 2
+            fillOpacity: isSelectedBuilding ? 0.38 : 0,
+            strokeWeight: isSelectedBuilding ? 3.5 : 2
           });
         });
 
