@@ -130,6 +130,46 @@ export default function DashboardMapPage() {
     });
   };
 
+  const handleSelectStatus = (status) => {
+    if (isSearching) return;
+    const nextStatus = expandedStatus === status ? null : status;
+    setExpandedStatus(nextStatus);
+    setSelectedProperty(null);
+    setExpandedGroup(null);
+  };
+
+  const handleSelectGroup = (clubId) => {
+    if (isSearching) return;
+    const nextGroup = expandedGroup === clubId ? null : clubId;
+    setExpandedGroup(nextGroup);
+    setSelectedProperty(null);
+    setExpandedStatus(null);
+  };
+
+  const handleSelectProperty = (prop) => {
+    if (!prop) {
+      setSelectedProperty(null);
+      return;
+    }
+    setExpandedStatus(null);
+    if (prop.club_id) {
+      setExpandedGroup(prop.club_id);
+    } else {
+      setExpandedGroup(null);
+    }
+    setSelectedProperty(prop);
+  };
+
+  const handleTabChange = (tab) => {
+    setLegendTab(tab);
+    if (tab === 'status') {
+      setExpandedGroup(null);
+    } else if (tab === 'groups') {
+      setExpandedStatus(null);
+    }
+    setSelectedProperty(null);
+  };
+
   const mapProperties = useMemo(() => {
     if (!Array.isArray(properties)) return [];
     
@@ -139,22 +179,19 @@ export default function DashboardMapPage() {
       filtered = filtered.filter(p => p.type === propertyType);
     }
 
-    const activeGroupId = expandedGroup || (selectedProperty?.club_id ? selectedProperty.club_id : null);
+    if (selectedProperty) {
+      if (selectedProperty.club_id) {
+        return filtered.filter(p => String(p.club_id) === String(selectedProperty.club_id));
+      }
+      return filtered;
+    }
 
-    // When a group is selected, hide EVERYTHING on the map except that group's properties
-    if (activeGroupId) {
-      return filtered.filter(p => String(p.club_id) === String(activeGroupId));
+    if (expandedGroup) {
+      return filtered.filter(p => String(p.club_id) === String(expandedGroup));
     }
     
     if (legendTab === 'status' && expandedStatus) {
-      filtered = filtered.filter(p => p.status === expandedStatus);
-    }
-
-    if (selectedProperty) {
-      const alwaysVisible = [selectedProperty];
-      const filteredIds = new Set(filtered.map(p => p.id));
-      const toAdd = alwaysVisible.filter(p => !filteredIds.has(p.id));
-      filtered = [...filtered, ...toAdd];
+      return filtered.filter(p => p.status === expandedStatus);
     }
     
     return filtered;
@@ -397,12 +434,11 @@ export default function DashboardMapPage() {
           properties={mapProperties} 
           propertyGroups={propertyGroups}
           mapStyle={currentStyle} 
-          onMarkerClick={setSelectedProperty} 
+          onMarkerClick={handleSelectProperty} 
           selectedProperty={selectedProperty}
           expandedGroup={expandedGroup}
           onGroupSelect={(groupId) => {
-            setExpandedGroup(prev => prev === groupId ? null : groupId);
-            setSelectedProperty(null);
+            handleSelectGroup(groupId);
             setLegendTab('groups');
             if (isLegendCollapsed) setIsLegendCollapsed(false);
           }}
@@ -428,7 +464,7 @@ export default function DashboardMapPage() {
                     <i className="fa fa-pencil"></i>
                   </button>
                 )}
-                <button className={styles.closeBtn} onClick={() => { setSelectedProperty(null); setExpandedGroup(null); }} title="Close">
+                <button className={styles.closeBtn} onClick={() => { setSelectedProperty(null); setExpandedGroup(null); setExpandedStatus(null); }} title="Close">
                   <i className="fa fa-times"></i>
                 </button>
               </div>
@@ -446,8 +482,7 @@ export default function DashboardMapPage() {
                   style={{ borderLeft: '4px solid #3b82f6', background: '#eff6ff', cursor: 'pointer' }}
                   onClick={() => {
                     const cId = selectedProperty.club_id;
-                    setSelectedProperty(null);
-                    setExpandedGroup(cId);
+                    handleSelectGroup(cId);
                     setLegendTab('groups');
                   }}
                   title="Click to isolate and view this group"
@@ -460,7 +495,7 @@ export default function DashboardMapPage() {
                   </p>
                   <div className={styles.linkedList}>
                     {linkedProperties.length > 0 ? linkedProperties.map(lp => (
-                      <div key={lp.id} className={styles.linkedItem} onClick={() => setSelectedProperty(lp)}>
+                      <div key={lp.id} className={styles.linkedItem} onClick={(e) => { e.stopPropagation(); handleSelectProperty(lp); }}>
                         <i className="fa fa-building"></i>
                         <div className={styles.linkedItemInfo}>
                           <strong>{lp.property_name}</strong>
@@ -643,11 +678,11 @@ export default function DashboardMapPage() {
 
             <div className={styles.tabContainer}>
               <button 
-                onClick={() => setLegendTab('status')}
+                onClick={() => handleTabChange('status')}
                 className={`${styles.tabButton} ${legendTab === 'status' ? styles.active : ''}`}
               >By Status</button>
               <button 
-                onClick={() => setLegendTab('groups')}
+                onClick={() => handleTabChange('groups')}
                 className={`${styles.tabButton} ${legendTab === 'groups' ? styles.active : ''}`}
               >By Group</button>
             </div>
@@ -661,17 +696,13 @@ export default function DashboardMapPage() {
                   if (isSearching && list.length === 0) return null;
                   if (!isSearching && list.length === 0 && !STATUS_FLOW.includes(status)) return null;
 
-                  // Auto-expand categories if a search is active, otherwise rely on manual toggle state
-                  const isOpen = isSearching || expandedStatus === status;
+                  const isOpen = isSearching || expandedStatus === status || (selectedProperty && selectedProperty.status === status);
 
                   return (
                     <div key={status} className={styles.section}>
                       <button 
                         className={styles.sectionToggle} 
-                        onClick={() => {
-                          // Allow manual toggling only if not currently searching
-                          if (!isSearching) setExpandedStatus(isOpen ? null : status);
-                        }}
+                        onClick={() => handleSelectStatus(status)}
                         style={{ cursor: isSearching ? 'default' : 'pointer' }}
                       >
                         <div className={styles.statusLabel}>
@@ -683,7 +714,17 @@ export default function DashboardMapPage() {
                       {isOpen && (
                         <ul className={styles.propertyList}>
                           {list.map(p => (
-                            <li key={p.id} className={styles.propertyItem} onClick={() => setSelectedProperty(p)} style={{ cursor: 'pointer' }}>
+                            <li 
+                              key={p.id} 
+                              className={styles.propertyItem} 
+                              onClick={() => handleSelectProperty(p)} 
+                              style={{ 
+                                cursor: 'pointer',
+                                background: selectedProperty?.id === p.id ? 'rgba(30, 78, 196, 0.08)' : 'transparent',
+                                fontWeight: selectedProperty?.id === p.id ? '700' : 'normal',
+                                color: selectedProperty?.id === p.id ? '#1e4ec4' : 'inherit'
+                              }}
+                            >
                               {p.property_name}
                             </li>
                           ))}
@@ -719,18 +760,13 @@ export default function DashboardMapPage() {
                     const savedGroup = propertyGroups.find(g => g.id === clubId);
                     const groupName = savedGroup?.name || `Group of ${list.length}`;
                     const groupColor = savedGroup?.color || getGroupColor(clubId);
-                    const isOpen = isSearching || expandedGroup === clubId;
+                    const isOpen = isSearching || expandedGroup === clubId || (selectedProperty && String(selectedProperty.club_id) === String(clubId));
 
                     return (
                       <div key={clubId} className={styles.section}>
                         <button 
                           className={styles.sectionToggle} 
-                          onClick={() => { 
-                            if (!isSearching) {
-                              setExpandedGroup(isOpen ? null : clubId);
-                              setSelectedProperty(null);
-                            }
-                          }}
+                          onClick={() => handleSelectGroup(clubId)}
                           style={{ cursor: isSearching ? 'default' : 'pointer' }}
                         >
                           <div className={styles.statusLabel}>
@@ -742,7 +778,17 @@ export default function DashboardMapPage() {
                         {isOpen && (
                           <ul className={styles.propertyList}>
                             {list.map(p => (
-                              <li key={p.id} className={styles.propertyItem} onClick={() => setSelectedProperty(p)} style={{ cursor: 'pointer' }}>
+                              <li 
+                                key={p.id} 
+                                className={styles.propertyItem} 
+                                onClick={() => handleSelectProperty(p)} 
+                                style={{ 
+                                  cursor: 'pointer',
+                                  background: selectedProperty?.id === p.id ? 'rgba(30, 78, 196, 0.08)' : 'transparent',
+                                  fontWeight: selectedProperty?.id === p.id ? '700' : 'normal',
+                                  color: selectedProperty?.id === p.id ? '#1e4ec4' : 'inherit'
+                                }}
+                              >
                                 {p.property_name}
                               </li>
                             ))}
