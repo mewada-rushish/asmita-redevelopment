@@ -10,6 +10,8 @@ import { uploadPropertyDocument } from '@/utils/uploadsUtil';
 import toast from 'react-hot-toast';
 import styles from './add.module.css';
 import dashboardStyles from '../dashboard.module.css';
+import BuildingBoundaryManager from '@/components/maps/BuildingBoundaryManager';
+import { getStatusColor } from '@/utils/geoUtils';
 
 const safeParse = (str) => {
   if (!str) return {};
@@ -115,6 +117,8 @@ export default function AddPropertyPage() {
   const [logFilterDate, setLogFilterDate] = useState('');
   const [logForm, setLogForm] = useState({ category: 'General Note', note: '' });
 
+  const [showBoundaryModal, setShowBoundaryModal] = useState(false);
+
   const [formData, setFormData] = useState({
     type: '', category: '',
     pin_code: '', latitude: null, longitude: null,
@@ -123,6 +127,7 @@ export default function AddPropertyPage() {
     assigned_cp_id: '', assigned_admin_id: '',
     property_name: '', locality: 'Mira Road East', address: '',
     lat: 19.2813, lng: 72.8693,
+    building_boundary: null,
     land_owner_name: '', land_type: 'Freehold', cts_survey_no: '',
     is_society_registered: 0, registration_no: '',
     total_plot_area: '', total_flats: '', total_shops: '', total_flat_area_combined: '',
@@ -677,7 +682,7 @@ export default function AddPropertyPage() {
           <div className={styles.mainGrid}>
             <aside className={styles.sidebar}>
           <div className={styles.card}>
-            <label className={styles.label}>📍 Map Location</label>
+            <label className={styles.label}><i className="fa fa-map-marker"></i> Map Location</label>
             <MapViewer 
               initialLat={formData.lat} 
               initialLng={formData.lng} 
@@ -686,10 +691,53 @@ export default function AddPropertyPage() {
               selectedProperty={formData}
             />
             <div className={styles.coords}>Current Lat: {formData.lat.toFixed(6)} | Lng: {formData.lng.toFixed(6)}</div>
+            
+            <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowBoundaryModal(true)}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: `1px solid ${getStatusColor(formData.status)}`,
+                  background: formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? `${getStatusColor(formData.status)}18` : '#ffffff',
+                  color: getStatusColor(formData.status),
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <i className="fa fa-pencil-square-o"></i>
+                {formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) ? 'Edit Building Border' : 'Mark Building Border'}
+              </button>
+              {formData.building_boundary && (Array.isArray(formData.building_boundary) ? formData.building_boundary.length > 2 : true) && (
+                <button
+                  type="button"
+                  onClick={() => updateField('building_boundary', null)}
+                  title="Clear Building Border"
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #fca5a5',
+                    background: '#ffffff',
+                    color: '#ef4444',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <i className="fa fa-trash"></i>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className={styles.card}>
-            <label className={styles.label}>👤 Assign CP</label>
+            <label className={styles.label}><i className="fa fa-user"></i> Assign CP</label>
             <CustomSelect value={formData.assigned_cp_id} onChange={e => updateField('assigned_cp_id', e.target.value)}>
               <option value="">-- Select CP --</option>
               {executives.map(ex => <option key={ex.id} value={ex.id}>{ex.name} ({ex.role})</option>)}
@@ -707,7 +755,7 @@ export default function AddPropertyPage() {
           </div>
 
           <div className={styles.card}>
-            <label className={styles.label}>🏠 Overall Status *</label>
+            <label className={styles.label}><i className="fa fa-home"></i> Overall Status *</label>
             <CustomSelect value={formData.status} onChange={e => updateField('status', e.target.value)}>
               {STATUS_FLOW.map(s => <option key={s} value={s}>{s}</option>)}
             </CustomSelect>
@@ -1462,6 +1510,18 @@ export default function AddPropertyPage() {
         matchedProperty={duplicateMatch} 
         onContinue={() => setShowDuplicateModal(false)} 
       />
+
+      {showBoundaryModal && (
+        <BuildingBoundaryManager
+          initialBoundary={formData.building_boundary}
+          lat={formData.lat}
+          lng={formData.lng}
+          propertyName={formData.property_name || 'Property'}
+          status={formData.status}
+          onSave={(newBoundary) => updateField('building_boundary', newBoundary)}
+          onClose={() => setShowBoundaryModal(false)}
+        />
+      )}
       </div>
     </div>
     </>

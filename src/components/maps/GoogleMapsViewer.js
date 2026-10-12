@@ -10,28 +10,31 @@ import {
   useApiIsLoaded
 } from '@vis.gl/react-google-maps';
 import { logoPath } from '@/assets/images';
-import { getClubBoundary } from '@/utils/geoUtils';
+import { getClubBoundary, getGroupColor, getStatusColor } from '@/utils/geoUtils';
 
 const MIRA_ROAD_COORDS = { lat: 19.2813, lng: 72.8693 };
 
-function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClick, lat, lng, onLocationSelect, selectedProperty, expandedGroup }) {
+
+function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClick, lat, lng, onLocationSelect, selectedProperty, expandedGroup, onGroupSelect }) {
   const map = useMap();
   const apiIsLoaded = useApiIsLoaded();
   const [activeOverlay, setActiveOverlay] = useState(null);
   const [spiderfiedCoords, setSpiderfiedCoords] = useState(null);
   const [territoryLabels, setTerritoryLabels] = useState([]);
 
+  const activeGroupId = expandedGroup || (selectedProperty?.club_id ? selectedProperty.club_id : null);
+
   const groupedProperties = useMemo(() => {
     const groups = {};
     properties.forEach(p => {
-      if (expandedGroup && p.club_id !== expandedGroup) return;
+      if (activeGroupId && String(p.club_id) !== String(activeGroupId)) return;
       if (!p.lat || !p.lng) return;
       const key = `${parseFloat(p.lat).toFixed(5)},${parseFloat(p.lng).toFixed(5)}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(p);
     });
     return groups;
-  }, [properties, expandedGroup]);
+  }, [properties, activeGroupId]);
 
   const bounds = useMemo(() => {
     if (!apiIsLoaded || typeof window === 'undefined' || !window.google || properties.length === 0) return null;
@@ -117,8 +120,9 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       // Calculate a geographic offset to prevent the marker from hiding under the sidebar
       // On desktop: Offset Longitude positive (East) so the marker shifts Left
       // On mobile: Offset Latitude negative (South) so the marker shifts Up
-      const lngOffset = isMobile ? 0 : 0.0005; // Approx 180px left shift at zoom 19
-      const latOffset = isMobile ? -0.0004 : 0; // Approx 150px up shift at zoom 19
+      // ONLY apply offset on main dashboard with sidebar, NOT in location selector cards
+      const lngOffset = (!onLocationSelect && !isMobile) ? 0.0005 : 0; // Approx 180px left shift at zoom 19
+      const latOffset = (!onLocationSelect && isMobile) ? -0.0004 : 0; // Approx 150px up shift at zoom 19
       
       map.setZoom(19); // High zoom level to focus on building
       map.panTo({
@@ -134,11 +138,14 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
     }
   }, [selectedProperty, map, onLocationSelect, groupedProperties]);
 
-  // Pan to expanded group
+  // Pan to active group
   useEffect(() => {
-    if (!map || !expandedGroup || !window.google) return;
+    if (!map || !activeGroupId || !window.google) return;
     
-    const groupProps = properties.filter(p => p.club_id === expandedGroup && p.lat && p.lng);
+    // If a specific property was clicked, let the selectedProperty zoom effect handle high zoom on that building
+    if (selectedProperty && selectedProperty.lat && selectedProperty.lng) return;
+
+    const groupProps = properties.filter(p => String(p.club_id) === String(activeGroupId) && p.lat && p.lng);
     if (groupProps.length === 0) return;
 
     if (groupProps.length === 1) {
@@ -151,7 +158,8 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       });
       map.fitBounds(groupBounds, { padding: 50 });
     }
-  }, [expandedGroup, map, properties]);
+  }, [activeGroupId, selectedProperty, map, properties]);
+
 
   const handleRecenter = useCallback(() => {
     if (!map) return;
@@ -164,8 +172,9 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
   }, [map, bounds, onLocationSelect]);
 
   useEffect(() => {
-    if (map && onLocationSelect) {
-      map.panTo({ lat, lng });
+    if (map && onLocationSelect && lat && lng) {
+      map.setCenter({ lat: Number(lat), lng: Number(lng) });
+      map.panTo({ lat: Number(lat), lng: Number(lng) });
     }
   }, [lat, lng, map, onLocationSelect]);
 
@@ -192,8 +201,8 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       
       // 1. Draw ALL saved territories globally
       if (propertyGroups && propertyGroups.length > 0) {
-        propertyGroups.forEach(group => {
-          if (expandedGroup && group.id !== expandedGroup) return;
+        propertyGroups.forEach((group, groupIdx) => {
+          if (activeGroupId && String(group.id) !== String(activeGroupId)) return;
           if (!group.territory) return;
           
           let boundaryPaths = null;
@@ -212,19 +221,33 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
           const groupProps = properties.filter(p => p.club_id === group.id);
           const firstProp = groupProps.length > 0 ? groupProps[0] : (properties.length > 0 ? properties[0] : null);
 
-          const territoryColor = '#7c3aed';
-          const isSelected = selectedProperty && selectedProperty.club_id === group.id;
+          const territoryColor = group.color || getGroupColor(group.id, groupIdx);
+          const isSelected = activeGroupId && String(activeGroupId) === String(group.id);
 
           normalizedPaths.forEach(pathCoords => {
             const polygon = new window.google.maps.Polygon({
               paths: pathCoords,
               strokeColor: territoryColor,
-              strokeOpacity: isSelected ? 1 : 0.6,
+              strokeOpacity: isSelected ? 1 : 0.7,
               strokeWeight: isSelected ? 3 : 2,
               fillColor: territoryColor,
-              fillOpacity: isSelected ? 0.25 : 0.1,
+              fillOpacity: isSelected ? 0.3 : 0.15,
+              clickable: true,
               map: map
             });
+
+            polygon.addListener('click', () => {
+              onGroupSelect?.(group.id);
+            });
+
+            polygon.addListener('mouseover', () => {
+              polygon.setOptions({ fillOpacity: isSelected ? 0.4 : 0.25 });
+            });
+
+            polygon.addListener('mouseout', () => {
+              polygon.setOptions({ fillOpacity: isSelected ? 0.3 : 0.15 });
+            });
+
             polygonInstances.push(polygon);
           });
 
@@ -255,7 +278,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       }
 
       // 2. Draw dynamic territory ONLY for the selected property if it's not already drawn
-      if (selectedProperty && selectedProperty.club_id && !drawnClubIds.has(selectedProperty.club_id) && (!expandedGroup || selectedProperty.club_id === expandedGroup)) {
+      if (selectedProperty && selectedProperty.club_id && !drawnClubIds.has(selectedProperty.club_id) && (!activeGroupId || String(selectedProperty.club_id) === String(activeGroupId))) {
         const clubProps = properties.filter(p => p.club_id === selectedProperty.club_id && p.lat && p.lng);
         if (clubProps.length > 0) {
           const boundaryPaths = await getClubBoundary(clubProps);
@@ -266,7 +289,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                normalizedPaths = [boundaryPaths];
             }
 
-            const territoryColor = '#7c3aed';
+            const territoryColor = selectedProperty.group_color || getGroupColor(selectedProperty.club_id);
 
             normalizedPaths.forEach(pathCoords => {
               const polygon = new window.google.maps.Polygon({
@@ -276,8 +299,14 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                 strokeWeight: 2,
                 fillColor: territoryColor,
                 fillOpacity: 0.25,
+                clickable: true,
                 map: map
               });
+
+              polygon.addListener('click', () => {
+                onGroupSelect?.(selectedProperty.club_id);
+              });
+
               polygonInstances.push(polygon);
             });
 
@@ -306,6 +335,44 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
           }
         }
       }
+
+      // 3. Draw Building Border for properties with building_boundary
+      const propertiesToDrawBoundary = [];
+      if (selectedProperty && selectedProperty.building_boundary) {
+        propertiesToDrawBoundary.push(selectedProperty);
+      }
+      properties.forEach(p => {
+        if (p.building_boundary && (!selectedProperty || String(p.id) !== String(selectedProperty.id))) {
+          if (!activeGroupId || String(p.club_id) === String(activeGroupId)) {
+            propertiesToDrawBoundary.push(p);
+          }
+        }
+      });
+
+      propertiesToDrawBoundary.forEach(p => {
+        let bCoords = null;
+        try {
+          bCoords = typeof p.building_boundary === 'string' ? JSON.parse(p.building_boundary) : p.building_boundary;
+        } catch(e) {}
+        if (!bCoords || !Array.isArray(bCoords) || bCoords.length < 3) return;
+
+        const isSelectedBuilding = selectedProperty && String(selectedProperty.id) === String(p.id);
+        const propStatus = p.status || selectedProperty?.status || 'Not Approached';
+        const statusCol = getStatusColor(propStatus);
+
+        const buildingPoly = new window.google.maps.Polygon({
+          paths: bCoords,
+          strokeColor: statusCol,
+          strokeOpacity: 1.0,
+          strokeWeight: isSelectedBuilding ? 3 : 2,
+          fillColor: statusCol,
+          fillOpacity: isSelectedBuilding ? 0.35 : 0.2,
+          zIndex: isSelectedBuilding ? 60 : 30,
+          map: map
+        });
+
+        polygonInstances.push(buildingPoly);
+      });
       
       if (isMounted) {
         setTerritoryLabels(newLabels);
@@ -327,7 +394,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProperty, properties, propertyGroups, map, expandedGroup]);
+  }, [selectedProperty, properties, propertyGroups, map, activeGroupId, onGroupSelect]);
 
   const getStatusColor = (status) => {
     const colors = { 
@@ -353,12 +420,13 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
       <Map
         style={{ width: '100%', height: '100%' }}
-        defaultZoom={15}
-        defaultCenter={MIRA_ROAD_COORDS}
-        mapTypeId={mapStyle === 'satellite' ? 'hybrid' : 'roadmap'}
+        defaultZoom={onLocationSelect ? 19 : 15}
+        defaultCenter={onLocationSelect && lat && lng ? { lat: Number(lat), lng: Number(lng) } : MIRA_ROAD_COORDS}
+        mapTypeId={mapStyle === 'satellite' ? (activeGroupId ? 'satellite' : 'hybrid') : 'roadmap'}
         gestureHandling={'cooperative'}
         disableDefaultUI={true}
         mapId={process.env.NEXT_PUBLIC_GMAP_ID}
+        clickableIcons={!activeGroupId}
         onClick={(e) => {
           if (onLocationSelect && e.detail.latLng) {
             onLocationSelect({
@@ -370,28 +438,36 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
           }
         }}
       >
-        {territoryLabels.map((label, idx) => (
+        {!onLocationSelect && territoryLabels.map((label, idx) => (
           <AdvancedMarker key={`label-${label.id}-${idx}`} position={{ lat: label.lat, lng: label.lng }} zIndex={label.isSelected ? 90 : 80}>
-            <div style={{
-              backgroundColor: label.color,
-              color: '#ffffff',
-              padding: '6px 14px',
-              borderRadius: '8px',
-              fontWeight: '700',
-              fontFamily: 'var(--font-montserrat)',
-              fontSize: '14px',
-              border: label.isSelected ? '2px solid #ffffff' : '2px solid transparent',
-              boxShadow: label.isSelected ? '0 6px 16px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.2)',
-              transform: 'translate(-50%, -50%)',
-              pointerEvents: 'none',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s ease-in-out'
-            }}>
+            <div 
+              onClick={(e) => {
+                e.stopPropagation();
+                onGroupSelect?.(label.id);
+              }}
+              title={`Click to focus ${label.text}`}
+              style={{
+                backgroundColor: label.color,
+                color: '#ffffff',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                fontFamily: 'var(--font-montserrat)',
+                fontSize: '14px',
+                border: label.isSelected ? '2px solid #ffffff' : '2px solid transparent',
+                boxShadow: label.isSelected ? '0 6px 16px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.2)',
+                transform: 'translate(-50%, -50%)',
+                cursor: 'pointer',
+                pointerEvents: 'auto',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease-in-out',
+                userSelect: 'none'
+              }}>
               {label.text}
             </div>
           </AdvancedMarker>
         ))}
-        {Object.entries(groupedProperties).map(([key, groupProps]) => {
+        {!onLocationSelect && Object.entries(groupedProperties).map(([key, groupProps]) => {
           const centerLat = parseFloat(groupProps[0].lat);
           const centerLng = parseFloat(groupProps[0].lng);
 
@@ -537,10 +613,11 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
           >
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'grab' }}>
               <div style={{
-                width: '38px', height: '38px', backgroundColor: '#1e4ec4',
+                width: '38px', height: '38px',
+                backgroundColor: getStatusColor(selectedProperty?.status || 'Not Approached'),
                 border: '2px solid white', borderRadius: '50% 50% 50% 0',
                 transform: 'rotate(-45deg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 6px 12px rgba(30, 78, 196, 0.3)',
+                boxShadow: '0 6px 14px rgba(0, 0, 0, 0.35)',
               }}>
                 <div style={{ transform: 'rotate(45deg)', display: 'flex' }}>
                   <Image src={logoPath} alt="A" width={22} height={22} style={{ filter: 'brightness(0) invert(1)' }} />
@@ -576,7 +653,8 @@ export default function GoogleMapsViewer({
   initialLng = 72.8693,
   onLocationSelect,
   selectedProperty,
-  expandedGroup
+  expandedGroup,
+  onGroupSelect
 }) {
   const containerHeight = onLocationSelect ? '400px' : '100%';
   const [authError, setAuthError] = useState(false);
@@ -628,6 +706,7 @@ export default function GoogleMapsViewer({
           onLocationSelect={onLocationSelect}
           selectedProperty={selectedProperty}
           expandedGroup={expandedGroup}
+          onGroupSelect={onGroupSelect}
         />
       </div>
     </APIProvider>

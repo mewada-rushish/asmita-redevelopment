@@ -2,34 +2,23 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { APIProvider, Map, useMap, useApiIsLoaded, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { logoPath } from '@/assets/images';
+import { getGroupColor, getStatusColor } from '@/utils/geoUtils';
 import styles from './GroupTerritoryManager.module.css';
-
-const getStatusColor = (status) => {
-  const colors = { 
-    'Not Approached': '#ef4444', 
-    'Interest Letter Sent': '#f97316', 
-    'Interested Letter Sent': '#f97316', 
-    'Society Docs Received': '#eab308', 
-    'Architect Survey Phase': '#84cc16', 
-    'Architect Survey Completed': '#06b6d4',
-    'Offer Letter Sent': '#3b82f6', 
-    'Offer Under Negotiation': '#a855f7', 
-    'Meeting Finalized': '#ec4899', 
-    'Offer Accepted': '#ec4899', 
-    'Approved': '#22c55e', 
-    'Consent Phase': '#14b8a6', 
-    'DA Phase': '#a0522d', 
-    'Plan & CC Phase': '#22c55e' 
-  };
-  return colors[status] || '#9ca3af';
-};
 
 const MIRA_ROAD_COORDS = { lat: 19.2813, lng: 72.8693 };
 
-function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [] }) {
+function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [], clubId, currentPropertyId = null }) {
   const map = useMap();
   const apiIsLoaded = useApiIsLoaded();
   const polygonRef = useRef(null);
+
+  const currentProp = React.useMemo(() => {
+    if (currentPropertyId) {
+      const match = clubbedProperties.find(p => String(p.id) === String(currentPropertyId));
+      if (match) return match;
+    }
+    return clubbedProperties.length > 0 ? clubbedProperties[0] : null;
+  }, [clubbedProperties, currentPropertyId]);
   
   const parsedTerritory = React.useMemo(() => {
     if (typeof initialTerritory === 'string') {
@@ -156,27 +145,7 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [] 
   useEffect(() => {
     if (!apiIsLoaded || !map || !window.google) return;
 
-      const getStatusColor = (status) => {
-        const colors = { 
-          'Not Approached': '#ef4444', 
-          'Interest Letter Sent': '#f97316', 
-          'Interested Letter Sent': '#f97316',
-          'Society Docs Received': '#eab308', 
-          'Architect Survey Phase': '#84cc16', 
-          'Architect Survey Completed': '#06b6d4',
-          'Offer Letter Sent': '#3b82f6', 
-          'Offer Under Negotiation': '#a855f7', 
-          'Meeting Finalized': '#ec4899',
-          'Offer Accepted': '#ec4899', 
-          'Approved': '#22c55e',
-          'Consent Phase': '#14b8a6', 
-          'DA Phase': '#a0522d', 
-          'Plan & CC Phase': '#22c55e' 
-        };
-        return colors[status] || '#9ca3af';
-      };
-
-      const polyColor = '#7c3aed'; // Distinct Violet for territories
+    const polyColor = getGroupColor(clubId); // Distinct color matching group map territory
 
       if (!polygonRef.current) {
         polygonRef.current = new window.google.maps.Polygon({
@@ -286,136 +255,159 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [] 
       </div>
     </div>
 
-    {Object.entries(groupedProperties).map(([key, groupProps]) => {
-      const centerLat = parseFloat(groupProps[0].lat);
-      const centerLng = parseFloat(groupProps[0].lng);
-
-      if (groupProps.length === 1) {
-        const p = groupProps[0];
-        return (
-          <AdvancedMarker 
-            key={p.id || p.property_name} 
-            position={{ lat: centerLat, lng: centerLng }} 
-            onClick={() => setSpiderfiedCoords(null)}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
-                padding: '4px 12px 4px 8px', borderRadius: '50px',
-                border: `3px solid ${getStatusColor(p.status)}`,
-                boxShadow: '0 4px 10px rgba(0,0,0,0.15)', gap: '8px', whiteSpace: 'nowrap'
-              }}>
-                <Image src={logoPath} alt="L" width={22} height={22} />
-                <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>{p.property_name}</span>
-              </div>
-              <div style={{
-                width: 0, height: 0, borderLeft: '7px solid transparent',
-                borderRight: '7px solid transparent', borderTop: `7px solid ${getStatusColor(p.status)}`,
-                marginTop: '-1px'
-              }} />
+    {(isDrawing || coords.length > 0) ? (
+      currentProp && currentProp.lat && currentProp.lng && (
+        <AdvancedMarker 
+          key={`current-${currentProp.id || currentProp.property_name || 'curr'}`} 
+          position={{ lat: parseFloat(currentProp.lat), lng: parseFloat(currentProp.lng) }}
+          zIndex={100}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
+              padding: '4px 12px 4px 8px', borderRadius: '50px',
+              border: `3px solid ${getStatusColor(currentProp.status)}`,
+              boxShadow: '0 4px 10px rgba(0,0,0,0.15)', gap: '8px', whiteSpace: 'nowrap'
+            }}>
+              <Image src={logoPath} alt="L" width={22} height={22} />
+              <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>{currentProp.property_name}</span>
             </div>
-          </AdvancedMarker>
-        );
-      }
+            <div style={{
+              width: 0, height: 0, borderLeft: '7px solid transparent',
+              borderRight: '7px solid transparent', borderTop: `7px solid ${getStatusColor(currentProp.status)}`,
+              marginTop: '-1px'
+            }} />
+          </div>
+        </AdvancedMarker>
+      )
+    ) : (
+      Object.entries(groupedProperties).map(([key, groupProps]) => {
+        const centerLat = parseFloat(groupProps[0].lat);
+        const centerLng = parseFloat(groupProps[0].lng);
 
-      if (spiderfiedCoords === key) {
-        const markers = groupProps.map((p, i) => {
-          const angleRad = (2 * Math.PI * i) / groupProps.length;
-          // Expand radius to comfortably fit markers without overlap
-          const radiusX = 100; 
-          const radiusY = 70;
-          const xOffset = Math.cos(angleRad) * radiusX;
-          const yOffset = Math.sin(angleRad) * radiusY;
-          
-          const length = Math.sqrt(xOffset * xOffset + yOffset * yOffset);
-          const angleDeg = angleRad * (180 / Math.PI);
-          const color = getStatusColor(p.status);
-          
+        if (groupProps.length === 1) {
+          const p = groupProps[0];
           return (
-            <AdvancedMarker
-              key={`${p.id || p.property_name}-spider`}
-              position={{ lat: centerLat, lng: centerLng }}
-              zIndex={100}
+            <AdvancedMarker 
+              key={p.id || p.property_name} 
+              position={{ lat: centerLat, lng: centerLng }} 
+              onClick={() => setSpiderfiedCoords(null)}
             >
-              <div style={{ width: 0, height: 0, position: 'relative' }}>
-                {/* The spider leg */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                 <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: `${length}px`,
-                  height: '3px',
-                  backgroundColor: color,
-                  transformOrigin: '0 50%',
-                  transform: `rotate(${angleDeg}deg)`,
-                  opacity: 0.7,
-                  pointerEvents: 'none'
-                }} />
-                
-                {/* The marker pill */}
-                <div style={{
-                  position: 'absolute',
-                  top: `${yOffset}px`,
-                  left: `${xOffset}px`,
-                  transform: 'translate(-50%, -50%) scale(0.9)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer'
+                  display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
+                  padding: '4px 12px 4px 8px', borderRadius: '50px',
+                  border: `3px solid ${getStatusColor(p.status)}`,
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.15)', gap: '8px', whiteSpace: 'nowrap'
                 }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
-                    padding: '4px 12px 4px 8px', borderRadius: '50px',
-                    border: `3px solid ${color}`,
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.15)', gap: '8px', whiteSpace: 'nowrap'
-                  }}>
-                    <Image src={logoPath} alt="L" width={20} height={20} />
-                    <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>{p.property_name}</span>
-                  </div>
+                  <Image src={logoPath} alt="L" width={22} height={22} />
+                  <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>{p.property_name}</span>
                 </div>
+                <div style={{
+                  width: 0, height: 0, borderLeft: '7px solid transparent',
+                  borderRight: '7px solid transparent', borderTop: `7px solid ${getStatusColor(p.status)}`,
+                  marginTop: '-1px'
+                }} />
               </div>
             </AdvancedMarker>
           );
-        });
-        
-        // Add a center dot
-        markers.push(
-          <AdvancedMarker key={`${key}-center`} position={{ lat: centerLat, lng: centerLng }} zIndex={90} onClick={() => setSpiderfiedCoords(null)}>
-            <div style={{
-              width: '18px', height: '18px', backgroundColor: '#1e4ec4', border: '3px solid white', borderRadius: '50%',
-              cursor: 'pointer', transform: 'translate(0, 0)', boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
-            }} title="Click to collapse" />
-          </AdvancedMarker>
-        );
-        
-        return markers;
-      } else {
-        return (
-          <AdvancedMarker
-            key={`group-${key}`}
-            position={{ lat: centerLat, lng: centerLng }}
-            onClick={() => setSpiderfiedCoords(key)}
-            zIndex={50}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+        }
+
+        if (spiderfiedCoords === key) {
+          const markers = groupProps.map((p, i) => {
+            const angleRad = (2 * Math.PI * i) / groupProps.length;
+            const radiusX = 100; 
+            const radiusY = 70;
+            const xOffset = Math.cos(angleRad) * radiusX;
+            const yOffset = Math.sin(angleRad) * radiusY;
+            
+            const length = Math.sqrt(xOffset * xOffset + yOffset * yOffset);
+            const angleDeg = angleRad * (180 / Math.PI);
+            const color = getStatusColor(p.status);
+            
+            return (
+              <AdvancedMarker
+                key={`${p.id || p.property_name}-spider`}
+                position={{ lat: centerLat, lng: centerLng }}
+                zIndex={100}
+              >
+                <div style={{ width: 0, height: 0, position: 'relative' }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: `${length}px`,
+                    height: '3px',
+                    backgroundColor: color,
+                    transformOrigin: '0 50%',
+                    transform: `rotate(${angleDeg}deg)`,
+                    opacity: 0.7,
+                    pointerEvents: 'none'
+                  }} />
+                  
+                  <div style={{
+                    position: 'absolute',
+                    top: `${yOffset}px`,
+                    left: `${xOffset}px`,
+                    transform: 'translate(-50%, -50%) scale(0.9)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer'
+                  }}>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
+                      padding: '4px 12px 4px 8px', borderRadius: '50px',
+                      border: `3px solid ${color}`,
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.15)', gap: '8px', whiteSpace: 'nowrap'
+                    }}>
+                      <Image src={logoPath} alt="L" width={20} height={20} />
+                      <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600', fontFamily: 'var(--font-montserrat)' }}>{p.property_name}</span>
+                    </div>
+                  </div>
+                </div>
+              </AdvancedMarker>
+            );
+          });
+          
+          markers.push(
+            <AdvancedMarker key={`${key}-center`} position={{ lat: centerLat, lng: centerLng }} zIndex={90} onClick={() => setSpiderfiedCoords(null)}>
               <div style={{
-                display: 'flex', alignItems: 'center', backgroundColor: '#1e4ec4',
-                padding: '6px 12px', borderRadius: '50px',
-                border: `3px solid #ffffff`,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)', gap: '8px', whiteSpace: 'nowrap'
-              }}>
-                <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: '800', fontFamily: 'var(--font-montserrat)' }}>
-                  {groupProps.length} Properties
-                </span>
-                <i className="fa fa-expand" style={{ color: '#ffffff', fontSize: '12px' }}></i>
+                width: '18px', height: '18px', backgroundColor: '#1e4ec4', border: '3px solid white', borderRadius: '50%',
+                cursor: 'pointer', transform: 'translate(0, 0)', boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+              }} title="Click to collapse" />
+            </AdvancedMarker>
+          );
+          
+          return markers;
+        } else {
+          return (
+            <AdvancedMarker
+              key={`group-${key}`}
+              position={{ lat: centerLat, lng: centerLng }}
+              onClick={() => setSpiderfiedCoords(key)}
+              zIndex={50}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', backgroundColor: '#1e4ec4',
+                  padding: '6px 12px', borderRadius: '50px',
+                  border: `3px solid #ffffff`,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)', gap: '8px', whiteSpace: 'nowrap'
+                }}>
+                  <span style={{ color: '#ffffff', fontSize: '14px', fontWeight: '800', fontFamily: 'var(--font-montserrat)' }}>
+                    {groupProps.length} Properties
+                  </span>
+                  <i className="fa fa-expand" style={{ color: '#ffffff', fontSize: '12px' }}></i>
+                </div>
+                <div style={{
+                  width: 0, height: 0, borderLeft: '7px solid transparent',
+                  borderRight: '7px solid transparent', borderTop: `7px solid #ffffff`,
+                  marginTop: '-1px'
+                }} />
               </div>
-              <div style={{
-                width: 0, height: 0, borderLeft: '7px solid transparent',
-                borderRight: '7px solid transparent', borderTop: `7px solid #ffffff`,
-                marginTop: '-1px'
-              }} />
-            </div>
-          </AdvancedMarker>
-        );
-      }
-    })}
+            </AdvancedMarker>
+          );
+        }
+      })
+    )}
     </>
   );
 }
@@ -425,6 +417,7 @@ export default function GroupTerritoryManager({
   initialName = '', 
   initialTerritory = null, 
   clubbedProperties = [],
+  currentPropertyId = null,
   onSave, 
   onClose 
 }) {
@@ -508,6 +501,8 @@ export default function GroupTerritoryManager({
                 initialTerritory={territory} 
                 onPolygonChange={setTerritory}
                 clubbedProperties={clubbedProperties}
+                clubId={clubId}
+                currentPropertyId={currentPropertyId}
               />
             </Map>
           </APIProvider>

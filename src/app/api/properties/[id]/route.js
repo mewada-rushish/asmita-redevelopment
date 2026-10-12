@@ -152,7 +152,8 @@ export async function PUT(req, { params }) {
         offer_letter_sent = ?, offer_letter_files = ?, offer_acceptance_letter = ?, offer_acceptance_letter_file = ?,
         approved_plan_file = ?, cc_file = ?, architect_survey_status = ?, sent_to_architect = ?,
         interaction_history = ?, offer_letter_status = ?, offer_meeting_track = ?, offer_acceptance_date = ?,
-        sgm_completed = ?, da_agreement_status = ?, project_progress = ?, activity_logs = ?, updated_by_name = ?
+        sgm_completed = ?, da_agreement_status = ?, project_progress = ?, activity_logs = ?, updated_by_name = ?,
+        building_boundary = ?
       WHERE id = ?
     `;
 
@@ -192,6 +193,7 @@ export async function PUT(req, { params }) {
       data.sgm_completed ? 1 : 0, data.da_agreement_status || 'Not Started', data.project_progress || 'Not Started', 
       
       data.activity_logs || '[]', auth.email || 'Unknown User',
+      data.building_boundary ? (typeof data.building_boundary === 'string' ? data.building_boundary : JSON.stringify(data.building_boundary)) : null,
       id
     ];
 

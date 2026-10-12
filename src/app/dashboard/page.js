@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import MapViewer from '@/components/maps/MapViewer';
 import { logoPath } from '@/assets/images';
+import { getGroupColor } from '@/utils/geoUtils';
 import styles from './map.module.css';
 import dashboardStyles from './dashboard.module.css';
 
@@ -137,21 +138,20 @@ export default function DashboardMapPage() {
     if (propertyType !== 'All') {
       filtered = filtered.filter(p => p.type === propertyType);
     }
+
+    const activeGroupId = expandedGroup || (selectedProperty?.club_id ? selectedProperty.club_id : null);
+
+    // When a group is selected, hide EVERYTHING on the map except that group's properties
+    if (activeGroupId) {
+      return filtered.filter(p => String(p.club_id) === String(activeGroupId));
+    }
     
     if (legendTab === 'status' && expandedStatus) {
       filtered = filtered.filter(p => p.status === expandedStatus);
     }
 
-    if (legendTab === 'groups' && expandedGroup) {
-      filtered = filtered.filter(p => p.club_id === expandedGroup);
-    }
-
     if (selectedProperty) {
       const alwaysVisible = [selectedProperty];
-      if (selectedProperty.club_id) {
-        alwaysVisible.push(...properties.filter(p => p.club_id === selectedProperty.club_id && p.id !== selectedProperty.id));
-      }
-      
       const filteredIds = new Set(filtered.map(p => p.id));
       const toAdd = alwaysVisible.filter(p => !filteredIds.has(p.id));
       filtered = [...filtered, ...toAdd];
@@ -400,6 +400,12 @@ export default function DashboardMapPage() {
           onMarkerClick={setSelectedProperty} 
           selectedProperty={selectedProperty}
           expandedGroup={expandedGroup}
+          onGroupSelect={(groupId) => {
+            setExpandedGroup(prev => prev === groupId ? null : groupId);
+            setSelectedProperty(null);
+            setLegendTab('groups');
+            if (isLegendCollapsed) setIsLegendCollapsed(false);
+          }}
           center={selectedProperty ? { lat: Number(selectedProperty.lat), lng: Number(selectedProperty.lng) } : undefined}
           zoom={selectedProperty ? 18 : undefined}
         />
@@ -422,7 +428,7 @@ export default function DashboardMapPage() {
                     <i className="fa fa-pencil"></i>
                   </button>
                 )}
-                <button className={styles.closeBtn} onClick={() => setSelectedProperty(null)} title="Close">
+                <button className={styles.closeBtn} onClick={() => { setSelectedProperty(null); setExpandedGroup(null); }} title="Close">
                   <i className="fa fa-times"></i>
                 </button>
               </div>
@@ -435,9 +441,17 @@ export default function DashboardMapPage() {
               </div>
 
               {selectedProperty.club_id && (
-                <div className={styles.sideSection} style={{ borderLeft: '4px solid #3b82f6', background: '#eff6ff' }}>
+                <div 
+                  className={styles.sideSection} 
+                  style={{ borderLeft: '4px solid #3b82f6', background: '#eff6ff', cursor: 'pointer' }}
+                  onClick={() => {
+                    setExpandedGroup(selectedProperty.club_id);
+                    setLegendTab('groups');
+                  }}
+                  title="Click to isolate and view this group"
+                >
                   <h4 className={styles.sectionHeading} style={{ color: '#1e40af', borderBottomColor: '#bfdbfe' }}>
-                    <i className="fa fa-link"></i> Linked Redevelopment Club
+                    <i className="fa fa-link"></i> Linked Redevelopment Club (Click to Focus Group)
                   </h4>
                   <p style={{ fontSize: '11px', color: '#60a5fa', marginBottom: '10px', fontWeight: '700' }}>
                     These properties are clubbed for joint redevelopment.
@@ -702,20 +716,26 @@ export default function DashboardMapPage() {
 
                     const savedGroup = propertyGroups.find(g => g.id === clubId);
                     const groupName = savedGroup?.name || `Group of ${list.length}`;
+                    const groupColor = savedGroup?.color || getGroupColor(clubId);
                     const isOpen = isSearching || expandedGroup === clubId;
 
                     return (
                       <div key={clubId} className={styles.section}>
                         <button 
                           className={styles.sectionToggle} 
-                          onClick={() => { if (!isSearching) setExpandedGroup(isOpen ? null : clubId); }}
+                          onClick={() => { 
+                            if (!isSearching) {
+                              setExpandedGroup(isOpen ? null : clubId);
+                              setSelectedProperty(null);
+                            }
+                          }}
                           style={{ cursor: isSearching ? 'default' : 'pointer' }}
                         >
                           <div className={styles.statusLabel}>
-                            <i className="fa fa-link" style={{ color: '#3b82f6' }}></i>
+                            <i className="fa fa-link" style={{ color: groupColor }}></i>
                             {groupName}
                           </div>
-                          <span className={styles.countBadge}>{list.length}</span>
+                          <span className={styles.countBadge} style={{ borderLeft: `3px solid ${groupColor}` }}>{list.length}</span>
                         </button>
                         {isOpen && (
                           <ul className={styles.propertyList}>

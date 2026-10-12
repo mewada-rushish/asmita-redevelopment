@@ -2,6 +2,66 @@ import { featureCollection, point, lineString } from '@turf/helpers';
 import convex from '@turf/convex';
 import buffer from '@turf/buffer';
 
+export const STATUS_COLORS = {
+    'Not Approached': '#ef4444', 
+    'Interest Letter Sent': '#f97316', 
+    'Interested Letter Sent': '#f97316', 
+    'Society Docs Received': '#eab308', 
+    'Architect Survey Phase': '#84cc16', 
+    'Architect Survey Completed': '#06b6d4', 
+    'Offer Letter Sent': '#3b82f6', 
+    'Offer Under Negotiation': '#a855f7', 
+    'Meeting Finalized': '#ec4899', 
+    'Offer Accepted': '#ec4899', 
+    'Approved': '#22c55e', 
+    'Consent Phase': '#14b8a6', 
+    'DA Phase': '#a0522d', 
+    'Plan & CC Phase': '#22c55e'
+};
+
+/**
+ * Returns canonical hex color for a property status.
+ * @param {string} status 
+ * @returns {string} Hex color
+ */
+export function getStatusColor(status) {
+    return STATUS_COLORS[status] || '#9ca3af';
+}
+
+export const GROUP_PALETTE = [
+    '#7c3aed', // Purple / Violet
+    '#0284c7', // Sky Blue
+    '#059669', // Emerald Green
+    '#ea580c', // Tangerine / Vivid Orange
+    '#e11d48', // Crimson Rose
+    '#d97706', // Rich Amber
+    '#0891b2', // Teal / Cyan
+    '#4f46e5', // Royal Indigo
+    '#c026d3', // Magenta / Fuchsia
+    '#16a34a', // Forest Green
+];
+
+/**
+ * Returns a consistent, distinct color for a given group ID or index.
+ * @param {string} groupId 
+ * @param {number} [index] 
+ * @returns {string} Hex color code
+ */
+export function getGroupColor(groupId, index) {
+    if (typeof index === 'number' && index >= 0) {
+        return GROUP_PALETTE[index % GROUP_PALETTE.length];
+    }
+    if (!groupId) return GROUP_PALETTE[0];
+    let hash = 0;
+    const str = String(groupId);
+    for (let i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0;
+    }
+    const idx = Math.abs(hash) % GROUP_PALETTE.length;
+    return GROUP_PALETTE[idx];
+}
+
 /**
  * Generates a mathematical boundary (buffer or convex hull) for clubbed properties.
  * @param {Array} properties - Array of property objects with lat/lng
