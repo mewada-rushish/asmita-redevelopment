@@ -151,8 +151,8 @@ export default function ProfilePage() {
                                 />
                             </div>
                         </div>
-                        <button type="submit" className={styles.saveBtn} disabled={savingInfo}>
-                            {savingInfo ? 'Saving...' : 'Update Information'}
+                        <button type="submit" className={styles.saveBtn} disabled={savingInfo} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                            {savingInfo ? <Loader size={18} inline={true} color="#ffffff" /> : 'Update Information'}
                         </button>
                     </form>
                 </div>
@@ -176,8 +176,8 @@ export default function ProfilePage() {
                             <label>Confirm New Password</label>
                             <input type="password" value={passwords.confirm} onChange={e => setPasswords({ ...passwords, confirm: e.target.value })} required minLength="8" />
                         </div>
-                        <button type="submit" className={styles.dangerBtn} disabled={savingPass}>
-                            {savingPass ? 'Updating...' : 'Change Password'}
+                        <button type="submit" className={styles.dangerBtn} disabled={savingPass} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                            {savingPass ? <Loader size={18} inline={true} color="#ffffff" /> : 'Change Password'}
                         </button>
                     </form>
                 </div>

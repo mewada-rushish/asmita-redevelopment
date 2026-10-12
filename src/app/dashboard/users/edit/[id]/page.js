@@ -246,9 +246,9 @@ export default function EditUserPage() {
                     </div>
 
                     <div className={styles.fullWidth}>
-                        <button type="submit" className={styles.submitBtn} disabled={loading}>
-                            {loading ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>}
-                            &nbsp; {loading ? 'Saving Changes...' : 'Save Changes'}
+                        <button type="submit" className={styles.submitBtn} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                            {loading ? <Loader size={18} inline={true} color="#ffffff" /> : <i className="fa fa-save"></i>}
+                            <span>{loading ? 'Saving...' : 'Save Changes'}</span>
                         </button>
                     </div>
                 </div>

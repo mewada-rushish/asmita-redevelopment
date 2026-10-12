@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { APIProvider, Map, useMap, useApiIsLoaded, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { logoPath } from '@/assets/images';
 import { getGroupColor, getStatusColor } from '@/utils/geoUtils';
+import Loader from '@/components/ui/Loader';
 import styles from './GroupTerritoryManager.module.css';
 
 const MIRA_ROAD_COORDS = { lat: 19.2813, lng: 72.8693 };
@@ -707,9 +708,7 @@ export default function GroupTerritoryManager({
               aria-label="Save Group Territory"
             >
               {isSaving ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-                </svg>
+                <Loader size={16} inline={true} color="#ffffff" />
               ) : (
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12"></polyline>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Loader from '@/components/ui/Loader';
 import styles from './addusers.module.css';
 
 export default function AddUserPage() {
@@ -163,9 +164,9 @@ export default function AddUserPage() {
                     </div>
 
                     <div className={styles.fullWidth}>
-                        <button type="submit" className={styles.submitBtn} disabled={loading}>
-                            {loading ? <i className="fa fa-spinner fa-spin"></i> : <i className="fa fa-save"></i>}
-                            &nbsp; {loading ? 'Creating User...' : 'Create User'}
+                        <button type="submit" className={styles.submitBtn} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                            {loading ? <Loader size={18} inline={true} color="#ffffff" /> : <i className="fa fa-save"></i>}
+                            <span>{loading ? 'Creating...' : 'Create User'}</span>
                         </button>
                     </div>
                 </div>
