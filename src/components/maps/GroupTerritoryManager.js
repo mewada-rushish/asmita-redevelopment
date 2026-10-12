@@ -704,7 +704,7 @@ export default function GroupTerritoryManager({
               className={styles.saveBtn}
               onClick={handleSave}
               disabled={isSaving}
-              title={isSaving ? "Saving..." : "Save Group Territory"}
+              title="Save Group Territory"
               aria-label="Save Group Territory"
             >
               {isSaving ? (

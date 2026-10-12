@@ -579,7 +579,7 @@ export default function BuildingBoundaryManager({
               style={{ backgroundColor: statusColor, borderColor: statusColor, boxShadow: `0 2px 8px ${statusColor}40` }}
               onClick={handleSave}
               disabled={isSaving}
-              title={isSaving ? "Saving..." : "Save Building Border"}
+              title="Save Building Border"
               aria-label="Save Building Border"
             >
               {isSaving ? (

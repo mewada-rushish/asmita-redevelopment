@@ -165,8 +165,14 @@ export default function AddUserPage() {
 
                     <div className={styles.fullWidth}>
                         <button type="submit" className={styles.submitBtn} disabled={loading} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                            {loading ? <Loader size={18} inline={true} color="#ffffff" /> : <i className="fa fa-save"></i>}
-                            <span>{loading ? 'Creating...' : 'Create User'}</span>
+                            {loading ? (
+                                <Loader size={18} inline={true} color="#ffffff" />
+                            ) : (
+                                <>
+                                    <i className="fa fa-save"></i>
+                                    <span>Create User</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
