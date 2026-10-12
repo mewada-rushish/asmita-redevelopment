@@ -622,54 +622,46 @@ export default function GroupTerritoryManager({
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <div className={styles.headerTitleRow}>
-            <div className={styles.headerIconBadge}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                <polyline points="20 17 12 22 22 17"></polyline>
-                <polyline points="2 12 12 17 22 12"></polyline>
-              </svg>
+          <div className={styles.headerInfo}>
+            <div className={styles.headerTitleRow}>
+              <div className={styles.headerIconBadge}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                  <polyline points="20 17 12 22 22 17"></polyline>
+                  <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+              </div>
+              <div className={styles.titleWithInput}>
+                <h2>Manage Group Territory &mdash;</h2>
+                <input 
+                  type="text" 
+                  value={name} 
+                  onChange={e => setName(e.target.value)}
+                  placeholder="e.g., Aurora Township"
+                  className={styles.headerTitleInput}
+                  title="Group / Township Name"
+                />
+              </div>
             </div>
-            <h2>Manage Group Territory &amp; Identity</h2>
+            <p>Click corners around the township footprint to draw group territory. Drag vertices to fine-tune.</p>
           </div>
-          <button onClick={onClose} className={styles.closeBtn} title="Close">
+          <button onClick={onClose} className={styles.closeBtn} title="Close" disabled={isSaving}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
-        
-        <div className={styles.formRow}>
-          <div className={styles.inputGroup}>
-            <label>Group/Township Name</label>
-            <input 
-              type="text" 
-              value={name} 
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g., Aurora Township"
-              className={styles.textInput}
-            />
-          </div>
-          <button 
-            className={styles.saveBtn} 
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            {isSaving ? 'Saving...' : 'Save Group'}
-          </button>
-        </div>
 
-        <div className={styles.mapInstruction}>
-          <div className={styles.instructionText}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="16" x2="12" y2="12"></line>
-              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-            </svg>
+        <div className={styles.toolbar}>
+          <div className={styles.instruction}>
+            <div className={styles.instructionIcon} style={{ color: '#1e4ec4' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+            </div>
             <span>
               {!drawingState.isDrawing && drawingState.pointCount >= 3
                 ? `Territory connected (${drawingState.pointCount} vertices). Drag vertices to edit, or double-click to delete.`
@@ -687,6 +679,7 @@ export default function GroupTerritoryManager({
               onClick={() => drawingControllerRef.current?.undo()}
               disabled={!drawingState.canUndo || isSaving}
               title="Undo (Ctrl+Z)"
+              aria-label="Undo"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 7v6h6"></path>
@@ -701,6 +694,7 @@ export default function GroupTerritoryManager({
               onClick={() => drawingControllerRef.current?.redo()}
               disabled={!drawingState.canRedo || isSaving}
               title="Redo (Ctrl+Y)"
+              aria-label="Redo"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 7v6h-6"></path>
@@ -739,6 +733,26 @@ export default function GroupTerritoryManager({
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
               </svg>
+            </button>
+
+            {/* SAVE BUTTON */}
+            <button
+              type="button"
+              className={styles.saveBtn}
+              onClick={handleSave}
+              disabled={isSaving}
+              title={isSaving ? "Saving..." : "Save Group Territory"}
+              aria-label="Save Group Territory"
+            >
+              {isSaving ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              )}
             </button>
           </div>
         </div>
