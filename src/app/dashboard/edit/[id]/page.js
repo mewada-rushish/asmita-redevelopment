@@ -719,9 +719,7 @@ export default function EditPropertyPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         toast.success("Property pipeline successfully updated!");
-        setTimeout(() => {
-          router.push('/dashboard/list');
-        }, 1500);
+        setAutoSaveStatus('saved');
       } else {
         toast.error("Update failed: " + (data.error || "Unknown error"));
       }
