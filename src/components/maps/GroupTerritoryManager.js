@@ -7,7 +7,15 @@ import styles from './GroupTerritoryManager.module.css';
 
 const MIRA_ROAD_COORDS = { lat: 19.2813, lng: 72.8693 };
 
-function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [], clubId, currentPropertyId = null }) {
+function DrawingMap({ 
+  initialTerritory, 
+  onPolygonChange, 
+  clubbedProperties = [], 
+  clubId, 
+  currentPropertyId = null,
+  controllerRef,
+  onDrawingStateChange
+}) {
   const map = useMap();
   const apiIsLoaded = useApiIsLoaded();
   const polygonRef = useRef(null);
@@ -51,6 +59,7 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
   }, [clubbedProperties]);
 
   const coords = history[historyIndex] || [];
+  const isConnected = !isDrawing && coords.length >= 3;
 
   const updateCoords = useCallback((newCoords) => {
     setHistory(prev => {
@@ -61,18 +70,52 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
     setHistoryIndex(prev => prev + 1);
   }, [historyIndex]);
 
-  const undo = () => {
+  const undo = useCallback(() => {
     if (historyIndex > 0) setHistoryIndex(prev => prev - 1);
-  };
+  }, [historyIndex]);
 
-  const redo = () => {
+  const redo = useCallback(() => {
     if (historyIndex < history.length - 1) setHistoryIndex(prev => prev + 1);
-  };
+  }, [historyIndex, history.length]);
 
-  const clear = () => {
+  const clear = useCallback(() => {
     updateCoords([]);
     setIsDrawing(true);
-  };
+  }, [updateCoords]);
+
+  const connect = useCallback(() => {
+    if (coords.length >= 3) {
+      setIsDrawing(false);
+    }
+  }, [coords.length]);
+
+  // Expose controller methods to parent modal
+  useEffect(() => {
+    if (controllerRef) {
+      controllerRef.current = {
+        undo,
+        redo,
+        clear,
+        connect,
+        canUndo: historyIndex > 0,
+        canRedo: historyIndex < history.length - 1,
+        isDrawing,
+        pointCount: coords.length
+      };
+    }
+  }, [controllerRef, undo, redo, clear, connect, historyIndex, history.length, isDrawing, coords.length]);
+
+  // Broadcast state changes for reactive UI buttons
+  useEffect(() => {
+    if (onDrawingStateChange) {
+      onDrawingStateChange({
+        canUndo: historyIndex > 0,
+        canRedo: historyIndex < history.length - 1,
+        isDrawing,
+        pointCount: coords.length
+      });
+    }
+  }, [historyIndex, history.length, isDrawing, coords.length, onDrawingStateChange]);
 
   // Update parent when coords change
   useEffect(() => {
@@ -90,18 +133,18 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
           position: coords[0],
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: '#ef4444',
+            scale: 9,
+            fillColor: '#7c3aed',
             fillOpacity: 1,
             strokeColor: 'white',
-            strokeWeight: 2,
+            strokeWeight: 2.5,
           },
-          title: 'Click to close circuit',
+          title: 'Click to connect & close territory',
           zIndex: 100,
         });
 
         firstMarkerRef.current.addListener('click', () => {
-          if (coords.length > 2) {
+          if (coords.length >= 3) {
             setIsDrawing(false);
             if (firstMarkerRef.current) {
               firstMarkerRef.current.setMap(null);
@@ -141,24 +184,56 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
     };
   }, [apiIsLoaded, map, isDrawing, coords, updateCoords]);
 
-  // Sync coords to Polygon and handle edits
+  // Sync coords to Polygon and handle edits & double click removal
   useEffect(() => {
     if (!apiIsLoaded || !map || !window.google) return;
 
     const polyColor = getGroupColor(clubId); // Distinct color matching group map territory
+    const fillOpacity = isConnected ? 0.3 : 0;
 
-      if (!polygonRef.current) {
-        polygonRef.current = new window.google.maps.Polygon({
-          fillColor: polyColor,
-          fillOpacity: 0.3,
-          strokeWeight: 2,
-          strokeColor: polyColor,
-          clickable: true,
-          editable: true,
-          zIndex: 1,
-          map: map
-        });
+    if (!polygonRef.current) {
+      polygonRef.current = new window.google.maps.Polygon({
+        fillColor: polyColor,
+        fillOpacity: fillOpacity,
+        strokeWeight: 2.5,
+        strokeColor: polyColor,
+        clickable: true,
+        editable: true,
+        zIndex: 1,
+        map: map
+      });
+    } else {
+      polygonRef.current.setOptions({ 
+        editable: true,
+        strokeColor: polyColor,
+        fillColor: polyColor,
+        fillOpacity: fillOpacity
+      });
+    }
 
+    const currentPath = polygonRef.current.getPath();
+    const currentLength = currentPath ? currentPath.getLength() : 0;
+    
+    let isDifferent = false;
+    if (currentLength !== coords.length) {
+      isDifferent = true;
+    } else if (currentPath) {
+      for (let i = 0; i < coords.length; i++) {
+        const pt = currentPath.getAt(i);
+        if (Math.abs(pt.lat() - coords[i].lat) > 0.000001 || Math.abs(pt.lng() - coords[i].lng) > 0.000001) {
+          isDifferent = true;
+          break;
+        }
+      }
+    }
+    
+    if (isDifferent) {
+      polygonRef.current.setPaths(coords);
+    }
+
+    const activePath = polygonRef.current.getPath();
+    const listeners = [];
+    if (activePath) {
       const handlePathEdit = () => {
         const path = polygonRef.current.getPath();
         if (!path) return;
@@ -170,35 +245,74 @@ function DrawingMap({ initialTerritory, onPolygonChange, clubbedProperties = [],
         updateCoords(newCoords);
       };
 
-      window.google.maps.event.addListener(polygonRef.current.getPath(), 'set_at', handlePathEdit);
-      window.google.maps.event.addListener(polygonRef.current.getPath(), 'insert_at', handlePathEdit);
-      window.google.maps.event.addListener(polygonRef.current.getPath(), 'remove_at', handlePathEdit);
-    } else {
-      polygonRef.current.setOptions({ editable: true });
+      listeners.push(window.google.maps.event.addListener(activePath, 'set_at', handlePathEdit));
+      listeners.push(window.google.maps.event.addListener(activePath, 'insert_at', handlePathEdit));
+      listeners.push(window.google.maps.event.addListener(activePath, 'remove_at', handlePathEdit));
     }
 
-    // Update paths carefully to avoid loops
-    const currentPath = polygonRef.current.getPath();
-    const currentLength = currentPath ? currentPath.getLength() : 0;
-    
-    let isDifferent = false;
-    if (currentLength !== coords.length) {
-      isDifferent = true;
-    } else if (currentPath) {
-      for (let i = 0; i < coords.length; i++) {
-        const pt = currentPath.getAt(i);
-        if (pt.lat() !== coords[i].lat || pt.lng() !== coords[i].lng) {
-          isDifferent = true;
-          break;
+    // Double-click on vertex point to remove it
+    const dblclickListener = window.google.maps.event.addListener(polygonRef.current, 'dblclick', (e) => {
+      if (e.stop) e.stop();
+      const path = polygonRef.current.getPath();
+      if (!path || path.getLength() === 0) return;
+
+      if (e.vertex !== undefined) {
+        path.removeAt(e.vertex);
+        return;
+      }
+
+      // Fallback: check pixel distance to closest vertex on double-click
+      if (e.latLng && map && map.getProjection()) {
+        const proj = map.getProjection();
+        const zoom = map.getZoom();
+        const scale = Math.pow(2, zoom);
+        const clickPoint = proj.fromLatLngToPoint(e.latLng);
+        let closestIndex = -1;
+        let minPixelDist = 22;
+
+        for (let i = 0; i < path.getLength(); i++) {
+          const pt = path.getAt(i);
+          const vertexPoint = proj.fromLatLngToPoint(pt);
+          const dx = (clickPoint.x - vertexPoint.x) * scale;
+          const dy = (clickPoint.y - vertexPoint.y) * scale;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minPixelDist) {
+            minPixelDist = dist;
+            closestIndex = i;
+          }
+        }
+
+        if (closestIndex !== -1) {
+          path.removeAt(closestIndex);
         }
       }
-    }
-    
-    if (isDifferent) {
-      polygonRef.current.setPaths(coords);
-    }
+    });
+    listeners.push(dblclickListener);
 
-  }, [apiIsLoaded, map, coords, isDrawing, updateCoords]);
+    // Right-click on vertex to remove it
+    const rightclickListener = window.google.maps.event.addListener(polygonRef.current, 'rightclick', (e) => {
+      if (e.vertex !== undefined) {
+        const path = polygonRef.current.getPath();
+        if (path && path.getLength() > 0) {
+          path.removeAt(e.vertex);
+        }
+      }
+    });
+    listeners.push(rightclickListener);
+
+    // Clicking vertex 0 while drawing connects the shape
+    const clickListener = window.google.maps.event.addListener(polygonRef.current, 'click', (e) => {
+      if (isDrawing && e.vertex === 0 && coords.length >= 3) {
+        setIsDrawing(false);
+      }
+    });
+    listeners.push(clickListener);
+
+    return () => {
+      listeners.forEach(l => window.google.maps.event.removeListener(l));
+    };
+
+  }, [apiIsLoaded, map, coords, isDrawing, isConnected, clubId, updateCoords]);
 
   // Initial fit bounds (fit either initial territory or clubbed properties)
   useEffect(() => {
@@ -444,6 +558,39 @@ export default function GroupTerritoryManager({
   const [name, setName] = useState(initialName);
   const [territory, setTerritory] = useState(initialTerritory);
   const [isSaving, setIsSaving] = useState(false);
+  const drawingControllerRef = useRef(null);
+  const [drawingState, setDrawingState] = useState({
+    canUndo: false,
+    canRedo: false,
+    isDrawing: !(initialTerritory && Array.isArray(initialTerritory) && initialTerritory.length > 2),
+    pointCount: Array.isArray(initialTerritory) ? initialTerritory.length : 0
+  });
+
+  const handleClear = () => {
+    if (drawingControllerRef.current) {
+      drawingControllerRef.current.clear();
+    }
+    setTerritory([]);
+  };
+
+  // Keyboard shortcuts for Undo and Redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          drawingControllerRef.current?.redo();
+        } else {
+          drawingControllerRef.current?.undo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        drawingControllerRef.current?.redo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSave = async () => {
     if (!name || name.trim() === '') {
@@ -479,7 +626,7 @@ export default function GroupTerritoryManager({
             <div className={styles.headerIconBadge}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="20 17 12 22 22 17"></polyline>
                 <polyline points="2 12 12 17 22 12"></polyline>
               </svg>
             </div>
@@ -517,12 +664,83 @@ export default function GroupTerritoryManager({
         </div>
 
         <div className={styles.mapInstruction}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-          </svg>
-          <span>Click on the map to place vertices and draw your custom territory. You can drag existing vertices to edit the shape!</span>
+          <div className={styles.instructionText}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            <span>
+              {!drawingState.isDrawing && drawingState.pointCount >= 3
+                ? `Territory connected (${drawingState.pointCount} vertices). Drag vertices to edit, or double-click to delete.`
+                : drawingState.pointCount >= 3
+                ? `Click starting point or "Connect Territory" to close the shape and fill territory.`
+                : `Click on map to place vertices (min 3 points). Drag to edit, double-click to delete.`}
+            </span>
+          </div>
+
+          <div className={styles.toolbarActions}>
+            {/* UNDO BUTTON */}
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={() => drawingControllerRef.current?.undo()}
+              disabled={!drawingState.canUndo || isSaving}
+              title="Undo (Ctrl+Z)"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7v6h6"></path>
+                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+              </svg>
+            </button>
+
+            {/* REDO BUTTON */}
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={() => drawingControllerRef.current?.redo()}
+              disabled={!drawingState.canRedo || isSaving}
+              title="Redo (Ctrl+Y)"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 7v6h-6"></path>
+                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path>
+              </svg>
+            </button>
+
+            {/* CONNECT BUTTON */}
+            {drawingState.isDrawing && drawingState.pointCount >= 3 && (
+              <button
+                type="button"
+                className={styles.connectBtn}
+                onClick={() => drawingControllerRef.current?.connect()}
+                title="Connect vertices and color the group territory"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+                Connect Territory
+              </button>
+            )}
+
+            <div className={styles.toolBtnDivider} />
+
+            {/* CLEAR BUTTON */}
+            <button
+              type="button"
+              className={styles.clearBtn}
+              onClick={handleClear}
+              title="Clear Territory"
+              disabled={isSaving}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              Clear
+            </button>
+          </div>
         </div>
 
         <div className={styles.mapWrapper}>
@@ -535,6 +753,7 @@ export default function GroupTerritoryManager({
               defaultZoom={15}
               mapId={process.env.NEXT_PUBLIC_GMAP_ID || "DEMO_MAP_ID"}
               disableDefaultUI={true}
+              disableDoubleClickZoom={true}
               mapTypeId="satellite"
               clickableIcons={false}
               gestureHandling="cooperative"
@@ -546,6 +765,8 @@ export default function GroupTerritoryManager({
                 clubbedProperties={clubbedProperties}
                 clubId={clubId}
                 currentPropertyId={currentPropertyId}
+                controllerRef={drawingControllerRef}
+                onDrawingStateChange={setDrawingState}
               />
             </Map>
           </APIProvider>

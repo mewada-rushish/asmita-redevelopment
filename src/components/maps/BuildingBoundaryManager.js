@@ -15,7 +15,9 @@ function BuildingDrawingMap({
   pinLng, 
   propertyName = 'Property', 
   status = 'Not Approached', 
-  linkedProperties = [] 
+  linkedProperties = [],
+  controllerRef,
+  onDrawingStateChange
 }) {
   const statusColor = getStatusColor(status);
   const map = useMap();
@@ -39,6 +41,7 @@ function BuildingDrawingMap({
   const [isDrawing, setIsDrawing] = useState(!(parsedBoundary && parsedBoundary.length > 2));
 
   const coords = history[historyIndex] || [];
+  const isConnected = !isDrawing && coords.length >= 3;
 
   const updateCoords = useCallback((newCoords) => {
     setHistory(prev => {
@@ -49,18 +52,52 @@ function BuildingDrawingMap({
     setHistoryIndex(prev => prev + 1);
   }, [historyIndex]);
 
-  const undo = () => {
+  const undo = useCallback(() => {
     if (historyIndex > 0) setHistoryIndex(prev => prev - 1);
-  };
+  }, [historyIndex]);
 
-  const redo = () => {
+  const redo = useCallback(() => {
     if (historyIndex < history.length - 1) setHistoryIndex(prev => prev + 1);
-  };
+  }, [historyIndex, history.length]);
 
-  const clear = () => {
+  const clear = useCallback(() => {
     updateCoords([]);
     setIsDrawing(true);
-  };
+  }, [updateCoords]);
+
+  const connect = useCallback(() => {
+    if (coords.length >= 3) {
+      setIsDrawing(false);
+    }
+  }, [coords.length]);
+
+  // Expose controller methods to parent modal
+  useEffect(() => {
+    if (controllerRef) {
+      controllerRef.current = {
+        undo,
+        redo,
+        clear,
+        connect,
+        canUndo: historyIndex > 0,
+        canRedo: historyIndex < history.length - 1,
+        isDrawing,
+        pointCount: coords.length
+      };
+    }
+  }, [controllerRef, undo, redo, clear, connect, historyIndex, history.length, isDrawing, coords.length]);
+
+  // Broadcast state changes for reactive UI buttons
+  useEffect(() => {
+    if (onDrawingStateChange) {
+      onDrawingStateChange({
+        canUndo: historyIndex > 0,
+        canRedo: historyIndex < history.length - 1,
+        isDrawing,
+        pointCount: coords.length
+      });
+    }
+  }, [historyIndex, history.length, isDrawing, coords.length, onDrawingStateChange]);
 
   useEffect(() => {
     onPolygonChange(coords);
@@ -85,17 +122,18 @@ function BuildingDrawingMap({
           position: coords[0],
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 8,
+            scale: 9,
             fillColor: statusColor,
             fillOpacity: 1,
             strokeColor: 'white',
-            strokeWeight: 2,
+            strokeWeight: 2.5,
           },
-          title: "Click to close building border"
+          title: "Click to connect & close building border",
+          zIndex: 999
         });
 
         firstMarkerRef.current.addListener('click', () => {
-          if (coords.length > 2) {
+          if (coords.length >= 3) {
             setIsDrawing(false);
             if (firstMarkerRef.current) {
               firstMarkerRef.current.setMap(null);
@@ -135,17 +173,19 @@ function BuildingDrawingMap({
     };
   }, [apiIsLoaded, map, isDrawing, coords, updateCoords]);
 
-  // Sync coords to Polygon and handle edits
+  // Sync coords to Polygon and handle edits & double-click removal
   useEffect(() => {
     if (!apiIsLoaded || !map || !window.google) return;
 
     const strokeCol = statusColor;
     const fillCol = statusColor;
+    // Area background color is colored ONLY after vertices are connected
+    const fillOpacity = isConnected ? 0.35 : 0;
 
     if (!polygonRef.current) {
       polygonRef.current = new window.google.maps.Polygon({
         fillColor: fillCol,
-        fillOpacity: 0.35,
+        fillOpacity: fillOpacity,
         strokeWeight: 3,
         strokeColor: strokeCol,
         clickable: true,
@@ -154,7 +194,12 @@ function BuildingDrawingMap({
         map: map
       });
     } else {
-      polygonRef.current.setOptions({ editable: true, strokeColor: strokeCol, fillColor: fillCol });
+      polygonRef.current.setOptions({ 
+        editable: true, 
+        strokeColor: strokeCol, 
+        fillColor: fillCol,
+        fillOpacity: fillOpacity 
+      });
     }
 
     const currentPath = polygonRef.current.getPath();
@@ -196,8 +241,47 @@ function BuildingDrawingMap({
       listeners.push(window.google.maps.event.addListener(activePath, 'remove_at', handlePathEdit));
     }
 
-    // Allow right click on vertex to remove it
-    const clickListener = window.google.maps.event.addListener(polygonRef.current, 'rightclick', (e) => {
+    // Double-click on vertex point to remove it
+    const dblclickListener = window.google.maps.event.addListener(polygonRef.current, 'dblclick', (e) => {
+      if (e.stop) e.stop();
+      const path = polygonRef.current.getPath();
+      if (!path || path.getLength() === 0) return;
+
+      if (e.vertex !== undefined) {
+        path.removeAt(e.vertex);
+        return;
+      }
+
+      // Fallback: check pixel distance to closest vertex on double-click
+      if (e.latLng && map && map.getProjection()) {
+        const proj = map.getProjection();
+        const zoom = map.getZoom();
+        const scale = Math.pow(2, zoom);
+        const clickPoint = proj.fromLatLngToPoint(e.latLng);
+        let closestIndex = -1;
+        let minPixelDist = 22;
+
+        for (let i = 0; i < path.getLength(); i++) {
+          const pt = path.getAt(i);
+          const vertexPoint = proj.fromLatLngToPoint(pt);
+          const dx = (clickPoint.x - vertexPoint.x) * scale;
+          const dy = (clickPoint.y - vertexPoint.y) * scale;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minPixelDist) {
+            minPixelDist = dist;
+            closestIndex = i;
+          }
+        }
+
+        if (closestIndex !== -1) {
+          path.removeAt(closestIndex);
+        }
+      }
+    });
+    listeners.push(dblclickListener);
+
+    // Right-click on vertex to remove it
+    const rightclickListener = window.google.maps.event.addListener(polygonRef.current, 'rightclick', (e) => {
       if (e.vertex !== undefined) {
         const path = polygonRef.current.getPath();
         if (path && path.getLength() > 0) {
@@ -205,12 +289,20 @@ function BuildingDrawingMap({
         }
       }
     });
+    listeners.push(rightclickListener);
+
+    // Clicking vertex 0 while drawing connects the shape
+    const clickListener = window.google.maps.event.addListener(polygonRef.current, 'click', (e) => {
+      if (isDrawing && e.vertex === 0 && coords.length >= 3) {
+        setIsDrawing(false);
+      }
+    });
     listeners.push(clickListener);
 
     return () => {
       listeners.forEach(l => window.google.maps.event.removeListener(l));
     };
-  }, [apiIsLoaded, map, coords, statusColor, updateCoords]);
+  }, [apiIsLoaded, map, coords, statusColor, updateCoords, isConnected, isDrawing]);
 
   return (
     <>
@@ -292,11 +384,40 @@ export default function BuildingBoundaryManager({
   const [boundary, setBoundary] = useState(initialBoundary);
   const [resetKey, setResetKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const drawingControllerRef = useRef(null);
+  const [drawingState, setDrawingState] = useState({
+    canUndo: false,
+    canRedo: false,
+    isDrawing: !(initialBoundary && Array.isArray(initialBoundary) && initialBoundary.length > 2),
+    pointCount: Array.isArray(initialBoundary) ? initialBoundary.length : 0
+  });
 
   const handleClear = () => {
+    if (drawingControllerRef.current) {
+      drawingControllerRef.current.clear();
+    }
     setBoundary([]);
     setResetKey(prev => prev + 1);
   };
+
+  // Keyboard shortcuts for Undo and Redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          drawingControllerRef.current?.redo();
+        } else {
+          drawingControllerRef.current?.undo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        drawingControllerRef.current?.redo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSave = async () => {
     const validBoundary = boundary && Array.isArray(boundary) && boundary.length >= 3 ? boundary : null;
@@ -379,12 +500,63 @@ export default function BuildingBoundaryManager({
               </svg>
             </div>
             <span>
-              {boundary && boundary.length > 2
-                ? `Boundary marked with ${boundary.length} vertices. You can drag any vertex point to adjust or right-click to delete.`
-                : 'Click 3 or more points around the building rooftop/edges to complete the outline.'}
+              {!drawingState.isDrawing && drawingState.pointCount >= 3
+                ? `Boundary connected with ${drawingState.pointCount} vertices. Drag vertices to adjust, or double-click to delete.`
+                : drawingState.pointCount >= 3
+                ? `Click starting point or "Connect Border" to close the shape and color the area.`
+                : `Click 3 or more corners around the building rooftop/edges to outline.`}
             </span>
           </div>
+
           <div className={styles.actions}>
+            {/* UNDO BUTTON */}
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={() => drawingControllerRef.current?.undo()}
+              disabled={!drawingState.canUndo || isSaving}
+              title="Undo (Ctrl+Z)"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7v6h6"></path>
+                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+              </svg>
+            </button>
+
+            {/* REDO BUTTON */}
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={() => drawingControllerRef.current?.redo()}
+              disabled={!drawingState.canRedo || isSaving}
+              title="Redo (Ctrl+Y)"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 7v6h-6"></path>
+                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path>
+              </svg>
+            </button>
+
+            {/* CONNECT BUTTON (when drawing and >= 3 points) */}
+            {drawingState.isDrawing && drawingState.pointCount >= 3 && (
+              <button
+                type="button"
+                className={styles.connectBtn}
+                style={{ backgroundColor: `${statusColor}18`, color: statusColor, borderColor: `${statusColor}40` }}
+                onClick={() => drawingControllerRef.current?.connect()}
+                title="Connect vertices and color the building area"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+                Connect Border
+              </button>
+            )}
+
+            <div className={styles.toolBtnDivider} />
+
+            {/* CLEAR BUTTON */}
             <button
               type="button"
               className={styles.clearBtn}
@@ -398,6 +570,8 @@ export default function BuildingBoundaryManager({
               </svg>
               Clear
             </button>
+
+            {/* SAVE BUTTON */}
             <button
               type="button"
               className={styles.saveBtn}
@@ -423,6 +597,7 @@ export default function BuildingBoundaryManager({
               defaultZoom={20}
               mapId={process.env.NEXT_PUBLIC_GMAP_ID || "DEMO_MAP_ID"}
               disableDefaultUI={true}
+              disableDoubleClickZoom={true}
               mapTypeId="satellite"
               clickableIcons={false}
               gestureHandling="cooperative"
@@ -437,6 +612,8 @@ export default function BuildingBoundaryManager({
                 propertyName={propertyName}
                 status={status}
                 linkedProperties={linkedProperties}
+                controllerRef={drawingControllerRef}
+                onDrawingStateChange={setDrawingState}
               />
             </Map>
           </APIProvider>
