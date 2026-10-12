@@ -362,14 +362,14 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
       const propertiesToDrawBoundary = [];
       if (selectedProperty && selectedProperty.building_boundary) {
         propertiesToDrawBoundary.push(selectedProperty);
-      }
-      properties.forEach(p => {
-        if (p.building_boundary && (!selectedProperty || String(p.id) !== String(selectedProperty.id))) {
-          if (!activeGroupId || String(p.club_id) === String(activeGroupId)) {
+      } else if (!activeGroupId) {
+        // On global map with no group focused, include boundaries (unselected will have no bg fill)
+        properties.forEach(p => {
+          if (p.building_boundary) {
             propertiesToDrawBoundary.push(p);
           }
-        }
-      });
+        });
+      }
 
       propertiesToDrawBoundary.forEach(p => {
         let bCoords = null;

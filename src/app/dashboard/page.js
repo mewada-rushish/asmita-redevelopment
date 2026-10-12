@@ -445,7 +445,9 @@ export default function DashboardMapPage() {
                   className={styles.sideSection} 
                   style={{ borderLeft: '4px solid #3b82f6', background: '#eff6ff', cursor: 'pointer' }}
                   onClick={() => {
-                    setExpandedGroup(selectedProperty.club_id);
+                    const cId = selectedProperty.club_id;
+                    setSelectedProperty(null);
+                    setExpandedGroup(cId);
                     setLegendTab('groups');
                   }}
                   title="Click to isolate and view this group"
