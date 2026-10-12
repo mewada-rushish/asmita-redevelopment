@@ -109,34 +109,18 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
     };
   }, [map, selectedProperty, onLocationSelect]);
 
-  // Handle zooming & offset when a specific property is clicked from legend or map
+  // Do not zoom in or change zoom level when a singular property is selected
   useEffect(() => {
     if (!map) return;
     
     if (selectedProperty && selectedProperty.lat && selectedProperty.lng) {
-      // Determine if we are on a mobile device where the sidebar stacks at the bottom
-      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-      
-      // Calculate a geographic offset to prevent the marker from hiding under the sidebar
-      // On desktop: Offset Longitude positive (East) so the marker shifts Left
-      // On mobile: Offset Latitude negative (South) so the marker shifts Up
-      // ONLY apply offset on main dashboard with sidebar, NOT in location selector cards
-      const lngOffset = (!onLocationSelect && !isMobile) ? 0.0005 : 0; // Approx 180px left shift at zoom 19
-      const latOffset = (!onLocationSelect && isMobile) ? -0.0004 : 0; // Approx 150px up shift at zoom 19
-      
-      map.setZoom(19); // High zoom level to focus on building
-      map.panTo({
-        lat: parseFloat(selectedProperty.lat) + latOffset,
-        lng: parseFloat(selectedProperty.lng) + lngOffset
-      });
-
       // Auto-spiderfy if the selected property is clustered
       const key = `${parseFloat(selectedProperty.lat).toFixed(5)},${parseFloat(selectedProperty.lng).toFixed(5)}`;
       if (groupedProperties[key] && groupedProperties[key].length > 1) {
         setSpiderfiedCoords(key);
       }
     }
-  }, [selectedProperty, map, onLocationSelect, groupedProperties]);
+  }, [selectedProperty, map, groupedProperties]);
 
   // Pan to active group
   useEffect(() => {
@@ -358,17 +342,10 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
         }
       }
 
-      // 3. Draw Building Border for properties with building_boundary
+      // 3. Draw Building Border ONLY when a singular property is selected
       const propertiesToDrawBoundary = [];
       if (selectedProperty && selectedProperty.building_boundary) {
         propertiesToDrawBoundary.push(selectedProperty);
-      } else if (!activeGroupId) {
-        // On global map with no group focused, include boundaries (unselected will have no bg fill)
-        properties.forEach(p => {
-          if (p.building_boundary) {
-            propertiesToDrawBoundary.push(p);
-          }
-        });
       }
 
       propertiesToDrawBoundary.forEach(p => {
@@ -524,27 +501,25 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                   onMarkerClick?.(p);
                   setSpiderfiedCoords(null);
                 }}
-                zIndex={isSelected ? 200 : 50}
+                zIndex={isSelected ? 100 : 50}
               >
                 <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer',
                   transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                  transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                  transform: 'scale(1)',
                 }}>
                   <div style={{
                     display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
-                    padding: isSelected ? '5px 14px 5px 10px' : '4px 12px 4px 8px', borderRadius: '50px',
-                    border: isSelected ? '3.5px solid #1e4ec4' : `3px solid ${statusColor}`,
-                    boxShadow: isSelected 
-                      ? '0 0 0 4px rgba(30, 78, 196, 0.4), 0 8px 24px rgba(0,0,0,0.35)' 
-                      : '0 4px 10px rgba(0,0,0,0.15)',
+                    padding: '4px 12px 4px 8px', borderRadius: '50px',
+                    border: `3px solid ${statusColor}`,
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
                     gap: '8px', whiteSpace: 'nowrap'
                   }}>
-                    <Image src={logoPath} alt="L" width={isSelected ? 24 : 22} height={isSelected ? 24 : 22} />
+                    <Image src={logoPath} alt="L" width={22} height={22} />
                     <span style={{ 
-                      color: isSelected ? '#0f172a' : '#1e293b', 
-                      fontSize: isSelected ? '14.5px' : '14px', 
-                      fontWeight: isSelected ? '800' : '600', 
+                      color: '#1e293b', 
+                      fontSize: '14px', 
+                      fontWeight: '600', 
                       fontFamily: 'var(--font-montserrat)' 
                     }}>
                       {p.property_name}
@@ -553,7 +528,7 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                   <div style={{
                     width: 0, height: 0, borderLeft: '7px solid transparent',
                     borderRight: '7px solid transparent',
-                    borderTop: `7px solid ${isSelected ? '#1e4ec4' : statusColor}`,
+                    borderTop: `7px solid ${statusColor}`,
                     marginTop: '-1px'
                   }} />
                 </div>
@@ -608,18 +583,16 @@ function InnerMap({ properties = [], propertyGroups = [], mapStyle, onMarkerClic
                     }}>
                       <div style={{
                         display: 'flex', alignItems: 'center', backgroundColor: '#ffffff',
-                        padding: isSelectedSpider ? '5px 14px 5px 10px' : '4px 12px 4px 8px', borderRadius: '50px',
-                        border: isSelectedSpider ? '3.5px solid #1e4ec4' : `3px solid ${color}`,
-                        boxShadow: isSelectedSpider 
-                          ? '0 0 0 4px rgba(30, 78, 196, 0.4), 0 8px 24px rgba(0,0,0,0.35)' 
-                          : '0 4px 10px rgba(0,0,0,0.15)',
+                        padding: '4px 12px 4px 8px', borderRadius: '50px',
+                        border: `3px solid ${color}`,
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
                         gap: '8px', whiteSpace: 'nowrap'
                       }}>
-                        <Image src={logoPath} alt="L" width={isSelectedSpider ? 22 : 20} height={isSelectedSpider ? 22 : 20} />
+                        <Image src={logoPath} alt="L" width={20} height={20} />
                         <span style={{ 
-                          color: isSelectedSpider ? '#0f172a' : '#1e293b', 
-                          fontSize: isSelectedSpider ? '13.5px' : '13px', 
-                          fontWeight: isSelectedSpider ? '800' : '600', 
+                          color: '#1e293b', 
+                          fontSize: '13px', 
+                          fontWeight: '600', 
                           fontFamily: 'var(--font-montserrat)' 
                         }}>
                           {p.property_name}

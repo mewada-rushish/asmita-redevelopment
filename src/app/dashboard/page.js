@@ -406,8 +406,8 @@ export default function DashboardMapPage() {
             setLegendTab('groups');
             if (isLegendCollapsed) setIsLegendCollapsed(false);
           }}
-          center={selectedProperty ? { lat: Number(selectedProperty.lat), lng: Number(selectedProperty.lng) } : undefined}
-          zoom={selectedProperty ? 18 : undefined}
+          center={undefined}
+          zoom={undefined}
         />
       </div>
 
